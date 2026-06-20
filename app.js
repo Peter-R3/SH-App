@@ -459,6 +459,10 @@ function handleGameStateUpdate() {
     }
 }
 
+function openModesSelection() {
+    console.log('Modes selection is not implemented yet.');
+}
+
 // Fixed Synchronization Engine
 database.ref('games/1-to-10').on('value', (snapshot) => {
     const data = snapshot.val();

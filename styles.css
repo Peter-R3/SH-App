@@ -186,12 +186,35 @@ button:active {
     font-size: 22px;
     font-weight: bold;
     color: #FFFFFF;
+    line-height: 1.1;
 }
 
 .header-profile-badge {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+}
+
+.header-player-label {
+    font-size: 10px;
+    font-weight: 700;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.header-nickname {
+    display: block;
+    max-width: 108px;
+    overflow: hidden;
+    color: #FFFFFF;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .pfp-placeholder {
@@ -293,6 +316,26 @@ button:active {
 
 .nav-tab-btn.active-tab .nav-icon {
     transform: translateY(-1px);
+}
+
+.mode-select-btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    background: #000000;
+    border: 2px solid #FFFFFF;
+    border-radius: 8px;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mode-select-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
 }
 
 /* =========================================================================
