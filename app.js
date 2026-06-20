@@ -1,3 +1,14 @@
+// Calculate exact mobile viewport height to fix PWA layout cut-offs
+function calculateRealVh() {
+  let vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Run calculations on load and when orientation changes
+window.addEventListener('resize', calculateRealVh);
+window.addEventListener('orientationchange', calculateRealVh);
+calculateRealVh();
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sh-app/sw.js')
