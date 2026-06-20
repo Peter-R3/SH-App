@@ -1,7 +1,7 @@
 {
   "name": "Super Happy App",
   "short_name": "SH App",
-  "start_url": "/sh-app/",
+  "start_url": "/SH-App/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ff6b6b",
