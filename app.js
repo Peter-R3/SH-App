@@ -370,6 +370,44 @@ function processPadSubmission() {
     }
 }
 
+function advanceRoundAfterReveal(revealRound) {
+    database.ref('games/1-to-10').transaction((current) => {
+        if (!current || current.phase !== 'REVEAL') return;
+
+        const isSameRevealRound =
+            current.targetSetter === revealRound.targetSetter &&
+            current.guesser === revealRound.guesser &&
+            current.chosenTargetValue === revealRound.chosenTargetValue &&
+            current.currentGuessValue === revealRound.currentGuessValue;
+
+        if (!isSameRevealRound) return;
+
+        const nextSetter = current.targetSetter === 'Peter' ? 'Jadey' : 'Peter';
+        const nextGuesser = nextSetter === 'Peter' ? 'Jadey' : 'Peter';
+
+        return {
+            phase: 'SETTING_TARGET',
+            targetSetter: nextSetter,
+            guesser: nextGuesser,
+            chosenTargetValue: null,
+            currentGuessValue: null,
+            isActive: true
+        };
+    }, (error, committed, snapshot) => {
+        if (error) {
+            console.log('Round advance failed:', error);
+            return;
+        }
+
+        const latestState = snapshot.val();
+        if (latestState) gameState1To10 = latestState;
+
+        isRevealingRound = false;
+        resetVisualCards();
+        updateGameUIFlow();
+    });
+}
+
 // Fixed Synchronization Engine
 database.ref('games/1-to-10').on('value', (snapshot) => {
     const data = snapshot.val();
@@ -377,12 +415,13 @@ database.ref('games/1-to-10').on('value', (snapshot) => {
     
     gameState1To10 = data;
     const gameScreen = document.getElementById('game-1-to-10-screen');
-    
+
     if (gameScreen && !gameScreen.classList.contains('hidden')) {
-        
+
         if (gameState1To10.phase === 'REVEAL' && !isRevealingRound) {
             isRevealingRound = true;
-            
+            const revealRound = { ...gameState1To10 };
+
             const backGuess = document.getElementById('card-back-your-guess');
             const backTarget = document.getElementById('card-back-their-target');
             const innerGuessCard = document.getElementById('flip-inner-guess');
@@ -410,35 +449,11 @@ database.ref('games/1-to-10').on('value', (snapshot) => {
                         promptLabel.innerText = "No Match!";
                     }
                 }
-                
-                // Pure master control cleanup sequence
+
                 setTimeout(() => {
-                    if (localPlayer === 'Peter') {
-                        const nextSetter = gameState1To10.targetSetter === 'Peter' ? 'Jadey' : 'Peter';
-                        const nextGuesser = nextSetter === 'Peter' ? 'Jadey' : 'Peter';
-                        
-                        database.ref('games/1-to-10').set({
-                            phase: 'SETTING_TARGET',
-                            targetSetter: nextSetter,
-                            guesser: nextGuesser,
-                            chosenTargetValue: null,
-                            currentGuessValue: null,
-                            isActive: true
-                        }).then(() => {
-                            isRevealingRound = false;
-                            resetVisualCards();
-                            updateGameUIFlow();
-                        });
-                    } else {
-                        // The secondary device waits for data verification safely
-                        setTimeout(() => {
-                            isRevealingRound = false;
-                            resetVisualCards();
-                            updateGameUIFlow();
-                        }, 1000);
-                    }
+                    advanceRoundAfterReveal(revealRound);
                 }, 4000);
-                
+
             }, 1000);
         } else {
             updateGameUIFlow();
