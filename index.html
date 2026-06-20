@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Game Hub</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+
+        <main id="main-content">
+            <section id="login-screen" class="screen">
+                <p class="greeting-small">Hello!</p>
+                <h1 class="greeting-large">What's your name?</h1>
+
+                <div class="profile-buttons-wrapper">
+                    <button class="profile-btn peter-btn" onclick="selectProfile('Peter')">Peter</button>
+                    <button class="profile-btn jadey-btn" onclick="selectProfile('Jadey')">Jadey</button>
+                </div>
+            </section>
+
+            <section id="welcome-container" class="screen hidden" style="opacity: 0;">
+                <p class="welcome-small">Welcome</p>
+                <h2 id="welcome-name" class="welcome-large"></h2>
+            </section>
+
+            <section id="main-dashboard" class="screen hidden" style="justify-content: flex-start; padding: 0;">
+                <div id="dashboard-header-shell" class="dashboard-header" onclick="switchTab('profile')" style="cursor: pointer;">
+                    <span class="header-title">Game Selection</span>
+                    <div class="header-profile-badge">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span style="font-size: 11px; font-weight: 600; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Player</span>
+                            <span id="header-nickname" style="font-size: 20px; font-weight: bold; color: #FFFFFF; line-height: 1.2;"></span>
+                        </div>
+                        <div id="header-initial-circle" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+                
+                <div style="padding: 0 24px; flex: 1; display: flex; flex-direction: column;">
+                    <h2 class="menu-prompt">Select a Game</h2>
+                    
+                    <div class="games-grid">
+                        <button class="grid-game-btn" onclick="launchGame('number-guess')">1 to 10</button>
+                        <button class="grid-game-btn locked" disabled>Word Search</button>
+                        <button class="grid-game-btn locked" disabled>Battleship</button>
+                        <button class="grid-game-btn locked" disabled>Game 4</button>
+                        <button class="grid-game-btn locked" disabled>Game 5</button>
+                        <button class="grid-game-btn locked" disabled>Game 6</button>
+                    </div>
+                </div>
+
+                <div id="dashboard-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn active-tab" onclick="switchTab('games')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H4v-2h7v2zm8 0h-6v-2h6v2zm0-4H4V8h15v4z"/></svg>
+                        <span>Games</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')"> 
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zm-7-4h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>
+                        <span>Stats</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                        <span>Messages</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span>Alerts</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="game-screen" class="screen hidden">
+                <button class="back-btn" onclick="showMenu()">Back to Menu</button>
+                <h2>Number Guesser</h2>
+                <div id="game-stage">
+                    <p>Loading game elements...</p>
+                </div>
+            </section>
+
+            <section id="profile-screen" class="screen hidden" style="justify-content: flex-start; padding: 0;">
+                <div id="profile-header-shell" class="dashboard-header">
+                    <span class="header-title">Profile</span>
+                    <div class="header-profile-badge" onclick="switchTab('games')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span style="font-size: 11px; font-weight: 600; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Player</span>
+                            <span id="profile-top-nickname" style="font-size: 20px; font-weight: bold; line-height: 1.2;"></span>
+                        </div>
+                        <div id="profile-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+
+                <div style="padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 28px;">
+                    
+                    <div style="display: flex; align-items: center; gap: 20px; width: 100%;">
+                        <div id="profile-main-avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid transparent; display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: bold; background: #101418; position: relative;">
+                            <span id="profile-avatar-letter"></span>
+                        </div>
+                        
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+                            <div style="border-bottom: 1px solid #161B22; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                                <div>
+                                    <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Profile</span>
+                                    <div id="profile-label-name" style="font-size: 20px; font-weight: bold; margin-top: 2px;"></div>
+                                </div>
+                                <svg onclick="location.reload()" style="width: 20px; height: 20px; fill: #6E7681; cursor: pointer; transition: fill 0.2s;" viewBox="0 0 24 24" onmouseover="this.style.fill='#FFFFFF'" onmouseout="this.style.fill='#6E7681'">
+                                    <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                                </svg>
+                            </div>
+                            
+                            <div style="border-bottom: 1px solid #161B22; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                                <div>
+                                    <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Nickname</span>
+                                    <div id="profile-label-nickname" style="font-size: 20px; font-weight: bold; margin-top: 2px;"></div>
+                                </div>
+                                <svg onclick="promptNicknameChange()" style="width: 18px; height: 18px; fill: #6E7681; cursor: pointer; transition: fill 0.2s;" viewBox="0 0 24 24" onmouseover="this.style.fill='#FFFFFF'" onmouseout="this.style.fill='#6E7681'">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span style="font-size: 11px; color: #6E7681; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; display: block; margin-bottom: 16px;">Interactions</span>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+                            
+                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                                <button onclick="sendInteraction('hearts')" id="btn-emoji-heart" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
+                                    🩵
+                                </button>
+                                <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Heart</span>
+                                <div id="count-hearts" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                            </div>
+
+                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                                <button onclick="sendInteraction('hugs')" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
+                                    🫂
+                                </button>
+                                <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Hug</span>
+                                <div id="count-hugs" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                            </div>
+
+                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                                <button onclick="sendInteraction('kisses')" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
+                                    💋
+                                </button>
+                                <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Kiss</span>
+                                <div id="count-kisses" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #161B22; border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; align-items: center; background: #0A0F14;">
+                        <div>
+                            <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Theme Colour</span>
+                            <div id="profile-theme-title" style="font-size: 18px; font-weight: bold; margin-top: 2px;"></div>
+                        </div>
+                        <div id="profile-theme-block" style="width: 32px; height: 32px; border-radius: 8px;"></div>
+                    </div>
+                </div>
+
+                <div id="profile-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn" onclick="switchTab('games')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H4v-2h7v2zm8 0h-6v-2h6v2zm0-4H4V8h15v4z"/></svg>
+                        <span>Games</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zm-7-4h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg>
+                        <span>Stats</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                        <span>Messages</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span>Alerts</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="game-1-to-10-screen" class="screen hidden" style="justify-content: flex-start; padding: 0;">
+                <div id="game-header-shell" class="dashboard-header">
+                    <span class="header-title" id="game-main-title">1 to 10</span>
+                    <div class="header-profile-badge">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span style="font-size: 11px; font-weight: 600; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px;">Player</span>
+                            <span id="game-top-nickname" style="font-size: 20px; font-weight: bold; line-height: 1.2;"></span>
+                        </div>
+                        <div onclick="openModesSelection()" style="width: 40px; height: 40px; background: #000000; border: 2px solid #FFFFFF; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; cursor: pointer;" id="modes-placeholder-box">M</div>
+                    </div>
+                </div>
+
+                <div style="padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <h2 id="game-display-turn-prompt" style="font-size: 26px; font-weight: bold; color: #FFFFFF; text-align: center; margin: 8px 0 4px 0;"></h2>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; width: 100%;">
+                        
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <span style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Your number</span>
+                            <div class="flip-container">
+                                <div id="flip-inner-guess" class="flip-card-inner">
+                                    <div class="flip-front your-guess-border" id="card-front-your-guess">?</div>
+                                    <div class="flip-back your-guess-border" id="card-back-your-guess">?</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <span style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Their number</span>
+                            <div class="flip-container">
+                                <div id="flip-inner-target" class="flip-card-inner">
+                                    <div class="flip-front their-target-border" id="card-front-their-target">?</div>
+                                    <div class="flip-back their-target-border" id="card-back-their-target">?</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(5, 1fr); gap: 12px; flex: 1; width: 100%; margin: 8px 0;">
+                        <button class="pad-num-btn" onclick="selectPadNumber(1)">1</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(2)">2</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(3)">3</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(4)">4</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(5)">5</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(6)">6</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(7)">7</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(8)">8</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(9)">9</button>
+                        <button class="pad-num-btn" onclick="selectPadNumber(10)">10</button>
+                    </div>
+
+                    <button id="game-action-submit-strip" onclick="processPadSubmission()" style="width: 100%; height: 64px; background: #0A0F14; border: none; border-radius: 12px; font-size: 24px; font-weight: bold; color: #FFFFFF;">
+                        Submit
+                    </button>
+                </div>
+
+                <div id="game-board-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn active-tab" onclick="exitGame()">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 12H4v-2h7v2zm8 0h-6v-2h6v2zm0-4H4V8h15v4z"/></svg>
+                        <span>Games</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 16H6c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v12c0 .55-.45 1-1 1zm-7-4h2v2h-2v-2zm0-8h2v6h-2V7z"/></svg><span>Stats</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span></button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+    <script src="app.js"></script>
+</body>
+</html>

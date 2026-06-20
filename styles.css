@@ -1,0 +1,441 @@
+/* =========================================================================
+    BASE SYSTEM RESETS & APPARATUS
+   ========================================================================= */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #000000;
+    color: #FFFFFF;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 480px;
+    background-color: #000000;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+}
+
+header {
+    background-color: #0A0F14;
+    padding: 24px;
+    text-align: center;
+    border-bottom: 1px solid #161B22;
+}
+
+h1 {
+    font-size: 22px;
+    color: #FFFFFF;
+    letter-spacing: 0.5px;
+}
+
+main {
+    flex: 1;
+    padding: 24px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================================
+    SCREEN STATE & VISIBILITY CORE
+   ========================================================================= */
+.screen {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: center;
+    opacity: 1;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* =========================================================================
+    GLOBAL BUTTONS & INTERACTION SURFACES
+   ========================================================================= */
+button {
+    font-family: inherit;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.1s ease, opacity 0.3s ease, background-color 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.97);
+}
+
+.back-btn {
+    background: none;
+    color: #6E7681;
+    padding: 0;
+    text-align: left;
+    font-weight: normal;
+    font-size: 14px;
+    align-self: flex-start;
+    margin-bottom: 16px;
+}
+
+.back-btn:hover {
+    color: #FFFFFF;
+}
+
+/* =========================================================================
+    ONBOARDING MECHANICS (PHASES 1 & 2)
+   ========================================================================= */
+.greeting-small {
+    font-size: 24px;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.greeting-large {
+    font-size: 42px;
+    font-weight: bold;
+    color: #FFFFFF;
+    text-align: center;
+    line-height: 1.2;
+    margin-bottom: 48px;
+}
+
+.profile-buttons-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.welcome-small {
+    font-size: 28px;
+    font-weight: 500;
+    color: #FFFFFF;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.welcome-large {
+    font-size: 56px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0;
+}
+
+.profile-btn {
+    width: 100%;
+    height: 70px;
+    font-size: 24px;
+    color: #FFFFFF;
+}
+
+.peter-btn { background-color: #58A6FF; }
+.jadey-btn { background-color: #b685bd; }
+
+/* =========================================================================
+    MAIN CORE GAMES DASHBOARD VIEW
+   ========================================================================= */
+.dashboard-header {
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.header-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+.header-profile-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pfp-placeholder {
+    width: 52px;
+    height: 52px;
+    background-color: #101418;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: #FFFFFF;
+    text-transform: uppercase;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+.menu-prompt {
+    font-size: 20px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin: 24px 0 16px 0;
+    text-align: left;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 20px;
+    flex: 1;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.grid-game-btn {
+    background-color: #000000;
+    border: 2px solid transparent;
+    border-radius: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    padding: 16px;
+    text-align: center;
+}
+
+.grid-game-btn.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Old Legacy System Setup Fallbacks */
+.game-btn {
+    background-color: #0A0F14;
+    color: #FFFFFF;
+    border: 1px solid #161B22;
+    padding: 24px;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+.game-btn:hover { background-color: #161B22; }
+.game-btn.locked {
+    background-color: #000000;
+    color: #6E7681;
+    border: 1px dashed #161B22;
+    cursor: not-allowed;
+}
+
+/* =========================================================================
+    GLOBAL DEVICE NAVIGATION DECK STYLING
+   ========================================================================= */
+.bottom-nav-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px;
+    width: 100%;
+    margin-top: auto;
+    background-color: transparent;
+}
+
+.nav-tab-btn {
+    background-color: transparent;
+    color: #484F58;
+    border: none;
+    padding: 8px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: color 0.2s ease;
+}
+
+.nav-icon {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    transition: transform 0.2s ease;
+}
+
+.nav-tab-btn.active-tab {
+    color: #FFFFFF;
+}
+
+.nav-tab-btn.active-tab .nav-icon {
+    transform: translateY(-1px);
+}
+
+/* =========================================================================
+    RUNTIME THEMATIC ISOLATION ENGINE (PETER VS JADEY SETUP)
+   ========================================================================= */
+
+/* Main Base Color Maps */
+.theme-peter .pfp-placeholder,
+.theme-peter #profile-main-avatar { border-color: #58A6FF; }
+
+.theme-jadey .pfp-placeholder,
+.theme-jadey #profile-main-avatar { border-color: #b685bd; }
+
+/* Dashboard Content Grid Borders */
+.theme-peter .grid-game-btn { border-color: #58A6FF; }
+.theme-jadey .grid-game-btn { border-color: #b685bd; }
+
+/* Shared Interface Module Color Overrides */
+.header-peter, .nav-peter { background-color: #58A6FF !important; }
+.header-jadey, .nav-jadey { background-color: #b685bd !important; }
+
+/* =========================================================================
+    1 TO 10 GAME WORKSPACE DESIGN SYSTEM
+   ========================================================================= */
+.pad-num-btn {
+    background-color: #0A0F14;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    cursor: pointer;
+    transition: background-color 0.15s, transform 0.1s, border-color 0.15s;
+}
+
+.pad-num-btn:active {
+    transform: scale(0.96);
+}
+
+/* Clean, Non-conflicting Number Selection Outlines */
+.theme-peter .pad-num-btn.selected-key {
+    border-color: #58A6FF !important;
+    color: #58A6FF !important;
+}
+
+.theme-jadey .pad-num-btn.selected-key {
+    border-color: #b685bd !important;
+    color: #b685bd !important;
+}
+
+/* Base Guess Card Borders */
+#game-1-to-10-screen .your-guess-border,
+#game-1-to-10-screen .their-target-border {
+    border: 1px solid #161B22;
+    background-color: #0A0F14 !important;
+}
+
+/* In-Game Interactive Guess Card Highlight Borders */
+.theme-peter #flip-inner-guess .your-guess-border { border-color: #58A6FF; }
+.theme-peter #flip-inner-target .their-target-border { border-color: #b685bd; }
+
+.theme-jadey #flip-inner-guess .your-guess-border { border-color: #b685bd; }
+.theme-jadey #flip-inner-target .their-target-border { border-color: #58A6FF; }
+
+/* Dynamic Context Driven Action Submit Elements */
+#game-action-submit-strip {
+    width: 100%;
+    height: 64px;
+    background-color: #0A0F14;
+    border: none;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #FFFFFF;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#game-action-submit-strip.ready-to-submit {
+    background-color: #2EA44F !important;
+    color: #FFFFFF;
+    cursor: pointer;
+}
+
+/* =========================================================================
+    CARD FLIP ANIMATION MECHANICS
+   ========================================================================= */
+.flip-container {
+    perspective: 1000px;
+    width: 100%;
+    height: 80px;
+}
+
+.flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+.flip-card-inner.do-flip {
+    transform: rotateY(180deg);
+}
+
+.flip-front, .flip-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: #FFFFFF;
+}
+
+.flip-front {
+    background-color: #000000;
+}
+
+.flip-back {
+    background-color: #101418;
+    transform: rotateY(180deg);
+}
+
+/* =========================================================================
+    PREVENT THE SCROLLBAR & OVERFLOW
+   ========================================================================= */
+
+/* Prevent the 1 to 10 game section from stretching the app container */
+#game-1-to-10-screen {
+    max-height: calc(100vh - 20px);
+    overflow: hidden;
+}
+
+/* Force the number pad grid rows to scale flexibly instead of using fixed heights */
+#game-1-to-10-screen style, 
+#game-1-to-10-screen .screen > div {
+    gap: 12px !important; /* Tighten up gaps to save vertical real estate */
+}
+
+/* Shrink the number pad buttons slightly so they fit without overflowing */
+.pad-num-btn {
+    padding: 12px 8px !important;
+    font-size: 20px !important;
+}
+
+/* Tighten the submit action strip height */
+#game-action-submit-strip {
+    height: 54px !important;
+    font-size: 20px !important;
+}
