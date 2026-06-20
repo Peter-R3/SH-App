@@ -7,23 +7,32 @@
     padding: 0;
 }
 
+html,
+body {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #000000;
     color: #FFFFFF;
     display: flex;
-    justify-content: center;
-    overflow: hidden;
+    align-items: stretch;
 }
 
 .app-container {
-    width: 100vw;
-    max-width: 480px;
+    width: 100%;
+    min-width: 0;
     height: 100vh;
+    height: 100svh;
+    height: 100dvh;
     height: calc(var(--vh, 1vh) * 100); /* Precise mobile height variable */
     background-color: #000000;
-    display: grid;
-    grid-template-rows: auto 1fr auto; /* Header, Main (stretches), Nav bar */
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
@@ -43,6 +52,9 @@ h1 {
 }
 
 main {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 16px;
@@ -56,7 +68,9 @@ main {
 .screen {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
     justify-content: center; /* Centers onboarding elements perfectly */
 }
 
@@ -260,6 +274,7 @@ button:active {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+}
 
 .nav-tab-btn.active-tab { color: #FFFFFF; }
 .nav-icon { width: 22px; height: 22px; fill: currentColor; }
@@ -401,12 +416,12 @@ button:active {
 
 /* Prevent the 1 to 10 game section from stretching the app container */
 #game-1-to-10-screen {
-    max-height: calc(100vh - 20px);
+    max-height: 100%;
     overflow: hidden;
 }
 
 /* Force the number pad grid rows to scale flexibly instead of using fixed heights */
-#game-1-to-10-screen .screen > div {
+#game-1-to-10-screen > div {
     gap: 12px !important; /* Tighten up gaps to save vertical real estate */
 }
 
