@@ -1,10 +1,10 @@
 const CACHE_NAME = 'sh-app-v1';
 const ASSETS = [
-  '/sh-app/',
-  '/sh-app/index.html',
-  '/sh-app/styles.css',
-  '/sh-app/app.js',
-  '/sh-app/manifest.json'
+  './',
+  'index.html',
+  'styles.css',
+  'app.js',
+  'manifest.json'
 ];
 
 // Install the service worker and cache core files
