@@ -263,8 +263,8 @@ function launchGame(gameId) {
             };
             database.ref('games/1-to-10').set(gameState1To10);
         }
-        updateGameUIFlow();
         if (gameScreen) gameScreen.classList.remove('hidden');
+        handleGameStateUpdate();
     });
 }
 
@@ -408,57 +408,64 @@ function advanceRoundAfterReveal(revealRound) {
     });
 }
 
+function startRevealSequence() {
+    isRevealingRound = true;
+    const revealRound = { ...gameState1To10 };
+
+    const backGuess = document.getElementById('card-back-your-guess');
+    const backTarget = document.getElementById('card-back-their-target');
+    const innerGuessCard = document.getElementById('flip-inner-guess');
+    const innerTargetCard = document.getElementById('flip-inner-target');
+    const promptLabel = document.getElementById('game-display-turn-prompt');
+
+    if (localPlayer === gameState1To10.guesser) {
+        if (backGuess) backGuess.innerText = gameState1To10.currentGuessValue ?? "?";
+        if (backTarget) backTarget.innerText = gameState1To10.chosenTargetValue ?? "?";
+    } else {
+        if (backGuess) backGuess.innerText = gameState1To10.chosenTargetValue ?? "?";
+        if (backTarget) backTarget.innerText = gameState1To10.currentGuessValue ?? "?";
+    }
+
+    if (innerGuessCard) innerGuessCard.classList.add('do-flip');
+
+    setTimeout(() => {
+        if (innerTargetCard) innerTargetCard.classList.add('do-flip');
+
+        if (promptLabel) {
+            if (
+                gameState1To10.currentGuessValue !== null &&
+                gameState1To10.currentGuessValue === gameState1To10.chosenTargetValue
+            ) {
+                promptLabel.innerText = "Correct Match! Point scored!";
+            } else {
+                promptLabel.innerText = "No Match!";
+            }
+        }
+
+        setTimeout(() => {
+            advanceRoundAfterReveal(revealRound);
+        }, 3000);
+    }, 700);
+}
+
+function handleGameStateUpdate() {
+    const gameScreen = document.getElementById('game-1-to-10-screen');
+    if (!gameScreen || gameScreen.classList.contains('hidden')) return;
+
+    if (gameState1To10.phase === 'REVEAL' && !isRevealingRound) {
+        startRevealSequence();
+    } else {
+        updateGameUIFlow();
+    }
+}
+
 // Fixed Synchronization Engine
 database.ref('games/1-to-10').on('value', (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
-    
+
     gameState1To10 = data;
-    const gameScreen = document.getElementById('game-1-to-10-screen');
-
-    if (gameScreen && !gameScreen.classList.contains('hidden')) {
-
-        if (gameState1To10.phase === 'REVEAL' && !isRevealingRound) {
-            isRevealingRound = true;
-            const revealRound = { ...gameState1To10 };
-
-            const backGuess = document.getElementById('card-back-your-guess');
-            const backTarget = document.getElementById('card-back-their-target');
-            const innerGuessCard = document.getElementById('flip-inner-guess');
-            const innerTargetCard = document.getElementById('flip-inner-target');
-            const promptLabel = document.getElementById('game-display-turn-prompt');
-
-            // Explicit view parameters for both players
-            if (localPlayer === gameState1To10.guesser) {
-                if (backGuess) backGuess.innerText = gameState1To10.currentGuessValue;
-                if (backTarget) backTarget.innerText = gameState1To10.chosenTargetValue;
-            } else {
-                if (backGuess) backGuess.innerText = gameState1To10.chosenTargetValue;
-                if (backTarget) backTarget.innerText = gameState1To10.currentGuessValue;
-            }
-            
-            if (innerGuessCard) innerGuessCard.classList.add('do-flip');
-            
-            setTimeout(() => {
-                if (innerTargetCard) innerTargetCard.classList.add('do-flip');
-
-                if (promptLabel) {
-                    if (gameState1To10.currentGuessValue === gameState1To10.chosenTargetValue) {
-                        promptLabel.innerText = "Correct Match! Point scored!";
-                    } else {
-                        promptLabel.innerText = "No Match!";
-                    }
-                }
-
-                setTimeout(() => {
-                    advanceRoundAfterReveal(revealRound);
-                }, 4000);
-
-            }, 1000);
-        } else {
-            updateGameUIFlow();
-        }
-    }
+    handleGameStateUpdate();
 });
 
 function exitGame() {
