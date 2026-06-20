@@ -309,6 +309,7 @@ button:active {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    position: relative;
 }
 
 .nav-tab-btn.active-tab { color: #FFFFFF; }
@@ -338,6 +339,222 @@ button:active {
     fill: currentColor;
 }
 
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: 12px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #FF1F1F;
+    color: #FFFFFF;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    line-height: 1;
+}
+
+.app-tab-screen {
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.messages-thread,
+.notifications-list,
+.modes-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.message-composer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 18px 14px;
+    padding: 10px;
+    border-radius: 20px;
+    background: #0A0F14;
+    flex-shrink: 0;
+}
+
+.message-composer input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #FFFFFF;
+    font: inherit;
+    font-weight: 700;
+}
+
+.message-composer input::placeholder {
+    color: #FFFFFF;
+    opacity: 0.95;
+}
+
+.message-composer button {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 14px;
+    color: #FFFFFF;
+    flex-shrink: 0;
+}
+
+.message-date-divider {
+    margin: 22px 0 14px;
+    color: #6E7681;
+    text-align: center;
+    font-size: 11px;
+}
+
+.message-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.message-row.mine {
+    justify-content: flex-end;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #101820;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.message-stack {
+    display: flex;
+    flex-direction: column;
+    max-width: 76%;
+}
+
+.message-row.mine .message-stack {
+    align-items: flex-end;
+}
+
+.message-meta {
+    display: flex;
+    gap: 8px;
+    margin: 0 6px 4px;
+    color: #FFFFFF;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.message-meta time {
+    color: #6E7681;
+    font-weight: 500;
+}
+
+.message-bubble {
+    border-radius: 14px;
+    padding: 10px 12px;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.notification-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #0A0F14;
+}
+
+.notification-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: #6E7681;
+    font-size: 10px;
+}
+
+.notification-type {
+    color: #FFFFFF;
+    font-weight: 800;
+}
+
+.notification-body {
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+}
+
+.notification-card button {
+    min-width: 74px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    color: #FFFFFF;
+    font-size: 13px;
+}
+
+.notification-card button[disabled] {
+    background: #666666 !important;
+    opacity: 1;
+}
+
+.empty-state {
+    margin-top: 28px;
+    color: #6E7681;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.mode-option-btn {
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 18px;
+    border: 2px solid #161B22;
+    border-radius: 12px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    text-align: left;
+}
+
+.mode-option-btn.active-mode {
+    border-color: currentColor;
+}
+
+.mode-option-btn span,
+.mode-option-btn small {
+    display: block;
+}
+
+.mode-option-btn span {
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.mode-option-btn small {
+    color: #8B949E;
+    font-size: 12px;
+}
+
 /* =========================================================================
     RUNTIME THEMATIC ISOLATION ENGINE (PETER VS JADEY SETUP)
    ========================================================================= */
@@ -356,6 +573,18 @@ button:active {
 /* Shared Interface Module Color Overrides */
 .header-peter, .nav-peter { background-color: #58A6FF !important; }
 .header-jadey, .nav-jadey { background-color: #b685bd !important; }
+
+.theme-peter .message-composer button,
+.theme-peter .notification-card button { background-color: #58A6FF; }
+
+.theme-jadey .message-composer button,
+.theme-jadey .notification-card button { background-color: #b685bd; }
+
+.theme-peter .mode-option-btn.active-mode { border-color: #58A6FF; }
+.theme-jadey .mode-option-btn.active-mode { border-color: #b685bd; }
+
+.theme-peter .number-entry input:focus { border-color: #58A6FF; }
+.theme-jadey .number-entry input:focus { border-color: #b685bd; }
 
 /* =========================================================================
     1 TO 10 GAME WORKSPACE DESIGN SYSTEM
@@ -417,6 +646,68 @@ button:active {
     background-color: #2EA44F !important;
     color: #FFFFFF;
     cursor: pointer;
+}
+
+.game-choice-pad {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 12px;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    margin: 8px 0;
+}
+
+.game-choice-pad.colour-mode {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+}
+
+.game-choice-pad.keyboard-mode {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.number-entry {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.number-entry input {
+    width: 100%;
+    height: 78px;
+    border: 2px solid #161B22;
+    border-radius: 14px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 800;
+    outline: none;
+}
+
+.number-entry input:focus {
+    border-color: currentColor;
+}
+
+.colour-tile {
+    min-width: 0;
+    padding: 4px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    color: #FFFFFF;
+    font-size: 11px !important;
+    font-weight: 800;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+
+.colour-tile.light-label {
+    color: #111111;
+    text-shadow: none;
 }
 
 /* =========================================================================

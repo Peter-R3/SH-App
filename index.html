@@ -69,6 +69,7 @@
                     <button class="nav-tab-btn" onclick="switchTab('alerts')">
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                         <span>Alerts</span>
+                        <span class="notification-badge hidden">0</span>
                     </button>
                 </div>
             </section>
@@ -178,6 +179,82 @@
                     <button class="nav-tab-btn" onclick="switchTab('alerts')">
                         <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                         <span>Alerts</span>
+                        <span class="notification-badge hidden">0</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="messages-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="messages-header-shell" class="dashboard-header">
+                    <span class="header-title">Messages</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="messages-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="messages-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+
+                <div class="messages-thread" id="messages-thread"></div>
+
+                <form class="message-composer" onsubmit="sendMessage(event)">
+                    <input id="message-input" type="text" maxlength="180" autocomplete="off" placeholder="Type message here...">
+                    <button type="submit" aria-label="Send message">&gt;</button>
+                </form>
+
+                <div id="messages-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn" onclick="switchTab('games')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
+                        <span>Games</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg>
+                        <span>Stats</span>
+                    </button>
+                    <button class="nav-tab-btn active-tab" onclick="switchTab('messages')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                        <span>Messages</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span>Alerts</span>
+                        <span class="notification-badge hidden">0</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="notifications-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="notifications-header-shell" class="dashboard-header">
+                    <span class="header-title">Notifications</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="notifications-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="notifications-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+
+                <div class="notifications-list" id="notifications-list"></div>
+
+                <div id="notifications-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn" onclick="switchTab('games')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
+                        <span>Games</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg>
+                        <span>Stats</span>
+                    </button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+                        <span>Messages</span>
+                    </button>
+                    <button class="nav-tab-btn active-tab" onclick="switchTab('alerts')">
+                        <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                        <span>Alerts</span>
+                        <span class="notification-badge hidden">0</span>
                     </button>
                 </div>
             </section>
@@ -203,7 +280,7 @@
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; width: 100%;">
                         
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Your number</span>
+                            <span id="your-value-label" style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Your number</span>
                             <div class="flip-container">
                                 <div id="flip-inner-guess" class="flip-card-inner">
                                     <div class="flip-front your-guess-border" id="card-front-your-guess">?</div>
@@ -213,7 +290,7 @@
                         </div>
 
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Their number</span>
+                            <span id="their-value-label" style="font-size: 13px; font-weight: bold; color: #FFFFFF;">Their number</span>
                             <div class="flip-container">
                                 <div id="flip-inner-target" class="flip-card-inner">
                                     <div class="flip-front their-target-border" id="card-front-their-target">?</div>
@@ -223,18 +300,7 @@
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(5, 1fr); gap: 12px; flex: 1; width: 100%; margin: 8px 0;">
-                        <button class="pad-num-btn" onclick="selectPadNumber(1)">1</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(2)">2</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(3)">3</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(4)">4</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(5)">5</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(6)">6</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(7)">7</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(8)">8</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(9)">9</button>
-                        <button class="pad-num-btn" onclick="selectPadNumber(10)">10</button>
-                    </div>
+                    <div id="game-choice-pad" class="game-choice-pad"></div>
 
                     <button id="game-action-submit-strip" onclick="processPadSubmission()" style="width: 100%; height: 64px; background: #0A0F14; border: none; border-radius: 12px; font-size: 24px; font-weight: bold; color: #FFFFFF;">
                         Submit
@@ -248,7 +314,33 @@
                     </button>
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
-                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
+                </div>
+            </section>
+
+            <section id="modes-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="modes-header-shell" class="dashboard-header">
+                    <span class="header-title">Modes</span>
+                    <div class="header-profile-badge">
+                        <button onclick="launchGame('number-guess')" class="mode-select-btn" aria-label="Back to game">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="modes-panel">
+                    <h2 class="menu-prompt">Select mode</h2>
+                    <button class="mode-option-btn" onclick="selectGameMode('ten')">
+                        <span>1 to 10</span>
+                        <small>Classic number guessing</small>
+                    </button>
+                    <button class="mode-option-btn" onclick="selectGameMode('hundred')">
+                        <span>1 to 100</span>
+                        <small>Keyboard input for bigger numbers</small>
+                    </button>
+                    <button class="mode-option-btn" onclick="selectGameMode('colours')">
+                        <span>Colours</span>
+                        <small>Pick from the 16 Minecraft colours</small>
+                    </button>
                 </div>
             </section>
         </main>
