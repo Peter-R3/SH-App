@@ -9,7 +9,7 @@ window.addEventListener('resize', calculateRealVh);
 window.addEventListener('orientationchange', calculateRealVh);
 calculateRealVh();
 
-if ('serviceWorker' in navigator) {
+if (navigator.serviceWorker?.register) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service Worker registered!', reg))

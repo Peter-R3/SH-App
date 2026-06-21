@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles.css">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#ff6b6b">
+    <meta name="theme-color" content="#000000">
 </head>
 <body>
     <div class="app-container">
@@ -48,8 +48,6 @@
                         <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('battleship')" style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('connect-four')" style="--game-art: url('./assets/games/connect-four.svg');"><img class="game-card-image" src="./assets/games/connect-four.svg" alt=""><span>Connect 4</span></button>
-                        <button class="grid-game-btn locked" disabled>Game 5</button>
-                        <button class="grid-game-btn locked" disabled>Game 6</button>
                     </div>
                 </div>
 
@@ -349,7 +347,7 @@
 
                 <div style="padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 20px;">
                     
-                    <h2 id="game-display-turn-prompt" style="font-size: 26px; font-weight: bold; color: #FFFFFF; text-align: center; margin: 8px 0 4px 0;"></h2>
+                    <h2 id="game-display-turn-prompt" aria-live="polite" style="font-size: 26px; font-weight: bold; color: #FFFFFF; text-align: center; margin: 8px 0 4px 0;"></h2>
 
                     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; width: 100%;">
                         
@@ -439,7 +437,7 @@
                 </div>
 
                 <div id="word-search-content" class="word-search-content">
-                    <div id="word-search-status" class="word-search-status"></div>
+                    <div id="word-search-status" class="word-search-status" aria-live="polite"></div>
                     <div id="word-search-words" class="word-search-words"></div>
                     <div id="word-search-current-word" class="word-search-current-word">Drag across a word</div>
                     <div id="word-search-grid" class="word-search-grid" aria-label="Word search grid"></div>
@@ -489,7 +487,7 @@
                     </div>
                 </div>
                 <div class="battleship-content">
-                    <div id="battleship-status" class="battleship-status">Preparing fleet...</div>
+                    <div id="battleship-status" class="battleship-status" aria-live="polite">Preparing fleet...</div>
                     <div id="battleship-view-toggle" class="battleship-view-toggle hidden">
                         <button id="battleship-enemy-tab" class="active" onclick="setBattleshipView('enemy')">Enemy Waters</button>
                         <button id="battleship-own-tab" onclick="setBattleshipView('own')">My Fleet</button>
@@ -518,7 +516,7 @@
                     </div>
                 </div>
                 <div class="connect-four-content">
-                    <div id="connect-four-status" class="connect-four-status">Preparing match...</div>
+                    <div id="connect-four-status" class="connect-four-status" aria-live="polite">Preparing match...</div>
                     <div id="connect-four-turns" class="connect-four-turns"></div>
                     <div id="connect-four-board" class="connect-four-board" aria-label="Connect 4 board"></div>
                     <div id="connect-four-controls" class="connect-four-controls"></div>
