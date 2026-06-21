@@ -525,6 +525,109 @@ button:active {
     font-weight: 700;
 }
 
+.profile-content,
+.stats-content,
+.management-content {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.management-entry {
+    width: 100%;
+    background: #0A0F14;
+    border: 1px solid #58A6FF;
+    color: #FFFFFF;
+}
+
+.stats-content {
+    flex: 1;
+    padding: 18px;
+}
+
+.stats-player-card {
+    margin-bottom: 16px;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0A0F14;
+}
+
+.stats-player-heading,
+.stats-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
+.stats-player-heading {
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.peter-stats .stats-player-heading { background: #58A6FF; }
+.jadey-stats .stats-player-heading { background: #b685bd; }
+
+.stats-row {
+    border-top: 1px solid #161B22;
+    color: #C9D1D9;
+    font-size: 14px;
+}
+
+.stats-row strong,
+.stats-player-heading strong {
+    font-size: 20px;
+}
+
+.management-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+}
+
+.management-content label {
+    color: #8B949E;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.management-content select {
+    width: 100%;
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    font: inherit;
+    font-weight: 700;
+}
+
+.management-content button {
+    width: 100%;
+    border-radius: 8px;
+    background: #161B22;
+    color: #FFFFFF;
+    text-align: left;
+}
+
+.management-content .danger-action {
+    margin-top: 12px;
+    border: 1px solid #F85149;
+    color: #FF7B72;
+}
+
+.management-status {
+    min-height: 20px;
+    color: #8B949E;
+    font-size: 13px;
+}
+
 .mode-option-btn {
     width: 100%;
     margin-bottom: 14px;
@@ -793,4 +896,24 @@ button:active {
 #game-action-submit-strip {
     height: 52px !important;
     font-size: 20px !important;
+}
+
+.pad-num-btn.colour-tile {
+    padding: 3px !important;
+    font-size: 10px !important;
+    line-height: 1.05;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.theme-peter .pad-num-btn.colour-tile.selected-key,
+.theme-jadey .pad-num-btn.colour-tile.selected-key {
+    color: #FFFFFF !important;
+    box-shadow: inset 0 0 0 2px #FFFFFF;
+}
+
+.theme-peter .pad-num-btn.colour-tile.light-label.selected-key,
+.theme-jadey .pad-num-btn.colour-tile.light-label.selected-key {
+    color: #111111 !important;
+    box-shadow: inset 0 0 0 2px #111111;
 }

@@ -100,6 +100,9 @@ const interactionConfig = {
     kisses: { noun: 'kiss', label: 'Kiss' }
 };
 
+const RETENTION_LIMIT = 50;
+const READ_NOTIFICATION_RETENTION_MS = 60 * 60 * 1000;
+
 let gameState1To10 = {
     mode: 'ten',
     phase: 'SETTING_TARGET',
@@ -114,7 +117,9 @@ let currentSelectedGuess = null;
 let isRevealingRound = false; // Guard to stop frame collision anomalies
 let latestMessages = [];
 let latestNotifications = [];
+let latestStats = {};
 let realtimeFeedsStarted = false;
+let retentionCleanupRunning = false;
 
 // =========================================================================
 // THE ONBOARDING PROFILE TRANSITION LOOP
@@ -234,6 +239,8 @@ function switchTab(tabName) {
         openMessagesScreen();
     } else if (tabName === 'alerts') {
         openNotificationsScreen();
+    } else if (tabName === 'stats') {
+        openStatsScreen();
     } else {
         const dash = document.getElementById('main-dashboard');
         if (dash) dash.classList.remove('hidden');
@@ -266,8 +273,11 @@ function openProfileSettings() {
     
     const themeTitle = document.getElementById('profile-theme-title');
     const themeBlock = document.getElementById('profile-theme-block');
+    const managementButton = document.getElementById('app-management-btn');
     const headerShell = document.getElementById('profile-header-shell');
     const navShell = document.getElementById('profile-nav-shell');
+
+    if (managementButton) managementButton.classList.toggle('hidden', localPlayer !== 'Peter');
 
     profileScreen.classList.remove('hidden');
     profileScreen.classList.remove('theme-peter', 'theme-jadey');
@@ -321,25 +331,103 @@ function initialiseRealtimeFeeds() {
     if (realtimeFeedsStarted) return;
     realtimeFeedsStarted = true;
 
-    database.ref('messages').limitToLast(80).on('value', (snapshot) => {
+    database.ref('messages').limitToLast(RETENTION_LIMIT).on('value', (snapshot) => {
         const data = snapshot.val() || {};
         latestMessages = Object.entries(data)
             .map(([id, value]) => ({ id, ...value }))
             .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
         renderMessages();
+        runRetentionCleanup();
     });
 
-    database.ref('notifications').limitToLast(80).on('value', (snapshot) => {
+    database.ref('notifications').limitToLast(RETENTION_LIMIT).on('value', (snapshot) => {
         const data = snapshot.val() || {};
         latestNotifications = Object.entries(data)
             .map(([id, value]) => ({ id, ...value }))
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         renderNotifications();
         updateNotificationBadges();
+        runRetentionCleanup();
     });
 
     database.ref('interactions').on('value', (snapshot) => {
         renderInteractionCounters(snapshot.val() || {});
+    });
+
+    database.ref('stats').on('value', (snapshot) => {
+        latestStats = snapshot.val() || {};
+        renderStats();
+    });
+
+    window.setInterval(runRetentionCleanup, 5 * 60 * 1000);
+}
+
+function runRetentionCleanup() {
+    if (retentionCleanupRunning) return;
+    retentionCleanupRunning = true;
+
+    Promise.all([
+        pruneCollectionToLimit('messages', RETENTION_LIMIT),
+        pruneNotifications()
+    ]).catch(error => {
+        console.log('Retention cleanup failed:', error);
+    }).finally(() => {
+        retentionCleanupRunning = false;
+    });
+}
+
+function pruneCollectionToLimit(path, limit) {
+    return database.ref(path).orderByChild('createdAt').once('value').then(snapshot => {
+        const entries = [];
+        snapshot.forEach(child => {
+            entries.push({ id: child.key, ...child.val() });
+        });
+
+        if (entries.length <= limit) return null;
+
+        const removals = {};
+        entries
+            .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0))
+            .slice(0, entries.length - limit)
+            .forEach(item => {
+                removals[`${path}/${item.id}`] = null;
+            });
+
+        return database.ref().update(removals);
+    });
+}
+
+function pruneNotifications() {
+    return database.ref('notifications').orderByChild('createdAt').once('value').then(snapshot => {
+        const now = Date.now();
+        const notifications = [];
+
+        snapshot.forEach(child => {
+            notifications.push({ id: child.key, ...child.val() });
+        });
+
+        const removals = {};
+        notifications.forEach(notification => {
+            const recipient = notification.recipient;
+            const readAt = recipient && notification.readAt && notification.readAt[recipient];
+            if (readAt && now - readAt > READ_NOTIFICATION_RETENTION_MS) {
+                removals[`notifications/${notification.id}`] = null;
+            }
+        });
+
+        const keptAfterReadPrune = notifications
+            .filter(notification => removals[`notifications/${notification.id}`] !== null)
+            .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+
+        if (keptAfterReadPrune.length > RETENTION_LIMIT) {
+            keptAfterReadPrune
+                .slice(0, keptAfterReadPrune.length - RETENTION_LIMIT)
+                .forEach(notification => {
+                    removals[`notifications/${notification.id}`] = null;
+                });
+        }
+
+        return Object.keys(removals).length ? database.ref().update(removals) : null;
     });
 }
 
@@ -396,6 +484,30 @@ function openNotificationsScreen() {
     markNotificationsRead();
 }
 
+function openStatsScreen() {
+    const screen = document.getElementById('stats-screen');
+    if (screen) screen.classList.remove('hidden');
+    applyThemeToScreen('stats-screen', 'stats-header-shell', 'stats-nav-shell');
+    refreshSharedHeader('stats');
+    renderStats();
+}
+
+function renderStats() {
+    ['Peter', 'Jadey'].forEach(player => {
+        const key = player.toLowerCase();
+        const ten = latestStats?.[player]?.ten || 0;
+        const hundred = latestStats?.[player]?.hundred || 0;
+        const colours = latestStats?.[player]?.colours || 0;
+        const total = ten + hundred + colours;
+
+        const values = { ten, hundred, colours, total };
+        Object.entries(values).forEach(([mode, value]) => {
+            const element = document.getElementById(`stats-${key}-${mode}`);
+            if (element) element.innerText = value;
+        });
+    });
+}
+
 function sendMessage(event) {
     event.preventDefault();
     const input = document.getElementById('message-input');
@@ -444,9 +556,12 @@ function renderMessages() {
         lastDate = dateLabel;
 
         const avatar = `<div class="message-avatar">${senderProfile.initial}</div>`;
+        const meta = mine
+            ? `<time>${timeLabel}</time><span>${senderProfile.nickname}</span>`
+            : `<span>${senderProfile.nickname}</span><time>${timeLabel}</time>`;
         const bubble = `
             <div class="message-stack">
-                <div class="message-meta"><time>${timeLabel}</time><span>${senderProfile.nickname}</span></div>
+                <div class="message-meta">${meta}</div>
                 <div class="message-bubble" style="background-color: ${themeColorFor(message.sender)};">${escapeHtml(message.text || '')}</div>
             </div>
         `;
@@ -461,7 +576,7 @@ function renderNotifications() {
     const list = document.getElementById('notifications-list');
     if (!list || !localPlayer) return;
 
-    const visibleNotifications = latestNotifications.filter(notification => notification.recipient === localPlayer || notification.sender === localPlayer);
+    const visibleNotifications = latestNotifications.filter(notification => notification.recipient === localPlayer);
     if (!visibleNotifications.length) {
         list.innerHTML = '<div class="empty-state">No notifications yet.</div>';
         return;
@@ -509,14 +624,21 @@ function updateNotificationBadges() {
 }
 
 function markNotificationsRead() {
+    const readTimestamp = Date.now();
+    const updates = {};
+
     latestNotifications.forEach(notification => {
-        if (
-            notification.recipient === localPlayer &&
-            !(notification.readBy && notification.readBy[localPlayer])
-        ) {
-            database.ref(`notifications/${notification.id}/readBy/${localPlayer}`).set(true);
+        const isRecipient = notification.recipient === localPlayer;
+        const isRead = notification.readBy && notification.readBy[localPlayer];
+        const hasReadTimestamp = notification.readAt && notification.readAt[localPlayer];
+
+        if (isRecipient && (!isRead || !hasReadTimestamp)) {
+            updates[`notifications/${notification.id}/readBy/${localPlayer}`] = true;
+            updates[`notifications/${notification.id}/readAt/${localPlayer}`] = readTimestamp;
         }
     });
+
+    if (Object.keys(updates).length) database.ref().update(updates);
 }
 
 function escapeHtml(value) {
@@ -526,6 +648,78 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+function openManagementScreen() {
+    if (localPlayer !== 'Peter') return;
+
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+    const screen = document.getElementById('management-screen');
+    const header = document.getElementById('management-header-shell');
+    if (screen) screen.classList.remove('hidden');
+    if (header) {
+        header.classList.remove('header-peter', 'header-jadey');
+        header.classList.add('header-peter');
+    }
+    setManagementStatus('');
+}
+
+function getManagedProfile() {
+    return document.getElementById('management-profile')?.value || 'Peter';
+}
+
+function setManagementStatus(message) {
+    const status = document.getElementById('management-status');
+    if (status) status.innerText = message;
+}
+
+function removeMatchingChildren(path, predicate) {
+    return database.ref(path).once('value').then(snapshot => {
+        const updates = {};
+        snapshot.forEach(child => {
+            if (predicate(child.val() || {})) updates[`${path}/${child.key}`] = null;
+        });
+        return Object.keys(updates).length ? database.ref().update(updates) : null;
+    });
+}
+
+function clearNotificationsForManagedProfile() {
+    if (localPlayer !== 'Peter') return;
+    const profile = getManagedProfile();
+    if (!window.confirm(`Clear all notifications sent to ${profile}?`)) return;
+
+    removeMatchingChildren('notifications', item => item.recipient === profile)
+        .then(() => setManagementStatus(`${profile}'s notifications were cleared.`))
+        .catch(error => setManagementStatus(`Could not clear notifications: ${error.message}`));
+}
+
+function clearMessagesForManagedProfile() {
+    if (localPlayer !== 'Peter') return;
+    const profile = getManagedProfile();
+    if (!window.confirm(`Clear every message involving ${profile}?`)) return;
+
+    removeMatchingChildren('messages', item => item.sender === profile || item.recipient === profile)
+        .then(() => setManagementStatus(`${profile}'s messages were cleared.`))
+        .catch(error => setManagementStatus(`Could not clear messages: ${error.message}`));
+}
+
+function resetStatsForManagedProfile() {
+    if (localPlayer !== 'Peter') return;
+    const profile = getManagedProfile();
+    if (!window.confirm(`Reset all game statistics for ${profile}?`)) return;
+
+    database.ref(`stats/${profile}`).set({ ten: 0, hundred: 0, colours: 0 })
+        .then(() => setManagementStatus(`${profile}'s statistics were reset.`))
+        .catch(error => setManagementStatus(`Could not reset statistics: ${error.message}`));
+}
+
+function clearAllCommunicationData() {
+    if (localPlayer !== 'Peter') return;
+    if (!window.confirm('Clear every stored message and notification for both profiles?')) return;
+
+    database.ref().update({ messages: null, notifications: null })
+        .then(() => setManagementStatus('All messages and notifications were cleared.'))
+        .catch(error => setManagementStatus(`Could not clear communication data: ${error.message}`));
 }
 
 // =========================================================================
@@ -572,6 +766,7 @@ function launchGame(gameId) {
         }
         if (gameScreen) gameScreen.classList.remove('hidden');
         renderGameModeControls();
+        resetVisualCards();
         handleGameStateUpdate();
     });
 }
@@ -649,7 +844,7 @@ function resetVisualCards() {
     const submitStrip = document.getElementById('game-action-submit-strip');
     if (submitStrip) {
         submitStrip.classList.remove('ready-to-submit');
-        submitStrip.innerText = "CHOOSE A NUMBER";
+        submitStrip.innerText = `CHOOSE A ${getCurrentMode().valueLabel.toUpperCase()}`;
     }
 }
 
@@ -703,7 +898,7 @@ function selectHundredValue(rawValue) {
         const submitStrip = document.getElementById('game-action-submit-strip');
         if (submitStrip) {
             submitStrip.classList.remove('ready-to-submit');
-            submitStrip.innerText = "CHOOSE A NUMBER";
+            submitStrip.innerText = `CHOOSE A ${getCurrentMode().valueLabel.toUpperCase()}`;
         }
         return;
     }
@@ -798,6 +993,15 @@ function advanceRoundAfterReveal(revealRound) {
         if (error) {
             console.log('Round advance failed:', error);
             return;
+        }
+
+        const wasCorrect =
+            revealRound.currentGuessValue !== null &&
+            revealRound.currentGuessValue === revealRound.chosenTargetValue;
+        if (committed && wasCorrect) {
+            const scoringPlayer = revealRound.guesser;
+            const scoringMode = revealRound.mode || 'ten';
+            database.ref(`stats/${scoringPlayer}/${scoringMode}`).transaction(score => (score || 0) + 1);
         }
 
         const latestState = snapshot.val();
