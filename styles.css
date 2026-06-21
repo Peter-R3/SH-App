@@ -233,6 +233,123 @@ button:active {
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
 }
 
+.pfp-placeholder.has-photo,
+.message-avatar.has-photo,
+.profile-main-avatar.has-photo {
+    background-position: center;
+    background-size: cover;
+    text-transform: none;
+}
+
+.profile-main-avatar {
+    position: relative;
+    flex: 0 0 100px;
+    width: 100px;
+    height: 100px;
+    padding: 0;
+    border: 3px solid transparent;
+    border-radius: 50%;
+    background-color: #101418;
+    color: #FFFFFF;
+    font-size: 42px;
+    font-weight: bold;
+}
+
+.profile-main-avatar::after {
+    content: "";
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 28px;
+    height: 28px;
+    border: 3px solid #000000;
+    border-radius: 50%;
+    background: #FFFFFF center / 16px no-repeat;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230A0F14' d='M9 3 7.17 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.17L15 3H9m3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z'/%3E%3C/svg%3E");
+}
+
+.profile-photo-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.78);
+}
+
+.profile-photo-panel {
+    width: min(100%, 360px);
+    padding: 20px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #0A0F14;
+    text-align: center;
+}
+
+.profile-photo-panel h2 {
+    font-size: 20px;
+}
+
+.profile-photo-preview {
+    width: 180px;
+    height: 180px;
+    margin: 18px auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #FFFFFF;
+    border-radius: 50%;
+    background: #101418 center / cover no-repeat;
+    color: #FFFFFF;
+    font-size: 64px;
+    font-weight: 800;
+}
+
+.profile-photo-panel p {
+    min-height: 20px;
+    color: #8B949E;
+    font-size: 13px;
+}
+
+.profile-photo-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.profile-photo-actions button,
+.profile-photo-choose,
+.profile-photo-reset {
+    border-radius: 8px;
+    background: #161B22;
+    color: #FFFFFF;
+}
+
+.profile-photo-choose {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.profile-photo-actions .primary {
+    background: #2EA44F;
+}
+
+.profile-photo-reset {
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid #F85149;
+    color: #FF7B72;
+}
+
+.profile-photo-panel button:disabled,
+.battleship-controls button:disabled {
+    cursor: default;
+    opacity: 0.45;
+}
+
 .menu-prompt {
     font-size: 20px;
     font-weight: bold;
@@ -981,10 +1098,25 @@ button:active {
 .battleship-screen {
     max-height: 100%;
     overflow: hidden;
-    background-color: #073B4C;
+    position: relative;
+    background-color: #064E67;
     background-image:
-        repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 18px),
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 24px);
+        linear-gradient(172deg, transparent 0 42%, rgba(255,255,255,0.08) 43% 46%, transparent 47% 100%),
+        linear-gradient(188deg, transparent 0 56%, rgba(0,20,40,0.18) 57% 61%, transparent 62% 100%),
+        linear-gradient(180deg, #087E9B 0%, #075D78 46%, #043B52 100%);
+    background-size: 180px 74px, 230px 96px, 100% 100%;
+    animation: ocean-drift 12s linear infinite;
+}
+
+@keyframes ocean-drift {
+    from { background-position: 0 0, 0 0, 0 0; }
+    to { background-position: 180px 0, -230px 0, 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .battleship-screen {
+        animation: none;
+    }
 }
 
 .battleship-screen .dashboard-header,
@@ -1048,7 +1180,7 @@ button:active {
     gap: 6px;
 }
 
-.battleship-fleet span {
+.battleship-fleet .fleet-ship {
     padding: 6px 8px;
     border: 1px solid rgba(255,255,255,0.25);
     border-radius: 6px;
@@ -1058,7 +1190,17 @@ button:active {
     font-weight: 800;
 }
 
-.battleship-fleet span.sunk {
+.battleship-fleet button.fleet-ship {
+    min-height: 30px;
+    cursor: pointer;
+}
+
+.battleship-fleet .fleet-ship.selected {
+    outline: 3px solid #FFFFFF;
+    outline-offset: 1px;
+}
+
+.battleship-fleet .fleet-ship.sunk {
     border-color: #FF6B6B;
     color: #FFB4B4;
     text-decoration: line-through;
@@ -1095,8 +1237,18 @@ button:active {
 }
 
 .battleship-cell.ship {
-    background: #64748B;
-    box-shadow: inset 0 0 0 2px #CBD5E1;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.72);
+}
+
+.ship-carrier { background-color: #475569 !important; }
+.ship-cruiser { background-color: #7C3AED !important; }
+.ship-submarine { background-color: #0F766E !important; }
+.ship-destroyer { background-color: #B45309 !important; }
+.ship-patrol { background-color: #BE185D !important; }
+
+.battleship-cell.selected-ship {
+    outline: 3px solid #FFFFFF;
+    outline-offset: -4px;
 }
 
 .battleship-cell.miss {
@@ -1133,6 +1285,10 @@ button:active {
     gap: 10px;
 }
 
+.battleship-controls .full-width {
+    grid-column: 1 / -1;
+}
+
 .battleship-controls button {
     padding: 12px;
     border: 1px solid rgba(255,255,255,0.24);
@@ -1143,6 +1299,11 @@ button:active {
 
 .battleship-controls button.primary {
     background: #2EA44F;
+}
+
+.battleship-controls button.danger {
+    border-color: #F85149;
+    color: #FFB4B4;
 }
 
 .battleship-stat-card {

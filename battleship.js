@@ -12,6 +12,7 @@ let battleshipView = 'enemy';
 let battleshipRef = null;
 let battleshipHandler = null;
 let battleshipLastStatus = null;
+let selectedBattleshipShipId = null;
 
 function launchBattleship() {
     if (!localPlayer) return;
@@ -104,6 +105,7 @@ function stopBattleshipSubscription() {
     battleshipRef = null;
     battleshipHandler = null;
     battleshipLastStatus = null;
+    selectedBattleshipShipId = null;
 }
 
 function sendBattleshipInvite() {
@@ -144,12 +146,16 @@ function renderBattleship() {
         toggle.classList.add('hidden');
         setBattleshipStatus(battleshipState.ready?.[localPlayer]
             ? 'Fleet locked. Waiting for the other player...'
-            : 'Position your fleet');
+            : selectedBattleshipShipId
+                ? 'Tap a grid cell to move the selected ship'
+                : 'Select a ship, then tap the grid to position it');
         renderBattleshipFleet(localPlayer, true);
         renderBattleshipBoard('own');
         controls.innerHTML = battleshipState.ready?.[localPlayer]
-            ? '<button disabled>Fleet ready</button>'
-            : '<button onclick="shuffleBattleshipFleet()">Shuffle fleet</button><button class="primary" onclick="readyBattleshipFleet()">Ready</button>';
+            ? '<button disabled>Fleet ready</button><button class="danger" onclick="abandonBattleshipMatch()">Abandon</button>'
+            : '<button onclick="shuffleBattleshipFleet()">Shuffle</button><button onclick="rotateSelectedBattleshipShip()" ' +
+                `${selectedBattleshipShipId ? '' : 'disabled'}>Rotate</button><button class="primary" onclick="readyBattleshipFleet()">Ready</button>` +
+                '<button class="danger" onclick="abandonBattleshipMatch()">Abandon</button>';
         return;
     }
 
@@ -162,18 +168,27 @@ function renderBattleship() {
         setBattleshipStatus(myTurn ? 'Your turn: choose a target' : `Waiting for ${playerProfiles[otherPlayer(localPlayer)]?.nickname || otherPlayer(localPlayer)}...`);
         renderBattleshipFleet(battleshipView === 'own' ? localPlayer : otherPlayer(localPlayer), battleshipView === 'own');
         renderBattleshipBoard(battleshipView);
-        controls.innerHTML = '';
+        controls.innerHTML = '<button class="danger full-width" onclick="abandonBattleshipMatch()">Abandon match</button>';
         return;
     }
 
     const won = battleshipState.winner === localPlayer;
-    setBattleshipStatus(won ? 'Victory! Enemy fleet destroyed.' : 'Defeat. Your fleet was sunk.');
-    battleshipView = 'enemy';
+    const abandoned = battleshipState.abandonedBy;
+    setBattleshipStatus(abandoned
+        ? abandoned === localPlayer
+            ? 'Match abandoned.'
+            : `${playerProfiles[abandoned]?.nickname || abandoned} abandoned the match.`
+        : won
+            ? 'Victory! Enemy fleet destroyed.'
+            : 'Defeat. Your fleet was sunk.');
+    const finalView = battleshipState.boards?.[otherPlayer(localPlayer)] ? 'enemy' : 'own';
+    battleshipView = finalView;
     battleshipLastStatus = status;
+    toggle.classList.toggle('hidden', finalView === 'own');
     syncBattleshipViewToggle();
-    renderBattleshipFleet(otherPlayer(localPlayer), false);
-    renderBattleshipBoard('enemy');
-    controls.innerHTML = `<button class="primary" onclick="startNewBattleshipMatch()">New match</button>`;
+    renderBattleshipFleet(finalView === 'enemy' ? otherPlayer(localPlayer) : localPlayer, finalView === 'own');
+    renderBattleshipBoard(finalView);
+    controls.innerHTML = '<button class="primary full-width" onclick="startNewBattleshipMatch()">New match</button>';
 }
 
 function setBattleshipStatus(message) {
@@ -198,7 +213,13 @@ function renderBattleshipFleet(player, revealNames) {
     if (!element || !board) return;
     element.innerHTML = board.ships.map(ship => {
         const sunk = isBattleshipShipSunk(board, ship);
-        return `<span class="${sunk ? 'sunk' : ''}">${revealNames ? ship.name : ship.size} ${'&bull;'.repeat(ship.size)}</span>`;
+        const selectable = battleshipState.status === 'placement' &&
+            player === localPlayer && !battleshipState.ready?.[localPlayer];
+        const selected = selectedBattleshipShipId === ship.id;
+        const label = `${ship.name} ${'&bull;'.repeat(ship.size)}`;
+        return selectable
+            ? `<button class="fleet-ship ship-${ship.id} ${selected ? 'selected' : ''}" onclick="selectBattleshipShip('${ship.id}')">${label}</button>`
+            : `<span class="fleet-ship ship-${ship.id} ${sunk ? 'sunk' : ''}">${label}</span>`;
     }).join('');
 }
 
@@ -218,12 +239,21 @@ function renderBattleshipBoard(view) {
         const shot = board.shotsReceived?.[index];
         const ship = shipByCell[index];
         const classes = ['battleship-cell'];
-        if (view === 'own' && ship) classes.push('ship');
+        if (view === 'own' && ship) classes.push('ship', `ship-${ship.id}`);
+        if (view === 'own' && ship?.id === selectedBattleshipShipId) classes.push('selected-ship');
         if (shot?.hit) classes.push('hit');
         if (shot && !shot.hit) classes.push('miss');
         if (shot?.hit && ship && isBattleshipShipSunk(board, ship)) classes.push('sunk-cell');
-        const canFire = view === 'enemy' && battleshipState.status === 'battle' && battleshipState.turn === localPlayer && !shot;
-        return `<button type="button" class="${classes.join(' ')}" ${canFire ? `onclick="fireBattleshipShot(${index})"` : 'disabled'} aria-label="Grid cell ${index + 1}">${shot?.hit ? '&times;' : shot ? '&bull;' : ''}</button>`;
+        const canPlace = view === 'own' && battleshipState.status === 'placement' &&
+            !battleshipState.ready?.[localPlayer] && selectedBattleshipShipId;
+        const canFire = view === 'enemy' && battleshipState.status === 'battle' &&
+            battleshipState.turn === localPlayer && !shot;
+        const action = canFire
+            ? `onclick="fireBattleshipShot(${index})"`
+            : canPlace
+                ? `onclick="moveSelectedBattleshipShip(${index})"`
+                : 'disabled';
+        return `<button type="button" class="${classes.join(' ')}" ${action} aria-label="Grid cell ${index + 1}">${shot?.hit ? '&times;' : shot ? '&bull;' : ''}</button>`;
     }).join('');
 }
 
@@ -232,6 +262,7 @@ function isBattleshipShipSunk(board, ship) {
 }
 
 function shuffleBattleshipFleet() {
+    selectedBattleshipShipId = null;
     database.ref('games/battleship/current').transaction(current => {
         if (!current || current.status !== 'placement' || current.ready?.[localPlayer]) return;
         current.boards[localPlayer] = createBattleshipBoard();
@@ -239,7 +270,63 @@ function shuffleBattleshipFleet() {
     });
 }
 
+function selectBattleshipShip(shipId) {
+    if (battleshipState?.status !== 'placement' || battleshipState.ready?.[localPlayer]) return;
+    selectedBattleshipShipId = selectedBattleshipShipId === shipId ? null : shipId;
+    renderBattleship();
+}
+
+function battleshipShipOrientation(ship) {
+    return ship.cells.length > 1 && ship.cells[1] - ship.cells[0] === 1 ? 'horizontal' : 'vertical';
+}
+
+function battleshipCellsFromStart(startIndex, size, orientation) {
+    const row = Math.floor(startIndex / BATTLESHIP_SIZE);
+    const col = startIndex % BATTLESHIP_SIZE;
+    if (orientation === 'horizontal' && col + size > BATTLESHIP_SIZE) return null;
+    if (orientation === 'vertical' && row + size > BATTLESHIP_SIZE) return null;
+    return Array.from({ length: size }, (_, offset) =>
+        startIndex + (orientation === 'horizontal' ? offset : offset * BATTLESHIP_SIZE)
+    );
+}
+
+function updateSelectedBattleshipShip(startIndex, rotate) {
+    let moved = false;
+    database.ref('games/battleship/current').transaction(current => {
+        if (!current || current.status !== 'placement' || current.ready?.[localPlayer] || !selectedBattleshipShipId) return;
+        const board = current.boards?.[localPlayer];
+        const ship = board?.ships?.find(item => item.id === selectedBattleshipShipId);
+        if (!ship) return;
+        const currentOrientation = battleshipShipOrientation(ship);
+        const orientation = rotate
+            ? (currentOrientation === 'horizontal' ? 'vertical' : 'horizontal')
+            : currentOrientation;
+        const cells = battleshipCellsFromStart(startIndex, ship.size, orientation);
+        if (!cells) return;
+        const occupied = new Set(board.ships
+            .filter(item => item.id !== ship.id)
+            .flatMap(item => item.cells));
+        if (cells.some(cell => occupied.has(cell))) return;
+        ship.cells = cells;
+        moved = true;
+        return current;
+    }, (error, committed) => {
+        if (!error && (!committed || !moved)) setBattleshipStatus('That position is blocked or outside the grid');
+    });
+}
+
+function moveSelectedBattleshipShip(startIndex) {
+    updateSelectedBattleshipShip(startIndex, false);
+}
+
+function rotateSelectedBattleshipShip() {
+    const ship = battleshipState?.boards?.[localPlayer]?.ships?.find(item => item.id === selectedBattleshipShipId);
+    if (!ship) return;
+    updateSelectedBattleshipShip(ship.cells[0], true);
+}
+
 function readyBattleshipFleet() {
+    selectedBattleshipShipId = null;
     database.ref('games/battleship/current').transaction(current => {
         if (!current || current.status !== 'placement' || !current.boards?.[localPlayer]) return;
         current.ready = current.ready || {};
@@ -270,7 +357,7 @@ function fireBattleshipShot(index) {
             current.status = 'finished';
             current.winner = localPlayer;
             current.completedAt = Date.now();
-        } else {
+        } else if (!ship) {
             current.turn = target;
         }
         return current;
@@ -290,7 +377,21 @@ function fireBattleshipShot(index) {
                 createdAt: Date.now(),
                 readBy: {}
             });
+        } else if (!result.hit) {
+            sendBattleshipTurnNotification(result.target);
         }
+    });
+}
+
+function sendBattleshipTurnNotification(recipient) {
+    database.ref('notifications').push({
+        type: 'Battleship',
+        action: 'check-battleship',
+        sender: localPlayer,
+        recipient,
+        body: `${playerProfiles[localPlayer]?.nickname || localPlayer} finished their turn in Battleship`,
+        createdAt: Date.now(),
+        readBy: {}
     });
 }
 
@@ -305,6 +406,37 @@ function recordBattleshipResult(winner, loser) {
 function startNewBattleshipMatch() {
     if (!window.confirm('Start a new Battleship match?')) return;
     database.ref('games/battleship/current').set(createBattleshipMatch()).then(sendBattleshipInvite);
+}
+
+function abandonBattleshipMatch() {
+    if (!window.confirm('Abandon this Battleship match?')) return;
+    let result = null;
+    database.ref('games/battleship/current').transaction(current => {
+        if (!current || current.status === 'finished' || !current.players?.[localPlayer]) return;
+        const opponent = otherPlayer(localPlayer);
+        const joined = Boolean(current.players?.[opponent]);
+        const counted = current.status === 'battle' && joined;
+        current.status = 'finished';
+        current.winner = counted ? opponent : null;
+        current.abandonedBy = localPlayer;
+        current.completedAt = Date.now();
+        result = { opponent, counted, joined };
+        return current;
+    }, (error, committed) => {
+        if (error || !committed || !result) return;
+        if (result.counted) recordBattleshipResult(result.opponent, localPlayer);
+        if (result.joined) {
+            database.ref('notifications').push({
+                type: 'Battleship',
+                action: 'check-battleship',
+                sender: localPlayer,
+                recipient: result.opponent,
+                body: `${playerProfiles[localPlayer]?.nickname || localPlayer} abandoned the Battleship match`,
+                createdAt: Date.now(),
+                readBy: {}
+            });
+        }
+    });
 }
 
 function renderBattleshipStats() {

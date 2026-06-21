@@ -118,6 +118,8 @@ let isRevealingRound = false; // Guard to stop frame collision anomalies
 let latestMessages = [];
 let latestNotifications = [];
 let latestStats = {};
+let profilePhotos = {};
+let pendingProfilePhoto = null;
 let realtimeFeedsStarted = false;
 let retentionCleanupRunning = false;
 
@@ -180,7 +182,7 @@ function initialiseMainDashboard() {
     const currentProfile = playerProfiles[localPlayer] || { nickname: localPlayer, initial: '?' };
 
     if (nicknameDisplay) nicknameDisplay.innerText = currentProfile.nickname;
-    if (initialCircle) initialCircle.innerText = currentProfile.initial;
+    renderProfileAvatar(initialCircle, localPlayer);
 
     if (mainDashboard) {
         mainDashboard.classList.remove('theme-peter', 'theme-jadey');
@@ -222,7 +224,35 @@ function refreshSharedHeader(prefix) {
     const initial = document.getElementById(`${prefix}-top-initial`);
 
     if (nickname) nickname.innerText = currentProfile.nickname;
-    if (initial) initial.innerText = currentProfile.initial;
+    renderProfileAvatar(initial, localPlayer);
+}
+
+function validProfilePhoto(value) {
+    return typeof value === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value);
+}
+
+function profilePhotoFor(player) {
+    const value = profilePhotos[player];
+    return validProfilePhoto(value) ? value : null;
+}
+
+function renderProfileAvatar(element, player) {
+    if (!element) return;
+    const profile = playerProfiles[player] || { initial: '?' };
+    const photo = profilePhotoFor(player);
+    element.classList.toggle('has-photo', Boolean(photo));
+    element.style.backgroundImage = photo ? `url("${photo}")` : '';
+    element.innerText = photo ? '' : profile.initial;
+}
+
+function refreshVisibleProfilePhotos() {
+    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship'];
+    prefixes.forEach(prefix => renderProfileAvatar(
+        document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
+        localPlayer
+    ));
+    renderProfileAvatar(document.getElementById('profile-main-avatar'), localPlayer);
+    renderMessages();
 }
 
 function switchTab(tabName) {
@@ -274,8 +304,8 @@ function openProfileSettings() {
     
     const setTxt = (id, value) => { const el = document.getElementById(id); if (el) el.innerText = value; };
     setTxt('profile-top-nickname', currentProfile.nickname);
-    setTxt('profile-top-initial', currentProfile.initial);
-    setTxt('profile-avatar-letter', currentProfile.initial);
+    renderProfileAvatar(document.getElementById('profile-top-initial'), localPlayer);
+    renderProfileAvatar(document.getElementById('profile-main-avatar'), localPlayer);
     setTxt('profile-label-name', localPlayer);
     setTxt('profile-label-nickname', currentProfile.nickname);
     
@@ -335,6 +365,106 @@ function promptNicknameChange() {
     openProfileSettings();
 }
 
+function openProfilePhotoPicker() {
+    if (!localPlayer) return;
+    pendingProfilePhoto = null;
+    const dialog = document.getElementById('profile-photo-dialog');
+    const preview = document.getElementById('profile-photo-preview');
+    const input = document.getElementById('profile-photo-input');
+    const confirm = document.getElementById('profile-photo-confirm');
+    const reset = document.getElementById('profile-photo-reset');
+    const status = document.getElementById('profile-photo-status');
+    if (dialog) dialog.classList.remove('hidden');
+    if (preview) {
+        const current = profilePhotoFor(localPlayer);
+        preview.style.backgroundImage = current ? `url("${current}")` : '';
+        preview.innerText = current ? '' : playerProfiles[localPlayer]?.initial || '?';
+    }
+    if (confirm) confirm.disabled = true;
+    if (reset) reset.disabled = !profilePhotoFor(localPlayer);
+    if (status) status.innerText = 'Choose a photo from your gallery.';
+    if (input) {
+        input.value = '';
+        input.click();
+    }
+}
+
+function cancelProfilePhotoChange() {
+    pendingProfilePhoto = null;
+    document.getElementById('profile-photo-dialog')?.classList.add('hidden');
+}
+
+function previewProfilePhoto(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const status = document.getElementById('profile-photo-status');
+    if (!file.type.startsWith('image/') || file.size > 12 * 1024 * 1024) {
+        if (status) status.innerText = 'Choose an image smaller than 12 MB.';
+        return;
+    }
+    if (status) status.innerText = 'Preparing preview...';
+    compressProfilePhoto(file).then(dataUrl => {
+        pendingProfilePhoto = dataUrl;
+        const preview = document.getElementById('profile-photo-preview');
+        if (preview) {
+            preview.style.backgroundImage = `url("${dataUrl}")`;
+            preview.innerText = '';
+        }
+        const confirm = document.getElementById('profile-photo-confirm');
+        if (confirm) confirm.disabled = false;
+        if (status) status.innerText = 'Use this profile picture?';
+    }).catch(() => {
+        if (status) status.innerText = 'That image could not be processed.';
+    });
+}
+
+function compressProfilePhoto(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onload = () => {
+            const image = new Image();
+            image.onerror = reject;
+            image.onload = () => {
+                const size = 320;
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const context = canvas.getContext('2d');
+                const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+                const sourceX = (image.naturalWidth - sourceSize) / 2;
+                const sourceY = (image.naturalHeight - sourceSize) / 2;
+                context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+                let quality = 0.82;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+                while (dataUrl.length > 180000 && quality > 0.42) {
+                    quality -= 0.1;
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+                resolve(dataUrl);
+            };
+            image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function confirmProfilePhotoChange() {
+    if (!localPlayer || !validProfilePhoto(pendingProfilePhoto)) return;
+    const status = document.getElementById('profile-photo-status');
+    if (status) status.innerText = 'Saving...';
+    database.ref(`profilePhotos/${localPlayer}`).set(pendingProfilePhoto).then(() => {
+        cancelProfilePhotoChange();
+    }).catch(error => {
+        if (status) status.innerText = `Could not save: ${error.message}`;
+    });
+}
+
+function resetProfilePhoto() {
+    if (!localPlayer || !window.confirm('Reset your profile picture to the placeholder?')) return;
+    database.ref(`profilePhotos/${localPlayer}`).remove().then(cancelProfilePhotoChange);
+}
+
 function initialiseRealtimeFeeds() {
     if (realtimeFeedsStarted) return;
     realtimeFeedsStarted = true;
@@ -365,6 +495,11 @@ function initialiseRealtimeFeeds() {
     database.ref('stats').on('value', (snapshot) => {
         latestStats = snapshot.val() || {};
         renderStats();
+    });
+
+    database.ref('profilePhotos').on('value', (snapshot) => {
+        profilePhotos = snapshot.val() || {};
+        refreshVisibleProfilePhotos();
     });
 
     window.setInterval(runRetentionCleanup, 5 * 60 * 1000);
@@ -582,7 +717,8 @@ function renderMessages() {
         const divider = dateLabel !== lastDate ? `<div class="message-date-divider">${dateLabel}</div>` : '';
         lastDate = dateLabel;
 
-        const avatar = `<div class="message-avatar">${senderProfile.initial}</div>`;
+        const photo = profilePhotoFor(message.sender);
+        const avatar = `<div class="message-avatar ${photo ? 'has-photo' : ''}"${photo ? ` style="background-image:url('${photo}')"` : ''}>${photo ? '' : senderProfile.initial}</div>`;
         const meta = mine
             ? `<time>${timeLabel}</time><span>${senderProfile.nickname}</span>`
             : `<span>${senderProfile.nickname}</span><time>${timeLabel}</time>`;
@@ -774,29 +910,42 @@ function adjustManagedScores(operation) {
     const modes = selectedMode === 'all' ? availableModes : [selectedMode];
     if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
-    let paths;
+    let scoreTargets;
     if (game === 'word-search') {
         const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
         const difficulties = selectedDifficulty === 'all' ? [5, 6, 7, 8, 9] : [Number(selectedDifficulty)];
-        const metric = document.getElementById('score-metric')?.value || 'completedGrids';
-        paths = profiles.flatMap(profile => modes.flatMap(mode =>
-            difficulties.map(difficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`)
+        const selectedMetric = document.getElementById('score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['completedGrids', 'wordsFound', 'bestTime', 'wins', 'losses']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
+            difficulties.flatMap(difficulty => metrics.map(metric => ({
+                path: `stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`,
+                isTime: metric === 'bestTime'
+            })))
         ));
-        if (metric === 'bestTime') {
-            const timeOperation = operation === 'increment' ? 'increment-time' : operation === 'decrement' ? 'decrement-time' : 'reset';
-            Promise.all(paths.map(path => adjustCounter(path, timeOperation))).then(() => {
-                setManagementStatus(`Best-time operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
-            }).catch(error => setManagementStatus(`Could not adjust best times: ${error.message}`));
-            return;
-        }
     } else if (game === 'battleship') {
-        const metric = document.getElementById('battleship-score-metric')?.value || 'wins';
-        paths = profiles.map(profile => `stats/battleship/${profile}/${metric}`);
+        const selectedMetric = document.getElementById('battleship-score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['wins', 'losses', 'gamesPlayed', 'shots', 'hits', 'shipsSunk']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => metrics.map(metric => ({
+            path: `stats/battleship/${profile}/${metric}`,
+            isTime: false
+        })));
     } else {
-        paths = profiles.flatMap(profile => modes.map(mode => `stats/${profile}/${mode}`));
+        scoreTargets = profiles.flatMap(profile => modes.map(mode => ({
+            path: `stats/${profile}/${mode}`,
+            isTime: false
+        })));
     }
 
-    Promise.all(paths.map(path => adjustCounter(path, operation))).then(() => {
+    Promise.all(scoreTargets.map(target => {
+        const targetOperation = target.isTime
+            ? (operation === 'increment' ? 'increment-time' : operation === 'decrement' ? 'decrement-time' : 'reset')
+            : operation;
+        return adjustCounter(target.path, targetOperation);
+    })).then(() => {
         setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
     }).catch(error => setManagementStatus(`Could not adjust scores: ${error.message}`));
 }
@@ -856,7 +1005,7 @@ function launchGame(gameId) {
     const topNick = document.getElementById('game-top-nickname');
     const topInitial = document.getElementById('game-top-initial');
     if (topNick) topNick.innerText = currentProfile.nickname;
-    if (topInitial) topInitial.innerText = currentProfile.initial;
+    renderProfileAvatar(topInitial, localPlayer);
 
     currentSelectedGuess = null;
     isRevealingRound = false;

@@ -97,9 +97,8 @@
                 <div class="profile-content" style="padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 28px;">
                     
                     <div style="display: flex; align-items: center; gap: 20px; width: 100%;">
-                        <div id="profile-main-avatar" style="width: 100px; height: 100px; border-radius: 50%; border: 3px solid transparent; display: flex; align-items: center; justify-content: center; font-size: 42px; font-weight: bold; background: #101418; position: relative;">
-                            <span id="profile-avatar-letter"></span>
-                        </div>
+                        <button id="profile-main-avatar" class="profile-main-avatar" onclick="openProfilePhotoPicker()" aria-label="Change profile picture"></button>
+                        <input id="profile-photo-input" class="hidden" type="file" accept="image/*" onchange="previewProfilePhoto(event)">
                         
                         <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
                             <div style="border-bottom: 1px solid #161B22; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -530,11 +529,11 @@
                             <label for="score-difficulty">Difficulty</label>
                             <select id="score-difficulty"><option value="all">All difficulties</option><option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option><option value="8">8 × 8</option><option value="9">9 × 9</option></select>
                             <label for="score-metric">Statistic</label>
-                            <select id="score-metric"><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="bestTime">Best time</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
+                            <select id="score-metric"><option value="all">All statistics</option><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="bestTime">Best time</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
                         </div>
                         <div id="score-battleship-options" class="hidden management-subgroup">
                             <label for="battleship-score-metric">Statistic</label>
-                            <select id="battleship-score-metric"><option value="wins">Wins</option><option value="losses">Losses</option><option value="gamesPlayed">Games played</option><option value="shots">Shots</option><option value="hits">Hits</option><option value="shipsSunk">Ships sunk</option></select>
+                            <select id="battleship-score-metric"><option value="all">All statistics</option><option value="wins">Wins</option><option value="losses">Losses</option><option value="gamesPlayed">Games played</option><option value="shots">Shots</option><option value="hits">Hits</option><option value="shipsSunk">Ships sunk</option></select>
                         </div>
                         <div class="management-actions">
                             <button onclick="adjustManagedScores('reset')">Reset</button>
@@ -557,6 +556,20 @@
                     <p id="management-status" class="management-status"></p>
                 </div>
             </section>
+
+            <div id="profile-photo-dialog" class="profile-photo-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="profile-photo-title">
+                <div class="profile-photo-panel">
+                    <h2 id="profile-photo-title">Profile picture</h2>
+                    <div id="profile-photo-preview" class="profile-photo-preview"></div>
+                    <p id="profile-photo-status">Choose a photo from your gallery.</p>
+                    <button class="profile-photo-choose" onclick="document.getElementById('profile-photo-input').click()">Choose photo</button>
+                    <div class="profile-photo-actions">
+                        <button onclick="cancelProfilePhotoChange()">Cancel</button>
+                        <button id="profile-photo-confirm" class="primary" onclick="confirmProfilePhotoChange()" disabled>Confirm</button>
+                    </div>
+                    <button id="profile-photo-reset" class="profile-photo-reset" onclick="resetProfilePhoto()">Reset to placeholder</button>
+                </div>
+            </div>
         </main>
     </div>
 
