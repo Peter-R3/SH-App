@@ -46,7 +46,7 @@
                     <div class="games-grid">
                         <button class="grid-game-btn game-card-art" onclick="launchGame('number-guess')" style="--game-art: url('./assets/games/one-to-ten.svg');"><img class="game-card-image" src="./assets/games/one-to-ten.svg" alt=""><span>1 to 10</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
-                        <button class="grid-game-btn game-card-art locked" disabled style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('battleship')" style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
                         <button class="grid-game-btn locked" disabled>Game 4</button>
                         <button class="grid-game-btn locked" disabled>Game 5</button>
                         <button class="grid-game-btn locked" disabled>Game 6</button>
@@ -211,7 +211,7 @@
                             <img src="./assets/games/word-search.svg" alt="">
                             <span>Word Search</span>
                         </button>
-                        <button class="stats-category-card locked" disabled>
+                        <button class="stats-category-card" onclick="openStatsCategory('battleship')">
                             <img src="./assets/games/battleship.svg" alt="">
                             <span>Battleship</span>
                         </button>
@@ -236,6 +236,11 @@
                         <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
                         <h2 class="stats-detail-title">Word Search</h2>
                         <div id="word-search-stats-content"></div>
+                    </div>
+                    <div id="stats-battleship-detail" class="hidden">
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <h2 class="stats-detail-title">Battleship</h2>
+                        <div id="battleship-stats-content"></div>
                     </div>
                 </div>
 
@@ -464,6 +469,35 @@
                 </div>
             </section>
 
+            <section id="battleship-screen" class="screen hidden battleship-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="battleship-header-shell" class="dashboard-header">
+                    <span class="header-title">Battleship</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="battleship-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="battleship-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+                <div class="battleship-content">
+                    <div id="battleship-status" class="battleship-status">Preparing fleet...</div>
+                    <div id="battleship-view-toggle" class="battleship-view-toggle hidden">
+                        <button id="battleship-enemy-tab" class="active" onclick="setBattleshipView('enemy')">Enemy Waters</button>
+                        <button id="battleship-own-tab" onclick="setBattleshipView('own')">My Fleet</button>
+                    </div>
+                    <div id="battleship-fleet" class="battleship-fleet"></div>
+                    <div id="battleship-board" class="battleship-board" aria-label="Battleship board"></div>
+                    <div id="battleship-controls" class="battleship-controls"></div>
+                </div>
+                <div id="battleship-nav-shell" class="bottom-nav-bar battleship-nav">
+                    <button class="nav-tab-btn active-tab" onclick="exitBattleship()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
+                </div>
+            </section>
+
             <section id="management-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="management-header-shell" class="dashboard-header">
                     <span class="header-title">App Management</span>
@@ -489,14 +523,18 @@
                         <label for="score-profile">Profile scope</label>
                         <select id="score-profile"><option value="Peter">Peter</option><option value="Jadey">Jadey</option><option value="both">Both profiles</option></select>
                         <label for="score-game">Game</label>
-                        <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option></select>
+                        <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option><option value="battleship">Battleship</option></select>
                         <label for="score-mode">Mode</label>
                         <select id="score-mode"><option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option></select>
                         <div id="score-word-search-options" class="hidden management-subgroup">
                             <label for="score-difficulty">Difficulty</label>
                             <select id="score-difficulty"><option value="all">All difficulties</option><option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option><option value="8">8 × 8</option><option value="9">9 × 9</option></select>
                             <label for="score-metric">Statistic</label>
-                            <select id="score-metric"><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
+                            <select id="score-metric"><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="bestTime">Best time</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
+                        </div>
+                        <div id="score-battleship-options" class="hidden management-subgroup">
+                            <label for="battleship-score-metric">Statistic</label>
+                            <select id="battleship-score-metric"><option value="wins">Wins</option><option value="losses">Losses</option><option value="gamesPlayed">Games played</option><option value="shots">Shots</option><option value="hits">Hits</option><option value="shipsSunk">Ships sunk</option></select>
                         </div>
                         <div class="management-actions">
                             <button onclick="adjustManagedScores('reset')">Reset</button>
@@ -527,5 +565,6 @@
 
     <script src="app.js"></script>
     <script src="wordsearch.js"></script>
+    <script src="battleship.js"></script>
 </body>
 </html>

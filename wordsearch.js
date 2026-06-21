@@ -23,6 +23,9 @@ let wordSearchFound = {};
 let wordSearchSelection = [];
 let wordSearchDragging = false;
 let wordSearchStartedAt = null;
+let wordSearchActiveMs = 0;
+let wordSearchLastActivityAt = null;
+let wordSearchSessionStartedAt = null;
 let wordSearchRealtimeRef = null;
 let wordSearchRealtimeHandler = null;
 let wordSearchDisconnectHandle = null;
@@ -59,6 +62,7 @@ function launchWordSearch() {
     refreshSharedHeader('word-search');
     stopWordSearchRealtime();
     wordSearchCompletedLocally = false;
+    wordSearchSessionStartedAt = Date.now();
     setWordSearchStatus('Loading puzzle...');
 
     if (wordSearchSettings.mode === 'solo') loadSoloWordSearch();
@@ -150,6 +154,8 @@ function createWordSearchState(puzzle) {
         puzzle,
         found: {},
         startedAt: Date.now(),
+        activeMs: 0,
+        lastActivityAt: null,
         completedAt: null
     };
 }
@@ -350,6 +356,8 @@ function applyWordSearchState(state) {
     wordSearchPuzzle = state.puzzle;
     wordSearchFound = state.found || {};
     wordSearchStartedAt = state.startedAt || Date.now();
+    wordSearchActiveMs = Number(state.activeMs) || 0;
+    wordSearchLastActivityAt = state.lastActivityAt || null;
     renderWordSearchBoard();
     setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} • ${wordSearchPuzzle.size}×${wordSearchPuzzle.size}`);
     showWordSearchResult('', false);
@@ -459,18 +467,11 @@ function wordSearchCell(position) {
 function recordFoundWord(wordIndex) {
     const mode = wordSearchSettings.mode;
     if (mode === 'solo') {
-        database.ref(`${soloWordSearchPath()}/found/${wordIndex}`).set(localPlayer);
-        wordSearchFound[wordIndex] = localPlayer;
-        afterWordFound(wordIndex);
+        claimPersistentWord(soloWordSearchPath(), wordIndex, localPlayer);
         return;
     }
     if (mode === 'coop') {
-        database.ref(`${coopWordSearchPath()}/found/${wordIndex}`).transaction(current => {
-            if (current) return;
-            return localPlayer;
-        }, (error, committed) => {
-            if (!error && committed) incrementWordSearchWordsFound(localPlayer, mode, wordSearchSettings.difficulty);
-        });
+        claimPersistentWord(coopWordSearchPath(), wordIndex, localPlayer);
         return;
     }
     database.ref(`wordSearch/versus/current/foundBy/${localPlayer}/${wordIndex}`).transaction(current => {
@@ -479,10 +480,29 @@ function recordFoundWord(wordIndex) {
     });
 }
 
-function afterWordFound(wordIndex) {
-    paintFoundWords();
-    incrementWordSearchWordsFound(localPlayer, wordSearchSettings.mode, wordSearchSettings.difficulty);
-    if (Object.keys(wordSearchFound).length >= wordSearchPuzzle.words.length) completeWordSearch();
+function claimPersistentWord(path, wordIndex, finder) {
+    database.ref(path).transaction(current => {
+        if (!current?.puzzle || current.found?.[wordIndex]) return;
+        const now = Date.now();
+        const activityStart = Math.max(
+            Number(current.lastActivityAt) || wordSearchSessionStartedAt || now,
+            wordSearchSessionStartedAt || now
+        );
+        current.found = current.found || {};
+        current.found[wordIndex] = finder;
+        current.activeMs = (Number(current.activeMs) || 0) + Math.min(5 * 60 * 1000, Math.max(0, now - activityStart));
+        current.lastActivityAt = now;
+        return current;
+    }, (error, committed, snapshot) => {
+        if (error || !committed) return;
+        const state = snapshot.val();
+        wordSearchFound = state.found || {};
+        wordSearchActiveMs = Number(state.activeMs) || 0;
+        wordSearchLastActivityAt = state.lastActivityAt || null;
+        paintFoundWords();
+        incrementWordSearchWordsFound(finder, wordSearchSettings.mode, wordSearchSettings.difficulty);
+        if (Object.keys(wordSearchFound).length >= wordSearchPuzzle.words.length) completeWordSearch();
+    });
 }
 
 function incrementWordSearchWordsFound(player, mode, difficulty) {
@@ -511,7 +531,9 @@ function completeWordSearch() {
     wordSearchCompletedLocally = true;
     const mode = wordSearchSettings.mode;
     const difficulty = wordSearchSettings.difficulty;
-    const elapsed = Math.max(1, Date.now() - (wordSearchStartedAt || Date.now()));
+    const elapsed = mode === 'versus'
+        ? Math.max(1, Date.now() - (wordSearchStartedAt || Date.now()))
+        : Math.max(1, wordSearchActiveMs);
     enableWordSearchGrid(false);
 
     if (mode === 'solo') {

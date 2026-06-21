@@ -975,6 +975,200 @@ button:active {
     font-weight: 800;
 }
 
+/* =========================================================================
+    BATTLESHIP
+   ========================================================================= */
+.battleship-screen {
+    max-height: 100%;
+    overflow: hidden;
+    background-color: #073B4C;
+    background-image:
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 18px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 24px);
+}
+
+.battleship-screen .dashboard-header,
+.battleship-nav {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.battleship-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    overflow-y: auto;
+}
+
+.battleship-status {
+    width: 100%;
+    min-height: 42px;
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 8px;
+    background: rgba(0, 20, 30, 0.72);
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.battleship-view-toggle {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 3px;
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 8px;
+    background: rgba(0, 20, 30, 0.72);
+}
+
+.battleship-view-toggle button {
+    padding: 9px 6px;
+    border-radius: 6px;
+    background: transparent;
+    color: #90A4AE;
+    font-size: 12px;
+}
+
+.battleship-view-toggle button.active {
+    background: #FFFFFF;
+    color: #073B4C;
+}
+
+.battleship-fleet {
+    width: 100%;
+    min-height: 48px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+}
+
+.battleship-fleet span {
+    padding: 6px 8px;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    background: rgba(0, 20, 30, 0.68);
+    color: #FFFFFF;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.battleship-fleet span.sunk {
+    border-color: #FF6B6B;
+    color: #FFB4B4;
+    text-decoration: line-through;
+}
+
+.battleship-board {
+    width: min(100%, 420px);
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+    gap: 3px;
+    padding: 6px;
+    border: 2px solid rgba(255,255,255,0.55);
+    border-radius: 8px;
+    background: rgba(0, 20, 30, 0.52);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.32);
+}
+
+.battleship-cell {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    background: #0E7490;
+    color: #FFFFFF;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.battleship-cell:not(:disabled):active {
+    background: #22B8CF;
+}
+
+.battleship-cell.ship {
+    background: #64748B;
+    box-shadow: inset 0 0 0 2px #CBD5E1;
+}
+
+.battleship-cell.miss {
+    background: #155E75;
+    color: #BAE6FD;
+}
+
+.battleship-cell.hit {
+    background: #DC2626;
+    color: #FFFFFF;
+}
+
+.battleship-cell.sunk-cell {
+    background: #7F1D1D;
+    box-shadow: inset 0 0 0 2px #FCA5A5;
+}
+
+.battleship-cell:disabled {
+    opacity: 1;
+}
+
+.battleship-waiting {
+    grid-column: 1 / -1;
+    align-self: center;
+    color: #FFFFFF;
+    text-align: center;
+    font-weight: 800;
+}
+
+.battleship-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.battleship-controls button {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.24);
+    border-radius: 8px;
+    background: rgba(0, 20, 30, 0.8);
+    color: #FFFFFF;
+}
+
+.battleship-controls button.primary {
+    background: #2EA44F;
+}
+
+.battleship-stat-card {
+    margin-bottom: 14px;
+    overflow: hidden;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.battleship-stat-card h3 {
+    padding: 12px 14px;
+    color: #FFFFFF;
+}
+
+.battleship-stat-card.peter h3 { background: #58A6FF; }
+.battleship-stat-card.jadey h3 { background: #b685bd; }
+
+.battleship-stat-card div {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-top: 1px solid #161B22;
+    color: #C9D1D9;
+}
+
 .mode-option-btn {
     width: 100%;
     margin-bottom: 14px;

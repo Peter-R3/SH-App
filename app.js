@@ -231,6 +231,8 @@ function switchTab(tabName) {
         abandonVersusMatch(true);
         stopWordSearchRealtime();
     }
+    const battleshipVisible = !document.getElementById('battleship-screen')?.classList.contains('hidden');
+    if (battleshipVisible && typeof stopBattleshipSubscription === 'function') stopBattleshipSubscription();
 
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
@@ -503,13 +505,16 @@ function openStatsCategory(gameId) {
     document.getElementById('stats-categories')?.classList.add('hidden');
     document.getElementById('stats-number-guess-detail')?.classList.toggle('hidden', gameId !== 'number-guess');
     document.getElementById('stats-word-search-detail')?.classList.toggle('hidden', gameId !== 'word-search');
+    document.getElementById('stats-battleship-detail')?.classList.toggle('hidden', gameId !== 'battleship');
     if (gameId === 'word-search' && typeof renderWordSearchStats === 'function') renderWordSearchStats();
+    if (gameId === 'battleship' && typeof renderBattleshipStats === 'function') renderBattleshipStats();
 }
 
 function closeStatsCategory() {
     document.getElementById('stats-categories')?.classList.remove('hidden');
     document.getElementById('stats-number-guess-detail')?.classList.add('hidden');
     document.getElementById('stats-word-search-detail')?.classList.add('hidden');
+    document.getElementById('stats-battleship-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -527,6 +532,7 @@ function renderStats() {
         });
     });
     if (typeof renderWordSearchStats === 'function') renderWordSearchStats();
+    if (typeof renderBattleshipStats === 'function') renderBattleshipStats();
 }
 
 function sendMessage(event) {
@@ -622,6 +628,10 @@ function renderNotifications() {
                 : `<div class="notification-actions"><button onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', true)">Approve</button><button class="secondary-action" onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', false)">Decline</button></div>`;
         } else if (notification.action === 'join-wordsearch-versus' && isRecipient) {
             action = `<button onclick="joinWordSearchVersus(${Number(notification.difficulty) || 7})">Join</button>`;
+        } else if (notification.action === 'join-battleship' && isRecipient) {
+            action = '<button onclick="launchGame(\'battleship\')">Join</button>';
+        } else if (notification.action === 'check-battleship' && isRecipient) {
+            action = '<button onclick="launchGame(\'battleship\')">Check</button>';
         }
 
         return `
@@ -748,6 +758,8 @@ function adjustCounter(path, operation) {
     return database.ref(path).transaction(current => {
         const value = Number(current) || 0;
         if (operation === 'reset') return 0;
+        if (operation === 'increment-time') return value + 1000;
+        if (operation === 'decrement-time') return Math.max(0, value - 1000);
         if (operation === 'increment') return value + 1;
         return Math.max(0, value - 1);
     });
@@ -770,6 +782,16 @@ function adjustManagedScores(operation) {
         paths = profiles.flatMap(profile => modes.flatMap(mode =>
             difficulties.map(difficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`)
         ));
+        if (metric === 'bestTime') {
+            const timeOperation = operation === 'increment' ? 'increment-time' : operation === 'decrement' ? 'decrement-time' : 'reset';
+            Promise.all(paths.map(path => adjustCounter(path, timeOperation))).then(() => {
+                setManagementStatus(`Best-time operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
+            }).catch(error => setManagementStatus(`Could not adjust best times: ${error.message}`));
+            return;
+        }
+    } else if (game === 'battleship') {
+        const metric = document.getElementById('battleship-score-metric')?.value || 'wins';
+        paths = profiles.map(profile => `stats/battleship/${profile}/${metric}`);
     } else {
         paths = profiles.flatMap(profile => modes.map(mode => `stats/${profile}/${mode}`));
     }
@@ -781,14 +803,19 @@ function adjustManagedScores(operation) {
 
 function syncManagedScoreControls() {
     const isWordSearch = document.getElementById('score-game')?.value === 'word-search';
+    const isBattleship = document.getElementById('score-game')?.value === 'battleship';
     const modeSelect = document.getElementById('score-mode');
     const extraOptions = document.getElementById('score-word-search-options');
-    if (!modeSelect || !extraOptions) return;
+    const battleshipOptions = document.getElementById('score-battleship-options');
+    if (!modeSelect || !extraOptions || !battleshipOptions) return;
 
     modeSelect.innerHTML = isWordSearch
         ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus</option>'
         : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
     extraOptions.classList.toggle('hidden', !isWordSearch);
+    battleshipOptions.classList.toggle('hidden', !isBattleship);
+    modeSelect.classList.toggle('hidden', isBattleship);
+    document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship);
 }
 
 function adjustManagedInteractions(operation) {
@@ -811,6 +838,10 @@ function adjustManagedInteractions(operation) {
 function launchGame(gameId) {
     if (gameId === 'word-search') {
         launchWordSearch();
+        return;
+    }
+    if (gameId === 'battleship') {
+        launchBattleship();
         return;
     }
     if (gameId !== 'number-guess') return;
