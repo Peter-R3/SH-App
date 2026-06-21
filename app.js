@@ -1,12 +1,15 @@
 // Calculate exact mobile viewport height to fix PWA layout cut-offs
 function calculateRealVh() {
-  let vh = window.innerHeight * 0.01;
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  let vh = viewportHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 
 // Run calculations on load and when orientation changes
 window.addEventListener('resize', calculateRealVh);
 window.addEventListener('orientationchange', calculateRealVh);
+window.addEventListener('pageshow', calculateRealVh);
+window.visualViewport?.addEventListener('resize', calculateRealVh);
 calculateRealVh();
 
 if (navigator.serviceWorker?.register) {
@@ -102,6 +105,7 @@ const interactionConfig = {
 
 const RETENTION_LIMIT = 50;
 const READ_NOTIFICATION_RETENTION_MS = 60 * 60 * 1000;
+const REMEMBERED_PROFILE_KEY = 'sweethearts-app-profile';
 
 let gameState1To10 = {
     mode: 'ten',
@@ -127,7 +131,9 @@ let retentionCleanupRunning = false;
 // THE ONBOARDING PROFILE TRANSITION LOOP
 // =========================================================================
 function selectProfile(playerName) {
+    if (!playerProfiles[playerName]) return;
     localPlayer = playerName;
+    rememberProfile(playerName);
     
     const loginScreen = document.getElementById('login-screen');
     const welcomeContainer = document.getElementById('welcome-container');
@@ -167,6 +173,44 @@ function selectProfile(playerName) {
         }, 1500);
 
     }, 300);
+}
+
+function rememberProfile(playerName) {
+    try {
+        localStorage.setItem(REMEMBERED_PROFILE_KEY, playerName);
+    } catch {
+        // Storage can be unavailable in private browsing; the app still works for this session.
+    }
+}
+
+function rememberedProfile() {
+    try {
+        const playerName = localStorage.getItem(REMEMBERED_PROFILE_KEY);
+        return playerProfiles[playerName] ? playerName : null;
+    } catch {
+        return null;
+    }
+}
+
+function restoreRememberedProfile() {
+    const playerName = rememberedProfile();
+    if (!playerName) return false;
+    localPlayer = playerName;
+    document.getElementById('login-screen')?.classList.add('hidden');
+    document.getElementById('welcome-container')?.classList.add('hidden');
+    document.getElementById('main-dashboard')?.classList.remove('hidden');
+    initialiseMainDashboard();
+    initialiseRealtimeFeeds();
+    return true;
+}
+
+function forgetProfileAndReload() {
+    try {
+        localStorage.removeItem(REMEMBERED_PROFILE_KEY);
+    } catch {
+        // Reloading still returns to onboarding when storage is unavailable.
+    }
+    window.location.reload();
 }
 
 // =========================================================================
@@ -1440,3 +1484,5 @@ function exitGame() {
     if (dash) dash.classList.remove('hidden');
     initialiseMainDashboard();
 }
+
+restoreRememberedProfile();
