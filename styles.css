@@ -580,6 +580,16 @@ button:active {
     opacity: 1;
 }
 
+.notification-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.notification-card .secondary-action {
+    background: #30363D !important;
+}
+
 .empty-state {
     margin-top: 28px;
     color: #6E7681;
@@ -747,6 +757,12 @@ button:active {
     text-align: center;
 }
 
+.management-subgroup {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .management-content .danger-action {
     margin-top: 12px;
     border: 1px solid #F85149;
@@ -757,6 +773,206 @@ button:active {
     min-height: 20px;
     color: #8B949E;
     font-size: 13px;
+}
+
+/* =========================================================================
+    WORD SEARCH
+   ========================================================================= */
+.word-search-screen {
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.word-search-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    overflow-y: auto;
+}
+
+.word-search-status {
+    min-height: 20px;
+    color: #8B949E;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.word-search-words {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 10px;
+    min-height: 42px;
+}
+
+.word-search-words span {
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.word-search-words span.found {
+    color: #6E7681;
+    text-decoration: line-through;
+}
+
+.word-search-current-word {
+    width: 100%;
+    min-height: 34px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.word-search-grid {
+    --word-grid-size: 7;
+    width: min(100%, 420px);
+    aspect-ratio: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--word-grid-size), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--word-grid-size), minmax(0, 1fr));
+    gap: 3px;
+    touch-action: none;
+    user-select: none;
+}
+
+.word-search-grid.disabled {
+    pointer-events: none;
+    opacity: 0.55;
+}
+
+.word-search-cell {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 1px solid #30363D;
+    border-radius: 5px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.word-search-cell.preview {
+    border-color: #FFFFFF;
+    background: #30363D;
+}
+
+.word-search-cell.found-cell {
+    border-color: var(--found-colour);
+    background: color-mix(in srgb, var(--found-colour) 72%, #000000);
+    color: #FFFFFF;
+}
+
+.word-search-result {
+    width: 100%;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.word-search-result button {
+    padding: 9px 12px;
+    border-radius: 6px;
+    background: #2EA44F;
+    color: #FFFFFF;
+}
+
+.word-search-settings {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+}
+
+.word-search-settings label {
+    color: #8B949E;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.word-search-settings select {
+    width: 100%;
+    height: 50px;
+    padding: 0 12px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    font: inherit;
+    font-weight: 800;
+}
+
+.word-search-settings > button {
+    width: 100%;
+    margin-top: 8px;
+    border-radius: 8px;
+    background: #161B22;
+    color: #FFFFFF;
+}
+
+.word-stats-player {
+    margin-bottom: 16px;
+    overflow: hidden;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.word-stats-player > h3 {
+    padding: 12px 14px;
+    color: #FFFFFF;
+}
+
+.word-stats-player.peter > h3 { background: #58A6FF; }
+.word-stats-player.jadey > h3 { background: #b685bd; }
+
+.word-stats-mode {
+    padding: 10px 12px;
+    border-top: 1px solid #161B22;
+}
+
+.word-stats-mode h4 {
+    margin-bottom: 6px;
+    color: #FFFFFF;
+    font-size: 14px;
+}
+
+.word-stats-row {
+    display: grid;
+    grid-template-columns: 42px repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px 0;
+    color: #8B949E;
+    font-size: 10px;
+}
+
+.word-stats-row strong {
+    color: #FFFFFF;
+}
+
+.word-stats-head {
+    padding-bottom: 7px;
+    border-bottom: 1px solid #21262D;
+    color: #6E7681;
+    font-weight: 800;
 }
 
 .mode-option-btn {

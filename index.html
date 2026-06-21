@@ -45,7 +45,7 @@
                     
                     <div class="games-grid">
                         <button class="grid-game-btn game-card-art" onclick="launchGame('number-guess')" style="--game-art: url('./assets/games/one-to-ten.svg');"><img class="game-card-image" src="./assets/games/one-to-ten.svg" alt=""><span>1 to 10</span></button>
-                        <button class="grid-game-btn game-card-art locked" disabled style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
                         <button class="grid-game-btn game-card-art locked" disabled style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
                         <button class="grid-game-btn locked" disabled>Game 4</button>
                         <button class="grid-game-btn locked" disabled>Game 5</button>
@@ -207,7 +207,7 @@
                             <img src="./assets/games/one-to-ten.svg" alt="">
                             <span>1 to 10</span>
                         </button>
-                        <button class="stats-category-card locked" disabled>
+                        <button class="stats-category-card" onclick="openStatsCategory('word-search')">
                             <img src="./assets/games/word-search.svg" alt="">
                             <span>Word Search</span>
                         </button>
@@ -231,6 +231,11 @@
                             <div class="stats-row"><span>1 to 100</span><strong id="stats-jadey-hundred">0</strong></div>
                             <div class="stats-row"><span>Colours</span><strong id="stats-jadey-colours">0</strong></div>
                         </div>
+                    </div>
+                    <div id="stats-word-search-detail" class="hidden">
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <h2 class="stats-detail-title">Word Search</h2>
+                        <div id="word-search-stats-content"></div>
                     </div>
                 </div>
 
@@ -408,6 +413,57 @@
                 </div>
             </section>
 
+            <section id="word-search-screen" class="screen hidden word-search-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="word-search-header-shell" class="dashboard-header">
+                    <span class="header-title">Word Search</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="word-search-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="word-search-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+
+                <div id="word-search-content" class="word-search-content">
+                    <div id="word-search-status" class="word-search-status"></div>
+                    <div id="word-search-words" class="word-search-words"></div>
+                    <div id="word-search-current-word" class="word-search-current-word">Drag across a word</div>
+                    <div id="word-search-grid" class="word-search-grid" aria-label="Word search grid"></div>
+                    <div id="word-search-result" class="word-search-result hidden"></div>
+                </div>
+
+                <div id="word-search-nav-shell" class="bottom-nav-bar game-bottom-nav">
+                    <button class="nav-tab-btn active-tab" onclick="exitWordSearch()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
+                    <button class="nav-tab-btn" onclick="openWordSearchSettings()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58-1.92-3.32-2.39.96a7.28 7.28 0 0 0-1.63-.94L14.87 3h-3.84l-.36 2.18c-.58.24-1.12.55-1.63.94l-2.39-.96-1.92 3.32 2.03 1.58a7.43 7.43 0 0 0-.05.94c0 .32.02.63.05.94l-2.03 1.58 1.92 3.32 2.39-.96c.5.39 1.05.7 1.63.94l.36 2.18h3.84l.36-2.18c.58-.24 1.12-.55 1.63-.94l2.39.96 1.92-3.32-2.03-1.58zM12.95 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg><span>Settings</span></button>
+                </div>
+            </section>
+
+            <section id="word-search-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="word-search-settings-header" class="dashboard-header">
+                    <span class="header-title">Word Search Settings</span>
+                    <button onclick="launchWordSearch()" class="mode-select-btn" aria-label="Back to Word Search"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
+                </div>
+                <div class="word-search-settings">
+                    <label for="word-search-mode">Mode</label>
+                    <select id="word-search-mode" onchange="updateWordSearchSetting('mode', this.value)">
+                        <option value="solo">Solo</option>
+                        <option value="coop">Co-op</option>
+                        <option value="versus">Versus</option>
+                    </select>
+                    <label for="word-search-difficulty">Difficulty</label>
+                    <select id="word-search-difficulty" onchange="updateWordSearchSetting('difficulty', this.value)">
+                        <option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option>
+                        <option value="8">8 × 8</option><option value="9">9 × 9</option>
+                    </select>
+                    <button onclick="requestNewWordSearchGrid()">New grid</button>
+                    <p id="word-search-settings-note" class="management-status"></p>
+                </div>
+            </section>
+
             <section id="management-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="management-header-shell" class="dashboard-header">
                     <span class="header-title">App Management</span>
@@ -433,9 +489,15 @@
                         <label for="score-profile">Profile scope</label>
                         <select id="score-profile"><option value="Peter">Peter</option><option value="Jadey">Jadey</option><option value="both">Both profiles</option></select>
                         <label for="score-game">Game</label>
-                        <select id="score-game"><option value="number-guess">1 to 10</option></select>
+                        <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option></select>
                         <label for="score-mode">Mode</label>
                         <select id="score-mode"><option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option></select>
+                        <div id="score-word-search-options" class="hidden management-subgroup">
+                            <label for="score-difficulty">Difficulty</label>
+                            <select id="score-difficulty"><option value="all">All difficulties</option><option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option><option value="8">8 × 8</option><option value="9">9 × 9</option></select>
+                            <label for="score-metric">Statistic</label>
+                            <select id="score-metric"><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
+                        </div>
                         <div class="management-actions">
                             <button onclick="adjustManagedScores('reset')">Reset</button>
                             <button onclick="adjustManagedScores('decrement')">-1</button>
@@ -464,5 +526,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script src="app.js"></script>
+    <script src="wordsearch.js"></script>
 </body>
 </html>

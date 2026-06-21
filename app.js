@@ -226,6 +226,12 @@ function refreshSharedHeader(prefix) {
 }
 
 function switchTab(tabName) {
+    const wordSearchVisible = !document.getElementById('word-search-screen')?.classList.contains('hidden');
+    if (wordSearchVisible && typeof wordSearchSettings !== 'undefined' && wordSearchSettings.mode === 'versus') {
+        abandonVersusMatch(true);
+        stopWordSearchRealtime();
+    }
+
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
 
@@ -494,14 +500,16 @@ function openStatsScreen() {
 }
 
 function openStatsCategory(gameId) {
-    if (gameId !== 'number-guess') return;
     document.getElementById('stats-categories')?.classList.add('hidden');
-    document.getElementById('stats-number-guess-detail')?.classList.remove('hidden');
+    document.getElementById('stats-number-guess-detail')?.classList.toggle('hidden', gameId !== 'number-guess');
+    document.getElementById('stats-word-search-detail')?.classList.toggle('hidden', gameId !== 'word-search');
+    if (gameId === 'word-search' && typeof renderWordSearchStats === 'function') renderWordSearchStats();
 }
 
 function closeStatsCategory() {
     document.getElementById('stats-categories')?.classList.remove('hidden');
     document.getElementById('stats-number-guess-detail')?.classList.add('hidden');
+    document.getElementById('stats-word-search-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -518,6 +526,7 @@ function renderStats() {
             if (element) element.innerText = value;
         });
     });
+    if (typeof renderWordSearchStats === 'function') renderWordSearchStats();
 }
 
 function sendMessage(event) {
@@ -607,6 +616,12 @@ function renderNotifications() {
             action = `<button onclick="switchTab('messages')">Reply</button>`;
         } else if (notification.action === 'check-game' && isRecipient) {
             action = `<button onclick="launchGame('number-guess')">Check</button>`;
+        } else if (notification.action === 'approve-wordsearch-grid' && isRecipient) {
+            action = responded
+                ? '<button disabled>Answered</button>'
+                : `<div class="notification-actions"><button onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', true)">Approve</button><button class="secondary-action" onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', false)">Decline</button></div>`;
+        } else if (notification.action === 'join-wordsearch-versus' && isRecipient) {
+            action = `<button onclick="joinWordSearchVersus(${Number(notification.difficulty) || 7})">Join</button>`;
         }
 
         return `
@@ -662,6 +677,13 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function respondToWordSearchGridRequest(notificationId, requestId, approved) {
+    const action = approved ? approveCoopWordSearchRequest(requestId) : rejectCoopWordSearchRequest(requestId);
+    Promise.resolve(action).then(() => {
+        database.ref(`notifications/${notificationId}/respondedBy/${localPlayer}`).set(true);
+    });
+}
+
 function openManagementScreen() {
     if (localPlayer !== 'Peter') return;
 
@@ -673,6 +695,7 @@ function openManagementScreen() {
         header.classList.remove('header-peter', 'header-jadey');
         header.classList.add('header-peter');
     }
+    syncManagedScoreControls();
     setManagementStatus('');
 }
 
@@ -733,15 +756,39 @@ function adjustCounter(path, operation) {
 function adjustManagedScores(operation) {
     if (localPlayer !== 'Peter') return;
     const profiles = selectedProfiles('score-profile');
+    const game = document.getElementById('score-game')?.value || 'number-guess';
     const selectedMode = document.getElementById('score-mode')?.value || 'all';
-    const modes = selectedMode === 'all' ? ['ten', 'hundred', 'colours'] : [selectedMode];
+    const availableModes = game === 'word-search' ? ['solo', 'coop', 'versus'] : ['ten', 'hundred', 'colours'];
+    const modes = selectedMode === 'all' ? availableModes : [selectedMode];
     if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
-    Promise.all(profiles.flatMap(profile =>
-        modes.map(mode => adjustCounter(`stats/${profile}/${mode}`, operation))
-    )).then(() => {
+    let paths;
+    if (game === 'word-search') {
+        const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
+        const difficulties = selectedDifficulty === 'all' ? [5, 6, 7, 8, 9] : [Number(selectedDifficulty)];
+        const metric = document.getElementById('score-metric')?.value || 'completedGrids';
+        paths = profiles.flatMap(profile => modes.flatMap(mode =>
+            difficulties.map(difficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`)
+        ));
+    } else {
+        paths = profiles.flatMap(profile => modes.map(mode => `stats/${profile}/${mode}`));
+    }
+
+    Promise.all(paths.map(path => adjustCounter(path, operation))).then(() => {
         setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
     }).catch(error => setManagementStatus(`Could not adjust scores: ${error.message}`));
+}
+
+function syncManagedScoreControls() {
+    const isWordSearch = document.getElementById('score-game')?.value === 'word-search';
+    const modeSelect = document.getElementById('score-mode');
+    const extraOptions = document.getElementById('score-word-search-options');
+    if (!modeSelect || !extraOptions) return;
+
+    modeSelect.innerHTML = isWordSearch
+        ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus</option>'
+        : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
+    extraOptions.classList.toggle('hidden', !isWordSearch);
 }
 
 function adjustManagedInteractions(operation) {
@@ -762,6 +809,10 @@ function adjustManagedInteractions(operation) {
 // 1 TO 10 MULTIPLAYER GAME WORKSPACE
 // =========================================================================
 function launchGame(gameId) {
+    if (gameId === 'word-search') {
+        launchWordSearch();
+        return;
+    }
     if (gameId !== 'number-guess') return;
 
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
