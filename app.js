@@ -246,7 +246,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship'];
+    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -263,6 +263,8 @@ function switchTab(tabName) {
     }
     const battleshipVisible = !document.getElementById('battleship-screen')?.classList.contains('hidden');
     if (battleshipVisible && typeof stopBattleshipSubscription === 'function') stopBattleshipSubscription();
+    const connectFourVisible = !document.getElementById('connect-four-screen')?.classList.contains('hidden');
+    if (connectFourVisible && typeof stopConnectFourSubscription === 'function') stopConnectFourSubscription();
 
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
@@ -641,8 +643,10 @@ function openStatsCategory(gameId) {
     document.getElementById('stats-number-guess-detail')?.classList.toggle('hidden', gameId !== 'number-guess');
     document.getElementById('stats-word-search-detail')?.classList.toggle('hidden', gameId !== 'word-search');
     document.getElementById('stats-battleship-detail')?.classList.toggle('hidden', gameId !== 'battleship');
+    document.getElementById('stats-connect-four-detail')?.classList.toggle('hidden', gameId !== 'connect-four');
     if (gameId === 'word-search' && typeof renderWordSearchStats === 'function') renderWordSearchStats();
     if (gameId === 'battleship' && typeof renderBattleshipStats === 'function') renderBattleshipStats();
+    if (gameId === 'connect-four' && typeof renderConnectFourStats === 'function') renderConnectFourStats();
 }
 
 function closeStatsCategory() {
@@ -650,6 +654,7 @@ function closeStatsCategory() {
     document.getElementById('stats-number-guess-detail')?.classList.add('hidden');
     document.getElementById('stats-word-search-detail')?.classList.add('hidden');
     document.getElementById('stats-battleship-detail')?.classList.add('hidden');
+    document.getElementById('stats-connect-four-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -668,6 +673,7 @@ function renderStats() {
     });
     if (typeof renderWordSearchStats === 'function') renderWordSearchStats();
     if (typeof renderBattleshipStats === 'function') renderBattleshipStats();
+    if (typeof renderConnectFourStats === 'function') renderConnectFourStats();
 }
 
 function sendMessage(event) {
@@ -752,22 +758,30 @@ function renderNotifications() {
         const responded = notification.respondedBy && notification.respondedBy[localPlayer];
         let action = '';
 
+        const navigationButton = (label, actionName, value = '') => responded
+            ? `<button disabled>${label}</button>`
+            : `<button onclick="handleNotificationAction('${notification.id}', '${actionName}', '${value}')">${label}</button>`;
+
         if (notification.action === 'send-back' && isRecipient) {
             action = `<button ${responded ? 'disabled' : ''} onclick="sendInteractionBack('${notification.id}', '${notification.interactionType}')">${responded ? 'Sent' : 'Send back'}</button>`;
         } else if (notification.action === 'reply' && isRecipient) {
-            action = `<button onclick="switchTab('messages')">Reply</button>`;
+            action = navigationButton('Reply', 'messages');
         } else if (notification.action === 'check-game' && isRecipient) {
-            action = `<button onclick="launchGame('number-guess')">Check</button>`;
+            action = navigationButton('Check', 'game', 'number-guess');
         } else if (notification.action === 'approve-wordsearch-grid' && isRecipient) {
             action = responded
                 ? '<button disabled>Answered</button>'
                 : `<div class="notification-actions"><button onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', true)">Approve</button><button class="secondary-action" onclick="respondToWordSearchGridRequest('${notification.id}', '${notification.requestId}', false)">Decline</button></div>`;
         } else if (notification.action === 'join-wordsearch-versus' && isRecipient) {
-            action = `<button onclick="joinWordSearchVersus(${Number(notification.difficulty) || 7})">Join</button>`;
+            action = navigationButton('Join', 'wordsearch-versus', String(Number(notification.difficulty) || 7));
         } else if (notification.action === 'join-battleship' && isRecipient) {
-            action = '<button onclick="launchGame(\'battleship\')">Join</button>';
+            action = navigationButton('Join', 'game', 'battleship');
         } else if (notification.action === 'check-battleship' && isRecipient) {
-            action = '<button onclick="launchGame(\'battleship\')">Check</button>';
+            action = navigationButton('Check', 'game', 'battleship');
+        } else if (notification.action === 'join-connect-four' && isRecipient) {
+            action = navigationButton('Join', 'game', 'connect-four');
+        } else if (notification.action === 'check-connect-four' && isRecipient) {
+            action = navigationButton('Check', 'game', 'connect-four');
         }
 
         return `
@@ -780,6 +794,14 @@ function renderNotifications() {
             </div>
         `;
     }).join('');
+}
+
+function handleNotificationAction(notificationId, actionName, value) {
+    database.ref(`notifications/${notificationId}/respondedBy/${localPlayer}`).set(true).then(() => {
+        if (actionName === 'messages') switchTab('messages');
+        if (actionName === 'game') launchGame(value);
+        if (actionName === 'wordsearch-versus') joinWordSearchVersus(Number(value) || 7);
+    });
 }
 
 function updateNotificationBadges() {
@@ -933,6 +955,15 @@ function adjustManagedScores(operation) {
             path: `stats/battleship/${profile}/${metric}`,
             isTime: false
         })));
+    } else if (game === 'connect-four') {
+        const selectedMetric = document.getElementById('connect-four-score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['wins', 'losses', 'draws', 'gamesPlayed', 'tokensPlaced']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => metrics.map(metric => ({
+            path: `stats/connectFour/${profile}/${metric}`,
+            isTime: false
+        })));
     } else {
         scoreTargets = profiles.flatMap(profile => modes.map(mode => ({
             path: `stats/${profile}/${mode}`,
@@ -953,18 +984,21 @@ function adjustManagedScores(operation) {
 function syncManagedScoreControls() {
     const isWordSearch = document.getElementById('score-game')?.value === 'word-search';
     const isBattleship = document.getElementById('score-game')?.value === 'battleship';
+    const isConnectFour = document.getElementById('score-game')?.value === 'connect-four';
     const modeSelect = document.getElementById('score-mode');
     const extraOptions = document.getElementById('score-word-search-options');
     const battleshipOptions = document.getElementById('score-battleship-options');
-    if (!modeSelect || !extraOptions || !battleshipOptions) return;
+    const connectFourOptions = document.getElementById('score-connect-four-options');
+    if (!modeSelect || !extraOptions || !battleshipOptions || !connectFourOptions) return;
 
     modeSelect.innerHTML = isWordSearch
         ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus</option>'
         : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
     extraOptions.classList.toggle('hidden', !isWordSearch);
     battleshipOptions.classList.toggle('hidden', !isBattleship);
-    modeSelect.classList.toggle('hidden', isBattleship);
-    document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship);
+    connectFourOptions.classList.toggle('hidden', !isConnectFour);
+    modeSelect.classList.toggle('hidden', isBattleship || isConnectFour);
+    document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship || isConnectFour);
 }
 
 function adjustManagedInteractions(operation) {
@@ -991,6 +1025,10 @@ function launchGame(gameId) {
     }
     if (gameId === 'battleship') {
         launchBattleship();
+        return;
+    }
+    if (gameId === 'connect-four') {
+        launchConnectFour();
         return;
     }
     if (gameId !== 'number-guess') return;
