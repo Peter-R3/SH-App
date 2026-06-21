@@ -489,7 +489,19 @@ function openStatsScreen() {
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('stats-screen', 'stats-header-shell', 'stats-nav-shell');
     refreshSharedHeader('stats');
+    closeStatsCategory();
     renderStats();
+}
+
+function openStatsCategory(gameId) {
+    if (gameId !== 'number-guess') return;
+    document.getElementById('stats-categories')?.classList.add('hidden');
+    document.getElementById('stats-number-guess-detail')?.classList.remove('hidden');
+}
+
+function closeStatsCategory() {
+    document.getElementById('stats-categories')?.classList.remove('hidden');
+    document.getElementById('stats-number-guess-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -673,6 +685,11 @@ function setManagementStatus(message) {
     if (status) status.innerText = message;
 }
 
+function selectedProfiles(selectId) {
+    const selection = document.getElementById(selectId)?.value || 'Peter';
+    return selection === 'both' ? ['Peter', 'Jadey'] : [selection];
+}
+
 function removeMatchingChildren(path, predicate) {
     return database.ref(path).once('value').then(snapshot => {
         const updates = {};
@@ -683,43 +700,62 @@ function removeMatchingChildren(path, predicate) {
     });
 }
 
-function clearNotificationsForManagedProfile() {
+function clearManagedCommunication(kind) {
     if (localPlayer !== 'Peter') return;
-    const profile = getManagedProfile();
-    if (!window.confirm(`Clear all notifications sent to ${profile}?`)) return;
+    const profiles = selectedProfiles('management-profile');
+    const targetLabel = profiles.length === 2 ? 'both profiles' : profiles[0];
+    if (!window.confirm(`Delete ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}?`)) return;
 
-    removeMatchingChildren('notifications', item => item.recipient === profile)
-        .then(() => setManagementStatus(`${profile}'s notifications were cleared.`))
-        .catch(error => setManagementStatus(`Could not clear notifications: ${error.message}`));
+    const tasks = [];
+    if (kind === 'notifications' || kind === 'both') {
+        tasks.push(removeMatchingChildren('notifications', item => profiles.includes(item.recipient)));
+    }
+    if (kind === 'messages' || kind === 'both') {
+        tasks.push(removeMatchingChildren('messages', item =>
+            profiles.includes(item.sender) || profiles.includes(item.recipient)
+        ));
+    }
+
+    Promise.all(tasks)
+        .then(() => setManagementStatus(`Deleted ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}.`))
+        .catch(error => setManagementStatus(`Could not delete data: ${error.message}`));
 }
 
-function clearMessagesForManagedProfile() {
-    if (localPlayer !== 'Peter') return;
-    const profile = getManagedProfile();
-    if (!window.confirm(`Clear every message involving ${profile}?`)) return;
-
-    removeMatchingChildren('messages', item => item.sender === profile || item.recipient === profile)
-        .then(() => setManagementStatus(`${profile}'s messages were cleared.`))
-        .catch(error => setManagementStatus(`Could not clear messages: ${error.message}`));
+function adjustCounter(path, operation) {
+    return database.ref(path).transaction(current => {
+        const value = Number(current) || 0;
+        if (operation === 'reset') return 0;
+        if (operation === 'increment') return value + 1;
+        return Math.max(0, value - 1);
+    });
 }
 
-function resetStatsForManagedProfile() {
+function adjustManagedScores(operation) {
     if (localPlayer !== 'Peter') return;
-    const profile = getManagedProfile();
-    if (!window.confirm(`Reset all game statistics for ${profile}?`)) return;
+    const profiles = selectedProfiles('score-profile');
+    const selectedMode = document.getElementById('score-mode')?.value || 'all';
+    const modes = selectedMode === 'all' ? ['ten', 'hundred', 'colours'] : [selectedMode];
+    if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
-    database.ref(`stats/${profile}`).set({ ten: 0, hundred: 0, colours: 0 })
-        .then(() => setManagementStatus(`${profile}'s statistics were reset.`))
-        .catch(error => setManagementStatus(`Could not reset statistics: ${error.message}`));
+    Promise.all(profiles.flatMap(profile =>
+        modes.map(mode => adjustCounter(`stats/${profile}/${mode}`, operation))
+    )).then(() => {
+        setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
+    }).catch(error => setManagementStatus(`Could not adjust scores: ${error.message}`));
 }
 
-function clearAllCommunicationData() {
+function adjustManagedInteractions(operation) {
     if (localPlayer !== 'Peter') return;
-    if (!window.confirm('Clear every stored message and notification for both profiles?')) return;
+    const profiles = selectedProfiles('interaction-profile');
+    const selectedType = document.getElementById('interaction-type')?.value || 'all';
+    const types = selectedType === 'all' ? ['hearts', 'hugs', 'kisses'] : [selectedType];
+    if (operation === 'reset' && !window.confirm('Reset the selected interaction scores to zero?')) return;
 
-    database.ref().update({ messages: null, notifications: null })
-        .then(() => setManagementStatus('All messages and notifications were cleared.'))
-        .catch(error => setManagementStatus(`Could not clear communication data: ${error.message}`));
+    Promise.all(profiles.flatMap(profile =>
+        types.map(type => adjustCounter(`interactions/${profile}/${type}`, operation))
+    )).then(() => {
+        setManagementStatus(`Interaction operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
+    }).catch(error => setManagementStatus(`Could not adjust interactions: ${error.message}`));
 }
 
 // =========================================================================
@@ -736,7 +772,9 @@ function launchGame(gameId) {
     const currentProfile = playerProfiles[localPlayer] || { nickname: localPlayer, initial: '?' };
 
     const topNick = document.getElementById('game-top-nickname');
+    const topInitial = document.getElementById('game-top-initial');
     if (topNick) topNick.innerText = currentProfile.nickname;
+    if (topInitial) topInitial.innerText = currentProfile.initial;
 
     currentSelectedGuess = null;
     isRevealingRound = false;
@@ -1071,6 +1109,7 @@ function openModesSelection() {
     const gameScreen = document.getElementById('game-1-to-10-screen');
     const modesScreen = document.getElementById('modes-screen');
     const headerShell = document.getElementById('modes-header-shell');
+    const navShell = document.getElementById('modes-nav-shell');
     if (gameScreen) gameScreen.classList.add('hidden');
     if (modesScreen) {
         modesScreen.classList.remove('hidden');
@@ -1080,6 +1119,10 @@ function openModesSelection() {
     if (headerShell) {
         headerShell.classList.remove('header-peter', 'header-jadey');
         headerShell.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
+    }
+    if (navShell) {
+        navShell.classList.remove('nav-peter', 'nav-jadey');
+        navShell.classList.add(localPlayer === 'Peter' ? 'nav-peter' : 'nav-jadey');
     }
     updateModeButtons();
 }

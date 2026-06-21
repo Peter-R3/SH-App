@@ -263,8 +263,61 @@ button:active {
     text-align: center;
 }
 
+.game-card-art {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: 0;
+    background: #0A0F14;
+}
+
+.game-card-art::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+    z-index: 0;
+    background-image: var(--game-art);
+    background-position: center;
+    background-size: cover;
+    filter: blur(10px);
+    transform: scale(1.12);
+}
+
+.game-card-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.game-card-image {
+    position: absolute;
+    inset: 7px;
+    width: calc(100% - 14px);
+    height: calc(100% - 14px);
+    z-index: 1;
+    border-radius: 12px;
+    object-fit: contain;
+}
+
+.game-card-art span {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    width: 100%;
+    padding: 12px 8px;
+    background: rgba(0, 0, 0, 0.68);
+    color: #FFFFFF;
+    font-size: 17px;
+    line-height: 1.15;
+    backdrop-filter: blur(4px);
+}
+
 .grid-game-btn.locked {
-    opacity: 0.4;
+    opacity: 0.58;
     cursor: not-allowed;
 }
 
@@ -297,6 +350,16 @@ button:active {
     border-top: 1px solid #161B22;
     width: 100%;
     flex-shrink: 0;
+}
+
+.game-bottom-nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding-inline: 4px;
+}
+
+.game-bottom-nav .nav-tab-btn {
+    min-width: 0;
+    font-size: 10px;
 }
 
 .nav-tab-btn {
@@ -545,6 +608,49 @@ button:active {
     padding: 18px;
 }
 
+.stats-category-card {
+    width: 100%;
+    min-height: 92px;
+    margin-bottom: 12px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    text-align: left;
+}
+
+.stats-category-card img {
+    width: 72px;
+    height: 72px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.stats-category-card span {
+    font-size: 19px;
+}
+
+.stats-category-card.locked {
+    opacity: 0.45;
+}
+
+.stats-back-btn {
+    padding: 0;
+    background: transparent;
+    color: #8B949E;
+    font-size: 13px;
+}
+
+.stats-detail-title {
+    margin: 14px 0;
+    font-size: 22px;
+}
+
 .stats-player-card {
     margin-bottom: 16px;
     border: 1px solid #161B22;
@@ -589,6 +695,21 @@ button:active {
     padding: 20px;
 }
 
+.management-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.management-group h2 {
+    margin-bottom: 2px;
+    font-size: 17px;
+}
+
 .management-content label {
     color: #8B949E;
     font-size: 12px;
@@ -614,6 +735,16 @@ button:active {
     background: #161B22;
     color: #FFFFFF;
     text-align: left;
+}
+
+.management-actions {
+    display: grid;
+    grid-template-columns: 1fr 64px 64px;
+    gap: 8px;
+}
+
+.management-actions button {
+    text-align: center;
 }
 
 .management-content .danger-action {
