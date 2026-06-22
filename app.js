@@ -1,16 +1,36 @@
 // Calculate exact mobile viewport height to fix PWA layout cut-offs
-function calculateRealVh() {
-  const viewportHeight = window.visualViewport?.height || window.innerHeight;
-  let vh = viewportHeight * 0.01;
-  document.documentElement.style.setProperty('--vh', `${vh}px`);
+let lastViewportWidth = window.innerWidth;
+let stableViewportHeight = window.innerHeight;
+
+function calculateRealVh(forceReset = false) {
+  const widthChanged = Math.abs(window.innerWidth - lastViewportWidth) > 80;
+  if (forceReset || widthChanged) {
+    lastViewportWidth = window.innerWidth;
+    stableViewportHeight = window.innerHeight;
+  } else if (!document.activeElement?.matches?.('input, textarea, select')) {
+    stableViewportHeight = Math.max(stableViewportHeight, window.innerHeight);
+  }
+  document.documentElement.style.setProperty('--vh', `${stableViewportHeight * 0.01}px`);
 }
 
 // Run calculations on load and when orientation changes
 window.addEventListener('resize', calculateRealVh);
-window.addEventListener('orientationchange', calculateRealVh);
-window.addEventListener('pageshow', calculateRealVh);
+window.addEventListener('orientationchange', () => window.setTimeout(() => calculateRealVh(true), 150));
+window.addEventListener('pageshow', () => restoreViewportAfterKeyboard());
 window.visualViewport?.addEventListener('resize', calculateRealVh);
 calculateRealVh();
+
+function restoreViewportAfterKeyboard() {
+    if (document.activeElement?.matches?.('input, textarea, select')) document.activeElement.blur();
+    window.scrollTo(0, 0);
+    document.getElementById('main-content')?.scrollTo?.(0, 0);
+    [50, 250, 600].forEach(delay => window.setTimeout(() => calculateRealVh(true), delay));
+}
+
+document.addEventListener('visibilitychange', () => {
+    updateAppPresence();
+    if (!document.hidden) restoreViewportAfterKeyboard();
+});
 
 if (navigator.serviceWorker?.register) {
   window.addEventListener('load', () => {
@@ -130,6 +150,43 @@ let pendingProfilePhoto = null;
 let realtimeFeedsStarted = false;
 let retentionCleanupRunning = false;
 let authRejectionMessage = '';
+let activeAppView = 'signed-out';
+let presenceDisconnectHandle = null;
+window.setInterval(updateAppPresence, 30 * 1000);
+
+function setActiveAppView(view) {
+    activeAppView = view;
+    updateAppPresence();
+}
+
+function updateAppPresence() {
+    if (!localPlayer || !auth.currentUser) return;
+    const ref = database.ref(`presence/${localPlayer}`);
+    ref.set({
+        view: activeAppView,
+        visible: !document.hidden,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+    });
+    if (!presenceDisconnectHandle && ref.onDisconnect) {
+        presenceDisconnectHandle = ref.onDisconnect();
+        presenceDisconnectHandle.remove();
+    }
+}
+
+function recipientIsViewing(recipient, view) {
+    return database.ref(`presence/${recipient}`).once('value').then(snapshot => {
+        const presence = snapshot.val() || {};
+        const recentlyUpdated = Number(presence.updatedAt) >= Date.now() - (2 * 60 * 1000);
+        return presence.visible === true && recentlyUpdated && presence.view === view;
+    }).catch(() => false);
+}
+
+function sendAppNotification(notification, suppressWhenViewing = null) {
+    const send = () => database.ref('notifications').push(notification);
+    if (!suppressWhenViewing) return send();
+    return recipientIsViewing(notification.recipient, suppressWhenViewing)
+        .then(isViewing => isViewing ? null : send());
+}
 
 // =========================================================================
 // AUTHENTICATION
@@ -160,6 +217,8 @@ function showAuthScreen(message = 'Sign in with your approved account.', isError
     const loginScreen = document.getElementById('login-screen');
     if (loginScreen) loginScreen.classList.remove('hidden');
     localPlayer = null;
+    activeAppView = 'signed-out';
+    presenceDisconnectHandle = null;
     setAuthBusy(false);
     setAuthStatus(message, isError);
 }
@@ -170,6 +229,7 @@ function showAuthenticatedApp(playerName) {
     document.getElementById('main-dashboard')?.classList.remove('hidden');
     initialiseMainDashboard();
     initialiseRealtimeFeeds();
+    setActiveAppView('games');
 }
 
 function authErrorMessage(error) {
@@ -232,6 +292,7 @@ function signOut() {
 // MAIN INTERFACE SKELETON LAYER
 // =========================================================================
 function initialiseMainDashboard() {
+    setActiveAppView('games');
     const mainDashboard = document.getElementById('main-dashboard');
     const headerShell = document.getElementById('dashboard-header-shell');
     const navShell = document.getElementById('dashboard-nav-shell');
@@ -348,12 +409,14 @@ function switchTab(tabName) {
 
     document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active-tab'));
     document.querySelectorAll(`.nav-tab-btn[onclick*="${tabName}"]`).forEach(btn => btn.classList.add('active-tab'));
+    setActiveAppView(tabName);
 }
 
 // =========================================================================
 // PROFILE INTERFACE
 // =========================================================================
 function openProfileSettings() {
+    setActiveAppView('profile');
     const mainDash = document.getElementById('main-dashboard');
     if (mainDash) mainDash.classList.add('hidden');
     
@@ -433,6 +496,7 @@ function refreshAccountEmail() {
 }
 
 function openAccountSettings() {
+    setActiveAppView('account-settings');
     if (!auth.currentUser) return;
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('account-settings-screen');
@@ -796,6 +860,7 @@ function sendInteractionBack(notificationId, type) {
 }
 
 function openMessagesScreen() {
+    setActiveAppView('messages');
     const screen = document.getElementById('messages-screen');
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('messages-screen', 'messages-header-shell', 'messages-nav-shell');
@@ -804,6 +869,7 @@ function openMessagesScreen() {
 }
 
 function openNotificationsScreen() {
+    setActiveAppView('alerts');
     const screen = document.getElementById('notifications-screen');
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('notifications-screen', 'notifications-header-shell', 'notifications-nav-shell');
@@ -813,6 +879,7 @@ function openNotificationsScreen() {
 }
 
 function openStatsScreen() {
+    setActiveAppView('stats');
     const screen = document.getElementById('stats-screen');
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('stats-screen', 'stats-header-shell', 'stats-nav-shell');
@@ -874,7 +941,7 @@ function sendMessage(event) {
         text,
         createdAt: Date.now()
     });
-    database.ref('notifications').push({
+    sendAppNotification({
         type: `Message from ${senderNickname}`,
         action: 'reply',
         sender: localPlayer,
@@ -882,7 +949,7 @@ function sendMessage(event) {
         body: text,
         createdAt: Date.now(),
         readBy: {}
-    });
+    }, 'messages');
 
     input.value = '';
 }
@@ -1215,6 +1282,7 @@ function launchGame(gameId) {
         return;
     }
     if (gameId !== 'number-guess') return;
+    setActiveAppView('number-guess');
 
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
 
@@ -1443,7 +1511,7 @@ function processPadSubmission() {
         currentSelectedGuess = null;
 
         database.ref('games/1-to-10').set(gameState1To10);
-        database.ref('notifications').push({
+        sendAppNotification({
             type: 'Game Update',
             action: 'check-game',
             sender: localPlayer,
@@ -1451,7 +1519,7 @@ function processPadSubmission() {
             body: `${playerProfiles[localPlayer]?.nickname || localPlayer} has finished their turn in ${getCurrentMode().title}`,
             createdAt: Date.now(),
             readBy: {}
-        });
+        }, 'number-guess');
     }
 }
 
@@ -1594,7 +1662,7 @@ function selectGameMode(modeKey) {
     isRevealingRound = false;
 
     database.ref('games/1-to-10').set(nextState);
-    database.ref('notifications').push({
+    sendAppNotification({
         type: 'Game Update',
         action: 'check-game',
         sender: localPlayer,
@@ -1602,7 +1670,7 @@ function selectGameMode(modeKey) {
         body: `${playerProfiles[localPlayer]?.nickname || localPlayer} changed 1 to 10 mode to ${gameModes[modeKey].title}`,
         createdAt: Date.now(),
         readBy: {}
-    });
+    }, 'number-guess');
 
     launchGame('number-guess');
 }

@@ -54,6 +54,7 @@ function saveWordSearchSettings() {
 
 function launchWordSearch() {
     if (!localPlayer) return;
+    setActiveAppView('word-search');
     loadWordSearchSettings();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('word-search-screen');
@@ -71,6 +72,7 @@ function launchWordSearch() {
 }
 
 function openWordSearchSettings() {
+    setActiveAppView('word-search');
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('word-search-settings-screen')?.classList.remove('hidden');
     const header = document.getElementById('word-search-settings-header');
@@ -146,7 +148,7 @@ function soloWordSearchPath() {
 }
 
 function coopWordSearchPath() {
-    return `wordSearch/coop/${wordSearchSettings.difficulty}`;
+    return 'wordSearch/coop/current';
 }
 
 function createWordSearchState(puzzle) {
@@ -353,6 +355,10 @@ function stopWordSearchRealtime() {
 
 function applyWordSearchState(state) {
     if (!state?.puzzle) return;
+    if (wordSearchSettings.mode === 'coop' && WORD_SEARCH_DIFFICULTIES.includes(Number(state.puzzle.size))) {
+        wordSearchSettings.difficulty = Number(state.puzzle.size);
+        saveWordSearchSettings();
+    }
     wordSearchPuzzle = state.puzzle;
     wordSearchFound = state.found || {};
     wordSearchStartedAt = state.startedAt || Date.now();
@@ -395,19 +401,26 @@ function bindWordSearchPointerEvents() {
         wordSearchSelection = [cellCoordinates(cell)];
         updateWordSearchPreview();
     };
-    grid.onpointermove = event => {
-        if (!wordSearchDragging) return;
-        const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest('.word-search-cell');
-        if (!cell || !grid.contains(cell)) return;
+    const updateEndCell = event => {
+        const target = document.elementFromPoint(event.clientX, event.clientY);
+        const cell = target?.closest?.('.word-search-cell');
+        if (!cell || !grid.contains(cell) || !wordSearchSelection.length) return;
         const line = straightLine(wordSearchSelection[0], cellCoordinates(cell));
         if (line.length) {
             wordSearchSelection = line;
             updateWordSearchPreview();
         }
     };
-    const finish = () => {
+    grid.onpointermove = event => {
         if (!wordSearchDragging) return;
+        event.preventDefault();
+        updateEndCell(event);
+    };
+    const finish = event => {
+        if (!wordSearchDragging) return;
+        if (event?.clientX !== undefined) updateEndCell(event);
         wordSearchDragging = false;
+        if (grid.hasPointerCapture?.(event?.pointerId)) grid.releasePointerCapture(event.pointerId);
         submitWordSearchSelection();
     };
     grid.onpointerup = finish;
@@ -636,7 +649,7 @@ function approveCoopWordSearchRequest(requestId) {
         if (!request || request.recipient !== localPlayer || request.status !== 'pending') return;
         const puzzle = createWordSearchState(createWordSearchPuzzle(Number(request.difficulty)));
         return Promise.all([
-            database.ref(`wordSearch/coop/${request.difficulty}`).set(puzzle),
+            database.ref(coopWordSearchPath()).set(puzzle),
             requestRef.update({ status: 'approved', approvedBy: localPlayer, approvedAt: Date.now() })
         ]);
     });
@@ -661,17 +674,19 @@ function abandonVersusMatch(notifyOpponent) {
     return database.ref('wordSearch/versus/current').once('value').then(snapshot => {
         const match = snapshot.val();
         if (!match || !match.players?.[localPlayer] || match.status === 'finished') return;
+        const opponent = otherPlayer(localPlayer);
+        const notification = {
+            type: 'Word Search',
+            sender: localPlayer,
+            recipient: opponent,
+            body: `${playerProfiles[localPlayer]?.nickname || localPlayer} left the Versus match. The match was abandoned.`,
+            createdAt: Date.now(),
+            readBy: {}
+        };
         const updates = { 'wordSearch/versus/current': null };
         if (notifyOpponent && match.players?.[otherPlayer(localPlayer)]) {
-            const notificationKey = database.ref('notifications').push().key;
-            updates[`notifications/${notificationKey}`] = {
-                type: 'Word Search',
-                sender: localPlayer,
-                recipient: otherPlayer(localPlayer),
-                body: `${playerProfiles[localPlayer]?.nickname || localPlayer} left the Versus match. The match was abandoned.`,
-                createdAt: Date.now(),
-                readBy: {}
-            };
+            return database.ref().update(updates)
+                .then(() => sendAppNotification(notification, 'word-search'));
         }
         return database.ref().update(updates);
     }).finally(() => {

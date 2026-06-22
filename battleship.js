@@ -16,6 +16,7 @@ let selectedBattleshipShipId = null;
 
 function launchBattleship() {
     if (!localPlayer) return;
+    setActiveAppView('battleship');
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('battleship-screen')?.classList.remove('hidden');
     applyThemeToScreen('battleship-screen', 'battleship-header-shell', 'battleship-nav-shell');
@@ -368,7 +369,7 @@ function fireBattleshipShot(index) {
         if (result.sunk) database.ref(`stats/battleship/${localPlayer}/shipsSunk`).transaction(value => (value || 0) + 1);
         if (result.allSunk) {
             recordBattleshipResult(localPlayer, result.target);
-            database.ref('notifications').push({
+            sendAppNotification({
                 type: 'Battleship',
                 action: 'check-battleship',
                 sender: localPlayer,
@@ -376,7 +377,7 @@ function fireBattleshipShot(index) {
                 body: `${playerProfiles[localPlayer]?.nickname || localPlayer} won the Battleship match`,
                 createdAt: Date.now(),
                 readBy: {}
-            });
+            }, 'battleship');
         } else if (!result.hit) {
             sendBattleshipTurnNotification(result.target);
         }
@@ -384,7 +385,7 @@ function fireBattleshipShot(index) {
 }
 
 function sendBattleshipTurnNotification(recipient) {
-    database.ref('notifications').push({
+    sendAppNotification({
         type: 'Battleship',
         action: 'check-battleship',
         sender: localPlayer,
@@ -392,7 +393,7 @@ function sendBattleshipTurnNotification(recipient) {
         body: `${playerProfiles[localPlayer]?.nickname || localPlayer} finished their turn in Battleship`,
         createdAt: Date.now(),
         readBy: {}
-    });
+    }, 'battleship');
 }
 
 function recordBattleshipResult(winner, loser) {
@@ -426,7 +427,7 @@ function abandonBattleshipMatch() {
         if (error || !committed || !result) return;
         if (result.counted) recordBattleshipResult(result.opponent, localPlayer);
         if (result.joined) {
-            database.ref('notifications').push({
+            sendAppNotification({
                 type: 'Battleship',
                 action: 'check-battleship',
                 sender: localPlayer,
@@ -434,7 +435,7 @@ function abandonBattleshipMatch() {
                 body: `${playerProfiles[localPlayer]?.nickname || localPlayer} abandoned the Battleship match`,
                 createdAt: Date.now(),
                 readBy: {}
-            });
+            }, 'battleship');
         }
     });
 }

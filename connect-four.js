@@ -7,6 +7,7 @@ let connectFourHandler = null;
 
 function launchConnectFour() {
     if (!localPlayer) return;
+    setActiveAppView('connect-four');
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('connect-four-screen')?.classList.remove('hidden');
     applyThemeToScreen('connect-four-screen', 'connect-four-header-shell', 'connect-four-nav-shell');
@@ -212,7 +213,7 @@ function findConnectFourWin(board, index, player) {
 }
 
 function sendConnectFourNotification(recipient, body) {
-    database.ref('notifications').push({
+    sendAppNotification({
         type: 'Connect 4',
         action: 'check-connect-four',
         sender: localPlayer,
@@ -220,7 +221,7 @@ function sendConnectFourNotification(recipient, body) {
         body,
         createdAt: Date.now(),
         readBy: {}
-    });
+    }, 'connect-four');
 }
 
 function recordConnectFourResult(winner, loser) {
