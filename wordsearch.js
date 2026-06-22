@@ -393,19 +393,18 @@ function bindWordSearchPointerEvents() {
     const grid = document.getElementById('word-search-grid');
     if (!grid) return;
     grid.onpointerdown = event => {
-        const cell = event.target.closest('.word-search-cell');
-        if (!cell || grid.classList.contains('disabled')) return;
+        const start = wordSearchPositionFromPointer(grid, event);
+        if (!start || grid.classList.contains('disabled')) return;
         event.preventDefault();
         wordSearchDragging = true;
         grid.setPointerCapture?.(event.pointerId);
-        wordSearchSelection = [cellCoordinates(cell)];
+        wordSearchSelection = [start];
         updateWordSearchPreview();
     };
     const updateEndCell = event => {
-        const target = document.elementFromPoint(event.clientX, event.clientY);
-        const cell = target?.closest?.('.word-search-cell');
-        if (!cell || !grid.contains(cell) || !wordSearchSelection.length) return;
-        const line = straightLine(wordSearchSelection[0], cellCoordinates(cell));
+        const end = wordSearchPositionFromPointer(grid, event);
+        if (!end || !wordSearchSelection.length) return;
+        const line = straightLine(wordSearchSelection[0], end);
         if (line.length) {
             wordSearchSelection = line;
             updateWordSearchPreview();
@@ -425,6 +424,22 @@ function bindWordSearchPointerEvents() {
     };
     grid.onpointerup = finish;
     grid.onpointercancel = finish;
+}
+
+function wordSearchPositionFromPointer(grid, event) {
+    const rect = grid.getBoundingClientRect();
+    const size = Number(wordSearchPuzzle?.size) || 0;
+    if (!size || !rect.width || !rect.height) return null;
+    const x = Math.min(rect.width - 0.01, Math.max(0, event.clientX - rect.left));
+    const y = Math.min(rect.height - 0.01, Math.max(0, event.clientY - rect.top));
+    if (
+        event.clientX < rect.left || event.clientX > rect.right ||
+        event.clientY < rect.top || event.clientY > rect.bottom
+    ) return null;
+    return {
+        row: Math.floor((y / rect.height) * size),
+        col: Math.floor((x / rect.width) * size)
+    };
 }
 
 function cellCoordinates(cell) {
