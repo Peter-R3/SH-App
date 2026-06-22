@@ -252,6 +252,22 @@ button:disabled {
     opacity: 0.55;
 }
 
+.auth-link-btn {
+    display: block;
+    width: auto;
+    height: auto;
+    min-height: 36px;
+    margin: 8px auto 0;
+    padding: 6px 10px;
+    background: transparent;
+    color: #8B949E;
+    font-size: 13px;
+}
+
+.auth-link-btn:disabled {
+    opacity: 0.55;
+}
+
 .auth-status {
     min-height: 20px;
     margin-top: 14px;
@@ -815,6 +831,162 @@ button:disabled {
     background: #0A0F14;
     border: 1px solid #58A6FF;
     color: #FFFFFF;
+}
+
+.profile-account-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.profile-account-summary > div {
+    min-width: 0;
+}
+
+.profile-account-summary div > span {
+    display: block;
+    margin-bottom: 4px;
+    color: #6E7681;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.profile-account-summary strong {
+    display: block;
+    overflow: hidden;
+    color: #FFFFFF;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-account-summary button {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: auto;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 8px;
+    background: #161B22;
+    color: #FFFFFF;
+    font-size: 13px;
+}
+
+.profile-account-summary svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.account-settings-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.account-settings-group {
+    padding: 16px;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.account-settings-group h2 {
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+.account-current-value {
+    margin-bottom: 14px;
+    color: #8B949E;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.account-current-value strong {
+    color: #FFFFFF;
+}
+
+.account-settings-group form {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.account-settings-group label {
+    color: #8B949E;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.account-settings-group input {
+    width: 100%;
+    height: 46px;
+    padding: 0 12px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    outline: none;
+    background: #05080C;
+    color: #FFFFFF;
+    font: inherit;
+}
+
+.account-settings-group input:focus {
+    border-color: #FFFFFF;
+}
+
+.account-settings-group button,
+.account-sign-out {
+    width: 100%;
+    margin-top: 5px;
+    border-radius: 8px;
+    color: #FFFFFF;
+}
+
+.theme-peter .account-settings-group button {
+    background: #58A6FF;
+}
+
+.theme-jadey .account-settings-group button {
+    background: #b685bd;
+}
+
+.account-settings-status {
+    min-height: 20px;
+    margin: 0;
+    color: #8B949E;
+    text-align: center;
+    font-size: 13px;
+}
+
+.account-settings-status.error {
+    color: #FF7B72;
+}
+
+.account-sign-out {
+    flex: 0 0 auto;
+    border: 1px solid #F85149;
+    background: transparent;
+    color: #FF7B72;
+}
+
+#account-settings-screen button:disabled,
+#account-settings-screen input:disabled {
+    opacity: 0.55;
 }
 
 .stats-content {

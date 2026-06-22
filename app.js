@@ -143,12 +143,14 @@ function setAuthStatus(message, isError = false) {
 
 function setAuthBusy(busy) {
     const submit = document.getElementById('auth-submit');
+    const reset = document.getElementById('forgot-password-btn');
     const email = document.getElementById('auth-email');
     const password = document.getElementById('auth-password');
     if (submit) {
         submit.disabled = busy;
         submit.innerText = busy ? 'Signing in...' : 'Sign in';
     }
+    if (reset) reset.disabled = busy;
     if (email) email.disabled = busy;
     if (password) password.disabled = busy;
 }
@@ -194,8 +196,35 @@ function signIn(event) {
         });
 }
 
+function sendPasswordReset() {
+    const email = document.getElementById('auth-email')?.value.trim();
+    if (!email) {
+        setAuthStatus('Enter your email address first.', true);
+        document.getElementById('auth-email')?.focus();
+        return;
+    }
+
+    setAuthBusy(true);
+    setAuthStatus('Sending password reset email...');
+    auth.sendPasswordResetEmail(email)
+        .then(() => {
+            setAuthBusy(false);
+            setAuthStatus('If this is an approved account, a password reset link has been sent.');
+        })
+        .catch(error => {
+            setAuthBusy(false);
+            if (error?.code === 'auth/invalid-email') {
+                setAuthStatus('Enter a valid email address.', true);
+            } else if (error?.code === 'auth/network-request-failed') {
+                setAuthStatus('Could not connect. Check your internet connection.', true);
+            } else {
+                setAuthStatus('If this is an approved account, a password reset link has been sent.');
+            }
+        });
+}
+
 function signOut() {
-    if (!window.confirm('Sign out of Sweetheart’s App?')) return;
+    if (!window.confirm("Sign out of Sweetheart's App?")) return;
     auth.signOut().then(() => window.location.reload());
 }
 
@@ -340,6 +369,7 @@ function openProfileSettings() {
     renderProfileAvatar(document.getElementById('profile-main-avatar'), localPlayer);
     setTxt('profile-label-name', localPlayer);
     setTxt('profile-label-nickname', currentProfile.nickname);
+    setTxt('profile-account-email', auth.currentUser?.email || 'Email unavailable');
     
     const themeTitle = document.getElementById('profile-theme-title');
     const themeBlock = document.getElementById('profile-theme-block');
@@ -379,6 +409,122 @@ function closeProfileSettings() {
     const dash = document.getElementById('main-dashboard');
     if (dash) dash.classList.remove('hidden');
     initialiseMainDashboard();
+}
+
+function setAccountSettingsStatus(message, isError = false) {
+    const status = document.getElementById('account-settings-status');
+    if (!status) return;
+    status.innerText = message;
+    status.classList.toggle('error', isError);
+}
+
+function setAccountSettingsBusy(busy) {
+    document.querySelectorAll('#account-settings-screen input, #account-settings-screen button').forEach(control => {
+        control.disabled = busy;
+    });
+}
+
+function refreshAccountEmail() {
+    const email = auth.currentUser?.email || 'Email unavailable';
+    const currentEmail = document.getElementById('account-current-email');
+    const profileEmail = document.getElementById('profile-account-email');
+    if (currentEmail) currentEmail.innerText = email;
+    if (profileEmail) profileEmail.innerText = email;
+}
+
+function openAccountSettings() {
+    if (!auth.currentUser) return;
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+    const screen = document.getElementById('account-settings-screen');
+    const header = document.getElementById('account-settings-header-shell');
+    if (screen) {
+        screen.classList.remove('hidden', 'theme-peter', 'theme-jadey');
+        screen.classList.add(localPlayer === 'Peter' ? 'theme-peter' : 'theme-jadey');
+    }
+    if (header) {
+        header.classList.remove('header-peter', 'header-jadey');
+        header.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
+    }
+    refreshAccountEmail();
+    setAccountSettingsBusy(false);
+    setAccountSettingsStatus('');
+}
+
+function reauthenticateCurrentUser(password) {
+    const user = auth.currentUser;
+    if (!user?.email) return Promise.reject({ code: 'auth/user-missing' });
+    const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+    return user.reauthenticateWithCredential(credential);
+}
+
+function accountUpdateErrorMessage(error) {
+    if (error?.code === 'auth/invalid-credential' || error?.code === 'auth/wrong-password') return 'The current password is incorrect.';
+    if (error?.code === 'auth/email-already-in-use') return 'That email address is already in use.';
+    if (error?.code === 'auth/invalid-email') return 'Enter a valid email address.';
+    if (error?.code === 'auth/weak-password') return 'The new password must contain at least 6 characters.';
+    if (error?.code === 'auth/too-many-requests') return 'Too many attempts. Please wait and try again.';
+    if (error?.code === 'auth/network-request-failed') return 'Could not connect. Check your internet connection.';
+    if (error?.code === 'auth/operation-not-allowed') return 'This account change is not enabled in Firebase.';
+    return 'The account could not be updated. Please try again.';
+}
+
+function changeAccountEmail(event) {
+    event.preventDefault();
+    const newEmail = document.getElementById('account-new-email')?.value.trim();
+    const password = document.getElementById('account-email-password')?.value;
+    if (!newEmail || !password || !auth.currentUser) return;
+    if (newEmail.toLowerCase() === auth.currentUser.email?.toLowerCase()) {
+        setAccountSettingsStatus('Enter a different email address.', true);
+        return;
+    }
+
+    setAccountSettingsBusy(true);
+    setAccountSettingsStatus('Updating email...');
+    reauthenticateCurrentUser(password)
+        .then(() => {
+            if (typeof auth.currentUser.verifyBeforeUpdateEmail === 'function') {
+                return auth.currentUser.verifyBeforeUpdateEmail(newEmail).then(() => 'verification');
+            }
+            return auth.currentUser.updateEmail(newEmail).then(() => 'updated');
+        })
+        .then(result => {
+            event.target.reset();
+            refreshAccountEmail();
+            setAccountSettingsStatus(
+                result === 'verification'
+                    ? `Verification sent to ${newEmail}. Open the link to complete the change.`
+                    : 'Email address updated.'
+            );
+        })
+        .catch(error => setAccountSettingsStatus(accountUpdateErrorMessage(error), true))
+        .finally(() => setAccountSettingsBusy(false));
+}
+
+function changeAccountPassword(event) {
+    event.preventDefault();
+    const currentPassword = document.getElementById('account-current-password')?.value;
+    const newPassword = document.getElementById('account-new-password')?.value;
+    const confirmation = document.getElementById('account-confirm-password')?.value;
+    if (!currentPassword || !newPassword || !confirmation || !auth.currentUser) return;
+    if (newPassword.length < 6) {
+        setAccountSettingsStatus('The new password must contain at least 6 characters.', true);
+        return;
+    }
+    if (newPassword !== confirmation) {
+        setAccountSettingsStatus('The new passwords do not match.', true);
+        return;
+    }
+
+    setAccountSettingsBusy(true);
+    setAccountSettingsStatus('Updating password...');
+    reauthenticateCurrentUser(currentPassword)
+        .then(() => auth.currentUser.updatePassword(newPassword))
+        .then(() => {
+            event.target.reset();
+            setAccountSettingsStatus('Password updated.');
+        })
+        .catch(error => setAccountSettingsStatus(accountUpdateErrorMessage(error), true))
+        .finally(() => setAccountSettingsBusy(false));
 }
 
 function showMenu() {

@@ -30,6 +30,7 @@
                         <input id="auth-password" type="password" autocomplete="current-password" required>
                         <button id="auth-submit" type="submit">Sign in</button>
                     </form>
+                    <button id="forgot-password-btn" class="auth-link-btn" type="button" onclick="sendPasswordReset()">Forgot password?</button>
                     <p id="auth-status" class="auth-status" aria-live="polite">Checking your session...</p>
                 </div>
             </section>
@@ -115,9 +116,6 @@
                                     <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Profile</span>
                                     <div id="profile-label-name" style="font-size: 20px; font-weight: bold; margin-top: 2px;"></div>
                                 </div>
-                                <svg onclick="signOut()" role="button" aria-label="Sign out" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();signOut();}" style="width: 20px; height: 20px; fill: #6E7681; cursor: pointer; transition: fill 0.2s;" viewBox="0 0 24 24" onmouseover="this.style.fill='#FFFFFF'" onmouseout="this.style.fill='#6E7681'">
-                                    <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                                </svg>
                             </div>
                             
                             <div style="border-bottom: 1px solid #161B22; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -169,6 +167,17 @@
                         </div>
                         <div id="profile-theme-block" style="width: 32px; height: 32px; border-radius: 8px;"></div>
                     </div>
+
+                    <section class="profile-account-summary">
+                        <div>
+                            <span>Account email</span>
+                            <strong id="profile-account-email"></strong>
+                        </div>
+                        <button onclick="openAccountSettings()" aria-label="Open account settings">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58-1.92-3.32-2.39.96a7.23 7.23 0 0 0-1.62-.94L14.88 3h-3.84l-.36 3.18c-.58.24-1.12.55-1.62.94l-2.39-.96-1.92 3.32 2.03 1.58c-.04.31-.06.62-.06.94s.02.63.06.94l-2.03 1.58 1.92 3.32 2.39-.96c.5.39 1.04.7 1.62.94l.36 3.18h3.84l.36-3.18c.58-.24 1.12-.55 1.62-.94l2.39.96 1.92-3.32-2.03-1.58zM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5z"/></svg>
+                            <span>Settings</span>
+                        </button>
+                    </section>
 
                     <button id="app-management-btn" class="management-entry hidden" onclick="openManagementScreen()">
                         App management
@@ -537,6 +546,42 @@
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
+                </div>
+            </section>
+
+            <section id="account-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="account-settings-header-shell" class="dashboard-header">
+                    <span class="header-title">Account Settings</span>
+                    <button onclick="switchTab('profile')" class="mode-select-btn" aria-label="Back to profile">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                    </button>
+                </div>
+                <div class="account-settings-content">
+                    <section class="account-settings-group">
+                        <h2>Email address</h2>
+                        <p class="account-current-value">Currently signed in as <strong id="account-current-email"></strong></p>
+                        <form onsubmit="changeAccountEmail(event)">
+                            <label for="account-new-email">New email</label>
+                            <input id="account-new-email" type="email" autocomplete="email" inputmode="email" required>
+                            <label for="account-email-password">Current password</label>
+                            <input id="account-email-password" type="password" autocomplete="current-password" required>
+                            <button type="submit">Change email</button>
+                        </form>
+                    </section>
+                    <section class="account-settings-group">
+                        <h2>Password</h2>
+                        <form onsubmit="changeAccountPassword(event)">
+                            <label for="account-current-password">Current password</label>
+                            <input id="account-current-password" type="password" autocomplete="current-password" required>
+                            <label for="account-new-password">New password</label>
+                            <input id="account-new-password" type="password" autocomplete="new-password" minlength="6" required>
+                            <label for="account-confirm-password">Confirm new password</label>
+                            <input id="account-confirm-password" type="password" autocomplete="new-password" minlength="6" required>
+                            <button type="submit">Change password</button>
+                        </form>
+                    </section>
+                    <p id="account-settings-status" class="account-settings-status" aria-live="polite"></p>
+                    <button class="account-sign-out" onclick="signOut()">Sign out</button>
                 </div>
             </section>
 
