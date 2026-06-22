@@ -456,9 +456,17 @@ function updateWordSearchPreview() {
 }
 
 function submitWordSearchSelection() {
+    if (!wordSearchPuzzle || !wordSearchSelection.length) return;
+    const selectedWord = wordSearchSelection.map(position =>
+        wordSearchPuzzle.grid?.[position.row]?.[position.col] || ''
+    ).join('').toUpperCase();
+    const reversedWord = [...selectedWord].reverse().join('');
     const selectedKey = coordinateKey(wordSearchSelection);
     const reverseKey = coordinateKey([...wordSearchSelection].reverse());
-    const wordIndex = wordSearchPuzzle.paths.findIndex(path => {
+    let wordIndex = (wordSearchPuzzle.words || []).findIndex((word, index) =>
+        !wordSearchFound[index] && (word === selectedWord || word === reversedWord)
+    );
+    if (wordIndex < 0) wordIndex = (wordSearchPuzzle.paths || []).findIndex(path => {
         const pathKey = coordinateKey(path);
         return pathKey === selectedKey || pathKey === reverseKey;
     });
@@ -470,7 +478,9 @@ function submitWordSearchSelection() {
 }
 
 function coordinateKey(path) {
-    return path.map(position => `${position.row},${position.col}`).join('|');
+    return Array.isArray(path)
+        ? path.map(position => `${position.row},${position.col}`).join('|')
+        : '';
 }
 
 function wordSearchCell(position) {
