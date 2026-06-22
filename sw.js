@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sweethearts-app-v1';
+const CACHE_NAME = 'sweethearts-app-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,6 +7,9 @@ const APP_SHELL = [
   './wordsearch.js',
   './battleship.js',
   './connect-four.js',
+  './vendor/firebase/firebase-app-compat.js',
+  './vendor/firebase/firebase-auth-compat.js',
+  './vendor/firebase/firebase-database-compat.js',
   './manifest.json',
   './icon-180.png',
   './icon-192.png',
@@ -38,13 +41,13 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  const cacheable = url.origin === self.location.origin || url.hostname === 'www.gstatic.com';
+  const cacheable = url.origin === self.location.origin;
   if (!cacheable) return;
 
   event.respondWith(
     fetch(request)
       .then(response => {
-        if (response.ok) {
+        if (response.ok || response.type === 'opaque') {
           const copy = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }

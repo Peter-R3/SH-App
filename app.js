@@ -35,9 +35,8 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const database = firebase.database();
-
-const userPresenceRef = database.ref('active-profiles');
 
 // =========================================================================
 // LOCAL STATE & PROFILE DICTIONARY CONFIGURATION
@@ -53,6 +52,11 @@ const playerProfiles = {
         initial: 'J',
         nickname: 'Sweetheart'
     }
+};
+
+const approvedUsers = {
+    r5fWhg92yddJa4KohFM5kaNYyww1: 'Peter',
+    HwZHM84ymieoJMnAmCQQkRjd1iI3: 'Jadey'
 };
 
 const otherPlayer = (player) => player === 'Peter' ? 'Jadey' : 'Peter';
@@ -105,7 +109,6 @@ const interactionConfig = {
 
 const RETENTION_LIMIT = 50;
 const READ_NOTIFICATION_RETENTION_MS = 60 * 60 * 1000;
-const REMEMBERED_PROFILE_KEY = 'sweethearts-app-profile';
 
 let gameState1To10 = {
     mode: 'ten',
@@ -126,91 +129,74 @@ let profilePhotos = {};
 let pendingProfilePhoto = null;
 let realtimeFeedsStarted = false;
 let retentionCleanupRunning = false;
+let authRejectionMessage = '';
 
 // =========================================================================
-// THE ONBOARDING PROFILE TRANSITION LOOP
+// AUTHENTICATION
 // =========================================================================
-function selectProfile(playerName) {
-    if (!playerProfiles[playerName]) return;
-    localPlayer = playerName;
-    rememberProfile(playerName);
-    
+function setAuthStatus(message, isError = false) {
+    const status = document.getElementById('auth-status');
+    if (!status) return;
+    status.innerText = message;
+    status.classList.toggle('error', isError);
+}
+
+function setAuthBusy(busy) {
+    const submit = document.getElementById('auth-submit');
+    const email = document.getElementById('auth-email');
+    const password = document.getElementById('auth-password');
+    if (submit) {
+        submit.disabled = busy;
+        submit.innerText = busy ? 'Signing in...' : 'Sign in';
+    }
+    if (email) email.disabled = busy;
+    if (password) password.disabled = busy;
+}
+
+function showAuthScreen(message = 'Sign in with your approved account.', isError = false) {
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const loginScreen = document.getElementById('login-screen');
-    const welcomeContainer = document.getElementById('welcome-container');
-    const welcomeNameText = document.getElementById('welcome-name');
-    const mainDashboard = document.getElementById('main-dashboard');
-
-    if (loginScreen) {
-        loginScreen.style.transition = 'opacity 0.3s ease';
-        loginScreen.style.opacity = '0';
-    }
-
-    setTimeout(() => {
-        if (loginScreen) loginScreen.classList.add('hidden');
-        
-        if (welcomeNameText) {
-            welcomeNameText.style.color = localPlayer === 'Peter' ? '#58A6FF' : '#b685bd';
-            welcomeNameText.innerText = localPlayer;
-        }
-        
-        if (welcomeContainer) {
-            welcomeContainer.classList.remove('hidden');
-            welcomeContainer.style.opacity = '1';
-        }
-
-        setTimeout(() => {
-            if (welcomeContainer) {
-                welcomeContainer.style.transition = 'opacity 0.3s ease';
-                welcomeContainer.style.opacity = '0';
-            }
-
-            setTimeout(() => {
-                if (welcomeContainer) welcomeContainer.classList.add('hidden');
-                if (mainDashboard) mainDashboard.classList.remove('hidden');
-                initialiseMainDashboard();
-                initialiseRealtimeFeeds();
-            }, 300);
-        }, 1500);
-
-    }, 300);
+    if (loginScreen) loginScreen.classList.remove('hidden');
+    localPlayer = null;
+    setAuthBusy(false);
+    setAuthStatus(message, isError);
 }
 
-function rememberProfile(playerName) {
-    try {
-        localStorage.setItem(REMEMBERED_PROFILE_KEY, playerName);
-    } catch {
-        // Storage can be unavailable in private browsing; the app still works for this session.
-    }
-}
-
-function rememberedProfile() {
-    try {
-        const playerName = localStorage.getItem(REMEMBERED_PROFILE_KEY);
-        return playerProfiles[playerName] ? playerName : null;
-    } catch {
-        return null;
-    }
-}
-
-function restoreRememberedProfile() {
-    const playerName = rememberedProfile();
-    if (!playerName) return false;
+function showAuthenticatedApp(playerName) {
     localPlayer = playerName;
-    document.getElementById('login-screen')?.classList.add('hidden');
-    document.getElementById('welcome-container')?.classList.add('hidden');
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('main-dashboard')?.classList.remove('hidden');
     initialiseMainDashboard();
     initialiseRealtimeFeeds();
-    return true;
 }
 
-function forgetProfileAndReload() {
-    try {
-        localStorage.removeItem(REMEMBERED_PROFILE_KEY);
-    } catch {
-        // Reloading still returns to onboarding when storage is unavailable.
+function authErrorMessage(error) {
+    if (error?.code === 'auth/invalid-credential' || error?.code === 'auth/wrong-password' || error?.code === 'auth/user-not-found') {
+        return 'The email or password is incorrect.';
     }
-    window.location.reload();
+    if (error?.code === 'auth/too-many-requests') return 'Too many attempts. Please wait and try again.';
+    if (error?.code === 'auth/network-request-failed') return 'Could not connect. Check your internet connection.';
+    return 'Sign-in failed. Please try again.';
+}
+
+function signIn(event) {
+    event.preventDefault();
+    const email = document.getElementById('auth-email')?.value.trim();
+    const password = document.getElementById('auth-password')?.value;
+    if (!email || !password) return;
+    setAuthBusy(true);
+    setAuthStatus('Signing in...');
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .then(() => auth.signInWithEmailAndPassword(email, password))
+        .catch(error => {
+            setAuthBusy(false);
+            setAuthStatus(authErrorMessage(error), true);
+        });
+}
+
+function signOut() {
+    if (!window.confirm('Sign out of Sweetheart’s App?')) return;
+    auth.signOut().then(() => window.location.reload());
 }
 
 // =========================================================================
@@ -512,7 +498,7 @@ function resetProfilePhoto() {
 }
 
 function initialiseRealtimeFeeds() {
-    if (realtimeFeedsStarted) return;
+    if (realtimeFeedsStarted || !localPlayer || !auth.currentUser) return;
     realtimeFeedsStarted = true;
 
     database.ref('messages').limitToLast(RETENTION_LIMIT).on('value', (snapshot) => {
@@ -546,6 +532,13 @@ function initialiseRealtimeFeeds() {
     database.ref('profilePhotos').on('value', (snapshot) => {
         profilePhotos = snapshot.val() || {};
         refreshVisibleProfilePhotos();
+    });
+
+    database.ref('games/1-to-10').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+        gameState1To10 = normalizeGameState(data);
+        handleGameStateUpdate();
     });
 
     window.setInterval(runRetentionCleanup, 5 * 60 * 1000);
@@ -1468,15 +1461,6 @@ function selectGameMode(modeKey) {
     launchGame('number-guess');
 }
 
-// Fixed Synchronization Engine
-database.ref('games/1-to-10').on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    gameState1To10 = normalizeGameState(data);
-    handleGameStateUpdate();
-});
-
 function exitGame() {
     const gameScreen = document.getElementById('game-1-to-10-screen');
     if (gameScreen) gameScreen.classList.add('hidden');
@@ -1485,4 +1469,23 @@ function exitGame() {
     initialiseMainDashboard();
 }
 
-restoreRememberedProfile();
+auth.onAuthStateChanged(user => {
+    if (!user) {
+        const message = authRejectionMessage || 'Sign in with your approved account.';
+        const isError = Boolean(authRejectionMessage);
+        authRejectionMessage = '';
+        showAuthScreen(message, isError);
+        return;
+    }
+
+    const playerName = approvedUsers[user.uid];
+    if (!playerName) {
+        authRejectionMessage = 'This account is not authorised to use the app.';
+        auth.signOut();
+        return;
+    }
+
+    setAuthBusy(false);
+    setAuthStatus('');
+    showAuthenticatedApp(playerName);
+});

@@ -20,12 +20,17 @@
 
         <main id="main-content">
             <section id="login-screen" class="screen">
-                <p class="greeting-small">Hello!</p>
-                <h1 class="greeting-large">What's your name?</h1>
-
-                <div class="profile-buttons-wrapper">
-                    <button class="profile-btn peter-btn" onclick="selectProfile('Peter')">Peter</button>
-                    <button class="profile-btn jadey-btn" onclick="selectProfile('Jadey')">Jadey</button>
+                <div class="auth-panel">
+                    <p class="greeting-small">Sweetheart's App</p>
+                    <h1 class="auth-title">Sign in</h1>
+                    <form id="auth-form" class="auth-form" onsubmit="signIn(event)">
+                        <label for="auth-email">Email</label>
+                        <input id="auth-email" type="email" autocomplete="username" inputmode="email" required>
+                        <label for="auth-password">Password</label>
+                        <input id="auth-password" type="password" autocomplete="current-password" required>
+                        <button id="auth-submit" type="submit">Sign in</button>
+                    </form>
+                    <p id="auth-status" class="auth-status" aria-live="polite">Checking your session...</p>
                 </div>
             </section>
 
@@ -110,7 +115,7 @@
                                     <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Profile</span>
                                     <div id="profile-label-name" style="font-size: 20px; font-weight: bold; margin-top: 2px;"></div>
                                 </div>
-                                <svg onclick="forgetProfileAndReload()" role="button" aria-label="Switch profile" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();forgetProfileAndReload();}" style="width: 20px; height: 20px; fill: #6E7681; cursor: pointer; transition: fill 0.2s;" viewBox="0 0 24 24" onmouseover="this.style.fill='#FFFFFF'" onmouseout="this.style.fill='#6E7681'">
+                                <svg onclick="signOut()" role="button" aria-label="Sign out" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();signOut();}" style="width: 20px; height: 20px; fill: #6E7681; cursor: pointer; transition: fill 0.2s;" viewBox="0 0 24 24" onmouseover="this.style.fill='#FFFFFF'" onmouseout="this.style.fill='#6E7681'">
                                     <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
                                 </svg>
                             </div>
@@ -615,8 +620,9 @@
         </main>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="./vendor/firebase/firebase-app-compat.js"></script>
+    <script src="./vendor/firebase/firebase-auth-compat.js"></script>
+    <script src="./vendor/firebase/firebase-database-compat.js"></script>
 
     <script src="app.js"></script>
     <script src="wordsearch.js"></script>
