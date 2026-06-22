@@ -519,25 +519,39 @@ function recordFoundWord(wordIndex) {
 }
 
 function claimPersistentWord(path, wordIndex, finder) {
-    database.ref(path).transaction(current => {
-        if (!current?.puzzle || current.found?.[wordIndex]) return;
-        const now = Date.now();
+    if (wordSearchFound[wordIndex]) return;
+    const foundRef = database.ref(`${path}/found/${wordIndex}`);
+    const now = Date.now();
+    wordSearchFound[wordIndex] = finder;
+    paintFoundWords();
+    setWordSearchStatus('Saving word...');
+
+    foundRef.transaction(current => {
+        if (current) return;
+        return finder;
+    }, (error, committed, snapshot) => {
+        const savedFinder = snapshot?.val();
+        if (error || !savedFinder) {
+            delete wordSearchFound[wordIndex];
+            renderWordSearchBoard();
+            setWordSearchStatus('Could not save that word. Check your connection and try again.');
+            return;
+        }
+
+        wordSearchFound[wordIndex] = savedFinder;
+        paintFoundWords();
+        setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${wordSearchPuzzle.size}x${wordSearchPuzzle.size}`);
+        if (!committed) return;
+
         const activityStart = Math.max(
-            Number(current.lastActivityAt) || wordSearchSessionStartedAt || now,
+            Number(wordSearchLastActivityAt) || wordSearchSessionStartedAt || now,
             wordSearchSessionStartedAt || now
         );
-        current.found = current.found || {};
-        current.found[wordIndex] = finder;
-        current.activeMs = (Number(current.activeMs) || 0) + Math.min(5 * 60 * 1000, Math.max(0, now - activityStart));
-        current.lastActivityAt = now;
-        return current;
-    }, (error, committed, snapshot) => {
-        if (error || !committed) return;
-        const state = snapshot.val();
-        wordSearchFound = state.found || {};
-        wordSearchActiveMs = Number(state.activeMs) || 0;
-        wordSearchLastActivityAt = state.lastActivityAt || null;
-        paintFoundWords();
+        const addedActiveMs = Math.min(5 * 60 * 1000, Math.max(0, now - activityStart));
+        wordSearchActiveMs += addedActiveMs;
+        wordSearchLastActivityAt = now;
+        database.ref(`${path}/activeMs`).transaction(current => (Number(current) || 0) + addedActiveMs);
+        database.ref(`${path}/lastActivityAt`).set(now);
         incrementWordSearchWordsFound(finder, wordSearchSettings.mode, wordSearchSettings.difficulty);
         if (Object.keys(wordSearchFound).length >= wordSearchPuzzle.words.length) completeWordSearch();
     });
