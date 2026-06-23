@@ -1,7 +1,7 @@
 // Word Search game logic is kept separate from the existing game engine.
 const WORD_SEARCH_DIFFICULTIES = [5, 6, 7, 8, 9];
 const WORD_SEARCH_COUNTS = { 5: 4, 6: 5, 7: 6, 8: 7, 9: 8 };
-const WORD_SEARCH_COLOURS = ['#58A6FF', '#b685bd', '#2EA44F', '#F2CC60', '#F778BA', '#39C5CF', '#FF8C42', '#A78BFA'];
+const WORD_SEARCH_COLOURS = ['#58A6FF', '#FFD1DC', '#2EA44F', '#F2CC60', '#F778BA', '#39C5CF', '#FF8C42', '#A78BFA'];
 const WORD_SEARCH_DIRECTIONS = [
     [0, 1], [0, -1], [1, 0], [-1, 0],
     [1, 1], [1, -1], [-1, 1], [-1, -1]
@@ -56,6 +56,7 @@ function launchWordSearch() {
     if (!localPlayer) return;
     setActiveAppView('word-search');
     loadWordSearchSettings();
+    refreshWordSearchPresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('word-search-screen');
     if (screen) screen.classList.remove('hidden');
@@ -179,12 +180,16 @@ function loadSoloWordSearch() {
 function loadCoopWordSearch() {
     const path = coopWordSearchPath();
     const ref = database.ref(path);
-    ref.transaction(current => current?.puzzle && !current.completedAt
+    ref.transaction(current => current?.puzzle
         ? current
         : createWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty))
     );
     subscribeWordSearch(path, state => {
         applyWordSearchState(state);
+        if (state.completedAt) {
+            showCoopWordSearchComplete();
+            return;
+        }
         if (!state.completedAt && Object.keys(state.found || {}).length >= state.puzzle.words.length) completeWordSearch();
     });
 }
@@ -208,6 +213,7 @@ function createOrJoinVersusMatch(forceNew) {
                 puzzle: createWordSearchPuzzle(wordSearchSettings.difficulty),
                 status: 'waiting',
                 players: { [localPlayer]: true },
+                present: { [localPlayer]: Date.now() },
                 readyBy: {},
                 foundBy: { Peter: {}, Jadey: {} },
                 inviteSent: false,
@@ -216,6 +222,8 @@ function createOrJoinVersusMatch(forceNew) {
         }
         current.players = current.players || {};
         current.players[localPlayer] = true;
+        current.present = current.present || {};
+        current.present[localPlayer] = Date.now();
         return current;
     }).then(result => {
         const state = result.snapshot?.val?.();
@@ -269,8 +277,9 @@ function renderVersusState(state) {
     renderWordSearchBoard();
 
     if (state.status === 'waiting') {
+        concealWordSearchGrid(true);
         enableWordSearchGrid(false);
-        const bothPresent = state.players?.Peter && state.players?.Jadey;
+        const bothPresent = playerRecentlyPresent(state.present?.Peter) && playerRecentlyPresent(state.present?.Jadey);
         const ready = state.readyBy?.[localPlayer];
         showWordSearchResult(
             bothPresent
@@ -283,12 +292,15 @@ function renderVersusState(state) {
     }
 
     if (state.status === 'countdown') {
+        concealWordSearchGrid(true);
+        enableWordSearchGrid(false);
         showWordSearchResult('', false);
         startVersusCountdown(state.startsAt);
         return;
     }
 
     if (state.status === 'active') {
+        concealWordSearchGrid(false);
         showWordSearchResult('', false);
         setWordSearchStatus(`Versus • ${state.difficulty}×${state.difficulty}`);
         enableWordSearchGrid(true);
@@ -297,6 +309,7 @@ function renderVersusState(state) {
     }
 
     if (state.status === 'finished') {
+        concealWordSearchGrid(false);
         wordSearchDisconnectHandle?.cancel?.();
         wordSearchDisconnectHandle = null;
         enableWordSearchGrid(false);
@@ -310,10 +323,12 @@ function readyForVersus() {
     ref.transaction(current => {
         if (!current || current.status !== 'waiting') return current;
         current.readyBy = current.readyBy || {};
+        current.present = current.present || {};
+        current.present[localPlayer] = Date.now();
         current.readyBy[localPlayer] = true;
         if (current.readyBy.Peter && current.readyBy.Jadey) {
             current.status = 'countdown';
-            current.startsAt = Date.now() + 3500;
+            current.startsAt = Date.now() + 5000;
         }
         return current;
     });
@@ -327,11 +342,35 @@ function startVersusCountdown(startsAt) {
         setWordSearchStatus(remaining ? `Starting in ${remaining}...` : 'Go!');
         if (!remaining) {
             window.clearInterval(wordSearchVersusCountdown);
-            database.ref('wordSearch/versus/current/status').set('active');
+            database.ref('wordSearch/versus/current').transaction(current => {
+                if (!current || current.status !== 'countdown' || Date.now() < Number(current.startsAt || 0)) return current;
+                current.status = 'active';
+                return current;
+            });
         }
     };
     tick();
     wordSearchVersusCountdown = window.setInterval(tick, 250);
+}
+
+function playerRecentlyPresent(timestamp) {
+    return Number(timestamp) >= Date.now() - 25 * 1000;
+}
+
+function refreshWordSearchPresence(timestamp = Date.now()) {
+    if (wordSearchSettings.mode !== 'versus') return;
+    database.ref('wordSearch/versus/current').transaction(current => {
+        if (!current || current.status === 'finished') return current;
+        current.players = current.players || {};
+        current.players[localPlayer] = true;
+        current.present = current.present || {};
+        current.present[localPlayer] = timestamp;
+        return current;
+    });
+}
+
+function concealWordSearchGrid(concealed) {
+    document.getElementById('word-search-grid')?.classList.toggle('concealed', concealed);
 }
 
 function subscribeWordSearch(path, handler) {
@@ -366,8 +405,12 @@ function applyWordSearchState(state) {
     wordSearchLastActivityAt = state.lastActivityAt || null;
     renderWordSearchBoard();
     setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} • ${wordSearchPuzzle.size}×${wordSearchPuzzle.size}`);
-    showWordSearchResult('', false);
-    enableWordSearchGrid(true);
+    if (wordSearchSettings.mode === 'coop' && state.completedAt) {
+        showCoopWordSearchComplete();
+    } else {
+        showWordSearchResult('', false);
+        enableWordSearchGrid(true);
+    }
 }
 
 function renderWordSearchBoard() {
@@ -566,7 +609,10 @@ function paintFoundWords() {
     if (!wordSearchPuzzle) return;
     Object.keys(wordSearchFound).forEach(key => {
         const index = Number(key);
-        const colour = WORD_SEARCH_COLOURS[index % WORD_SEARCH_COLOURS.length];
+        const finder = wordSearchFound[key];
+        const colour = wordSearchSettings.mode === 'coop'
+            ? wordSearchThemeShade(themeColorFor(finder), index)
+            : WORD_SEARCH_COLOURS[index % WORD_SEARCH_COLOURS.length];
         wordSearchPuzzle.paths[index]?.forEach(position => {
             const cell = wordSearchCell(position);
             if (cell) {
@@ -576,6 +622,13 @@ function paintFoundWords() {
         });
         document.querySelector(`[data-word-index="${index}"]`)?.classList.add('found');
     });
+}
+
+function wordSearchThemeShade(baseColour, index) {
+    const rgb = hexToRgb(baseColour) || { r: 128, g: 128, b: 128 };
+    const adjustments = [0, -18, 18, -32, 32, -10, 10, -24];
+    const adjustment = adjustments[index % adjustments.length];
+    return rgbToHex(rgb.r + adjustment, rgb.g + adjustment, rgb.b + adjustment);
 }
 
 function completeWordSearch() {
@@ -601,10 +654,27 @@ function completeWordSearch() {
                 ['Peter', 'Jadey'].forEach(player => incrementWordSearchCompletion(player, mode, difficulty, elapsed));
             }
         });
-        showWordSearchResult('<strong>Co-op grid complete!</strong>', true);
+        showCoopWordSearchComplete();
     } else {
         finishVersusMatch(elapsed);
     }
+}
+
+function showCoopWordSearchComplete() {
+    enableWordSearchGrid(false);
+    showWordSearchResult(
+        '<div><strong>Grid complete!</strong><span class="word-search-result-note">Start another together when you are ready.</span></div>' +
+        '<button onclick="requestNewCoopGridFromComplete()">New grid</button>',
+        true
+    );
+}
+
+function requestNewCoopGridFromComplete() {
+    requestNewWordSearchGrid();
+    showWordSearchResult(
+        '<div><strong>Request sent</strong><span class="word-search-result-note">Waiting for the other player to approve the new grid.</span></div>',
+        true
+    );
 }
 
 function finishVersusMatch(elapsed) {

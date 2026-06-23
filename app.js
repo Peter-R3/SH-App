@@ -74,13 +74,26 @@ const playerProfiles = {
     }
 };
 
+const DEFAULT_THEME_COLOURS = {
+    Peter: '#58A6FF',
+    Jadey: '#FFD1DC'
+};
+
+let playerThemes = { ...DEFAULT_THEME_COLOURS };
+let pendingThemeColour = null;
+
 const approvedUsers = {
     r5fWhg92yddJa4KohFM5kaNYyww1: 'Peter',
     HwZHM84ymieoJMnAmCQQkRjd1iI3: 'Jadey'
 };
 
 const otherPlayer = (player) => player === 'Peter' ? 'Jadey' : 'Peter';
-const themeColorFor = (player) => player === 'Peter' ? '#58A6FF' : '#b685bd';
+const themeColorFor = player => playerThemes[player] || DEFAULT_THEME_COLOURS[player] || '#FFFFFF';
+const textColorFor = colour => {
+    const rgb = hexToRgb(colour);
+    if (!rgb) return '#FFFFFF';
+    return ((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000) > 170 ? '#111111' : '#FFFFFF';
+};
 
 const gameModes = {
     ten: {
@@ -153,6 +166,7 @@ let authRejectionMessage = '';
 let activeAppView = 'signed-out';
 let presenceDisconnectHandle = null;
 window.setInterval(updateAppPresence, 30 * 1000);
+window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
     activeAppView = view;
@@ -170,6 +184,38 @@ function updateAppPresence() {
     if (!presenceDisconnectHandle && ref.onDisconnect) {
         presenceDisconnectHandle = ref.onDisconnect();
         presenceDisconnectHandle.remove();
+    }
+    if (!document.hidden) refreshActiveMultiplayerSession();
+}
+
+function refreshActiveMultiplayerSession() {
+    if (!localPlayer || !auth.currentUser || document.hidden) return;
+    const now = Date.now();
+    if (activeAppView === 'word-search' && typeof refreshWordSearchPresence === 'function') {
+        refreshWordSearchPresence(now);
+    } else if (activeAppView === 'battleship') {
+        database.ref('games/battleship/current').transaction(current => {
+            if (!current || current.status === 'finished') return current;
+            current.players = current.players || {};
+            current.players[localPlayer] = true;
+            current.present = current.present || {};
+            current.present[localPlayer] = now;
+            return current;
+        });
+    } else if (activeAppView === 'connect-four') {
+        database.ref('games/connectFour/current').transaction(current => {
+            if (!current || current.status === 'finished') return current;
+            current.players = current.players || {};
+            current.players[localPlayer] = true;
+            current.present = current.present || {};
+            current.present[localPlayer] = now;
+            if (current.status === 'waiting' && current.players.Peter && current.players.Jadey) {
+                current.status = 'active';
+                current.turn = current.turn || (Math.random() < 0.5 ? 'Peter' : 'Jadey');
+                current.startedAt = current.startedAt || Date.now();
+            }
+            return current;
+        });
     }
 }
 
@@ -293,6 +339,7 @@ function signOut() {
 // =========================================================================
 function initialiseMainDashboard() {
     setActiveAppView('games');
+    applyThemeVariables();
     const mainDashboard = document.getElementById('main-dashboard');
     const headerShell = document.getElementById('dashboard-header-shell');
     const navShell = document.getElementById('dashboard-nav-shell');
@@ -319,7 +366,18 @@ function initialiseMainDashboard() {
     refreshSharedHeader('dashboard');
 }
 
+function applyThemeVariables() {
+    document.documentElement.style.setProperty('--peter-theme', themeColorFor('Peter'));
+    document.documentElement.style.setProperty('--jadey-theme', themeColorFor('Jadey'));
+    document.documentElement.style.setProperty('--peter-theme-text', textColorFor(themeColorFor('Peter')));
+    document.documentElement.style.setProperty('--jadey-theme-text', textColorFor(themeColorFor('Jadey')));
+    document.documentElement.style.setProperty('--theme-color', themeColorFor(localPlayer));
+    document.documentElement.style.setProperty('--theme-text-color', textColorFor(themeColorFor(localPlayer)));
+    document.documentElement.style.setProperty('--other-theme-color', themeColorFor(otherPlayer(localPlayer)));
+}
+
 function applyThemeToScreen(screenId, headerId, navId) {
+    applyThemeVariables();
     const screen = document.getElementById(screenId);
     const headerShell = document.getElementById(headerId);
     const navShell = document.getElementById(navId);
@@ -455,15 +513,98 @@ function openProfileSettings() {
         navShell.classList.add(localPlayer === 'Peter' ? 'nav-peter' : 'nav-jadey');
     }
 
+    applyThemeVariables();
     if (localPlayer === 'Peter') {
-        if (themeTitle) themeTitle.innerText = "Blue";
-        if (themeBlock) themeBlock.style.backgroundColor = "#58A6FF";
+        if (themeTitle) themeTitle.innerText = themeColorFor('Peter');
+        if (themeBlock) themeBlock.style.backgroundColor = themeColorFor('Peter');
         if (heartEmojiButton) heartEmojiButton.innerText = "🩵";
     } else {
-        if (themeTitle) themeTitle.innerText = "Pink";
-        if (themeBlock) themeBlock.style.backgroundColor = "#b685bd";
+        if (themeTitle) themeTitle.innerText = themeColorFor('Jadey');
+        if (themeBlock) themeBlock.style.backgroundColor = themeColorFor('Jadey');
         if (heartEmojiButton) heartEmojiButton.innerText = "🤍";
     }
+}
+
+function normalizeHexColour(value) {
+    const raw = String(value || '').trim().replace(/^#/, '');
+    if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+        return `#${raw.split('').map(char => char + char).join('').toUpperCase()}`;
+    }
+    return /^[0-9a-fA-F]{6}$/.test(raw) ? `#${raw.toUpperCase()}` : null;
+}
+
+function hexToRgb(hex) {
+    const normalized = normalizeHexColour(hex);
+    if (!normalized) return null;
+    return {
+        r: parseInt(normalized.slice(1, 3), 16),
+        g: parseInt(normalized.slice(3, 5), 16),
+        b: parseInt(normalized.slice(5, 7), 16)
+    };
+}
+
+function rgbToHex(r, g, b) {
+    const values = [r, g, b].map(value => Math.max(0, Math.min(255, Number(value))));
+    if (values.some(Number.isNaN)) return null;
+    return `#${values.map(value => Math.round(value).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+}
+
+function syncThemePicker(colour) {
+    const normalized = normalizeHexColour(colour);
+    if (!normalized) return false;
+    pendingThemeColour = normalized;
+    const rgb = hexToRgb(normalized);
+    document.getElementById('theme-colour-picker').value = normalized;
+    document.getElementById('theme-hex-input').value = normalized;
+    document.getElementById('theme-r-input').value = rgb.r;
+    document.getElementById('theme-g-input').value = rgb.g;
+    document.getElementById('theme-b-input').value = rgb.b;
+    document.getElementById('theme-picker-status').innerText = normalized;
+    return true;
+}
+
+function openThemePicker() {
+    syncThemePicker(themeColorFor(localPlayer));
+    document.getElementById('theme-picker-dialog')?.classList.remove('hidden');
+}
+
+function closeThemePicker() {
+    pendingThemeColour = null;
+    document.getElementById('theme-picker-dialog')?.classList.add('hidden');
+}
+
+function updateThemePickerFromColour(value) {
+    syncThemePicker(value);
+}
+
+function updateThemePickerFromHex(value) {
+    const normalized = normalizeHexColour(value);
+    if (normalized) syncThemePicker(normalized);
+}
+
+function updateThemePickerFromRgb() {
+    const colour = rgbToHex(
+        document.getElementById('theme-r-input')?.value,
+        document.getElementById('theme-g-input')?.value,
+        document.getElementById('theme-b-input')?.value
+    );
+    if (colour) syncThemePicker(colour);
+}
+
+function saveThemeColour() {
+    if (!localPlayer || !pendingThemeColour) return;
+    database.ref(`themes/${localPlayer}`).set(pendingThemeColour)
+        .then(closeThemePicker)
+        .catch(error => {
+            document.getElementById('theme-picker-status').innerText = `Could not save: ${error.message}`;
+        });
+}
+
+function resetThemeColour() {
+    if (!localPlayer) return;
+    const defaultColour = DEFAULT_THEME_COLOURS[localPlayer];
+    syncThemePicker(defaultColour);
+    database.ref(`themes/${localPlayer}`).set(defaultColour).then(closeThemePicker);
 }
 
 function closeProfileSettings() {
@@ -744,6 +885,20 @@ function initialiseRealtimeFeeds() {
         refreshVisibleProfilePhotos();
     });
 
+    database.ref('themes').on('value', snapshot => {
+        const themes = snapshot.val() || {};
+        playerThemes = {
+            Peter: normalizeHexColour(themes.Peter) || DEFAULT_THEME_COLOURS.Peter,
+            Jadey: normalizeHexColour(themes.Jadey) || DEFAULT_THEME_COLOURS.Jadey
+        };
+        applyThemeVariables();
+        renderMessages();
+        renderStats();
+        document.querySelectorAll('[id^="count-"] span:first-child').forEach(span => { span.style.color = themeColorFor('Peter'); });
+        document.querySelectorAll('[id^="count-"] span:last-child').forEach(span => { span.style.color = themeColorFor('Jadey'); });
+        if (!document.getElementById('profile-screen')?.classList.contains('hidden')) openProfileSettings();
+    });
+
     database.ref('games/1-to-10').on('value', (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -829,7 +984,7 @@ function renderInteractionCounters(counts) {
         const jadeyCount = counts?.Jadey?.[type] || 0;
         const counter = document.getElementById(`count-${type}`);
         if (counter) {
-            counter.innerHTML = `<span style="color: #58A6FF;">${peterCount}</span>:<span style="color: #b685bd;">${jadeyCount}</span>`;
+            counter.innerHTML = `<span style="color: ${themeColorFor('Peter')};">${peterCount}</span>:<span style="color: ${themeColorFor('Jadey')};">${jadeyCount}</span>`;
         }
     });
 }
@@ -981,7 +1136,7 @@ function renderMessages() {
         const bubble = `
             <div class="message-stack">
                 <div class="message-meta">${meta}</div>
-                <div class="message-bubble" style="background-color: ${themeColorFor(message.sender)};">${escapeHtml(message.text || '')}</div>
+                <div class="message-bubble" style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
             </div>
         `;
 

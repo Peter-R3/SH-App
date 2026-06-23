@@ -18,6 +18,8 @@ function launchConnectFour() {
         if (!current) return createConnectFourMatch();
         if (current.status === 'finished') return current;
         current.players = current.players || {};
+        current.present = current.present || {};
+        current.present[localPlayer] = Date.now();
         if (!current.players[localPlayer]) current.players[localPlayer] = true;
         if (current.status === 'waiting' && current.players.Peter && current.players.Jadey) {
             current.status = 'active';
@@ -36,6 +38,7 @@ function createConnectFourMatch() {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         status: 'waiting',
         players: { [localPlayer]: true },
+        present: { [localPlayer]: Date.now() },
         board: Array(CONNECT_FOUR_ROWS * CONNECT_FOUR_COLUMNS).fill(''),
         turn: null,
         winner: null,

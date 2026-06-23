@@ -28,6 +28,8 @@ function launchBattleship() {
         if (!current) return createBattleshipMatch();
         if (current.status === 'finished') return current;
         current.players = current.players || {};
+        current.present = current.present || {};
+        current.present[localPlayer] = Date.now();
         current.boards = current.boards || {};
         current.ready = current.ready || {};
         if (!current.players[localPlayer]) {
@@ -53,6 +55,7 @@ function createBattleshipMatch() {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         status: 'placement',
         players: { [localPlayer]: true },
+        present: { [localPlayer]: Date.now() },
         boards: { [localPlayer]: createBattleshipBoard() },
         ready: {},
         turn: null,

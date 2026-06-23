@@ -139,7 +139,7 @@
                                     🩵
                                 </button>
                                 <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Heart</span>
-                                <div id="count-hearts" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                                <div id="count-hearts" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: var(--peter-theme);">0</span>:<span style="color: var(--jadey-theme);">0</span></div>
                             </div>
 
                             <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
@@ -147,7 +147,7 @@
                                     🫂
                                 </button>
                                 <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Hug</span>
-                                <div id="count-hugs" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                                <div id="count-hugs" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: var(--peter-theme);">0</span>:<span style="color: var(--jadey-theme);">0</span></div>
                             </div>
 
                             <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
@@ -155,18 +155,18 @@
                                     💋
                                 </button>
                                 <span style="font-size: 12px; display: block; color: #6E7681; margin: 6px 0 4px 0;">Send Kiss</span>
-                                <div id="count-kisses" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: #58A6FF;">0</span>:<span style="color: #b685bd;">0</span></div>
+                                <div id="count-kisses" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: var(--peter-theme);">0</span>:<span style="color: var(--jadey-theme);">0</span></div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="border: 1px solid #161B22; border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; align-items: center; background: #0A0F14;">
+                    <button class="profile-theme-entry" onclick="openThemePicker()">
                         <div>
                             <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Theme Colour</span>
                             <div id="profile-theme-title" style="font-size: 18px; font-weight: bold; margin-top: 2px;"></div>
                         </div>
                         <div id="profile-theme-block" style="width: 32px; height: 32px; border-radius: 8px;"></div>
-                    </div>
+                    </button>
 
                     <section class="profile-account-summary">
                         <div>
@@ -660,6 +660,28 @@
                         <button id="profile-photo-confirm" class="primary" onclick="confirmProfilePhotoChange()" disabled>Confirm</button>
                     </div>
                     <button id="profile-photo-reset" class="profile-photo-reset" onclick="resetProfilePhoto()">Reset to placeholder</button>
+                </div>
+            </div>
+
+            <div id="theme-picker-dialog" class="profile-photo-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="theme-picker-title">
+                <div class="theme-picker-panel">
+                    <h2 id="theme-picker-title">Theme colour</h2>
+                    <input id="theme-colour-picker" class="theme-colour-picker" type="color" oninput="updateThemePickerFromColour(this.value)">
+                    <div class="theme-input-row">
+                        <label for="theme-hex-input">Hex</label>
+                        <input id="theme-hex-input" type="text" maxlength="7" placeholder="#58A6FF" oninput="updateThemePickerFromHex(this.value)">
+                    </div>
+                    <div class="theme-rgb-grid">
+                        <label>R<input id="theme-r-input" type="number" min="0" max="255" inputmode="numeric" oninput="updateThemePickerFromRgb()"></label>
+                        <label>G<input id="theme-g-input" type="number" min="0" max="255" inputmode="numeric" oninput="updateThemePickerFromRgb()"></label>
+                        <label>B<input id="theme-b-input" type="number" min="0" max="255" inputmode="numeric" oninput="updateThemePickerFromRgb()"></label>
+                    </div>
+                    <p id="theme-picker-status" class="management-status" aria-live="polite"></p>
+                    <div class="profile-photo-actions">
+                        <button onclick="closeThemePicker()">Cancel</button>
+                        <button class="primary" onclick="saveThemeColour()">Save</button>
+                    </div>
+                    <button class="profile-photo-reset" onclick="resetThemeColour()">Reset to default</button>
                 </div>
             </div>
         </main>

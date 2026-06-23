@@ -16,6 +16,16 @@ body {
     overscroll-behavior: none;
 }
 
+:root {
+    --peter-theme: #58A6FF;
+    --jadey-theme: #FFD1DC;
+    --peter-theme-text: #FFFFFF;
+    --jadey-theme-text: #111111;
+    --theme-color: #58A6FF;
+    --theme-text-color: #FFFFFF;
+    --other-theme-color: #FFD1DC;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: #000000;
@@ -180,8 +190,8 @@ button:disabled {
     color: #FFFFFF;
 }
 
-.peter-btn { background-color: #58A6FF; }
-.jadey-btn { background-color: #b685bd; }
+.peter-btn { background-color: var(--peter-theme); }
+.jadey-btn { background-color: var(--jadey-theme); }
 
 /* =========================================================================
     MAIN CORE GAMES DASHBOARD VIEW
@@ -829,8 +839,79 @@ button:disabled {
 .management-entry {
     width: 100%;
     background: #0A0F14;
-    border: 1px solid #58A6FF;
+    border: 1px solid var(--theme-color);
     color: #FFFFFF;
+}
+
+.profile-theme-entry {
+    width: 100%;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #161B22;
+    border-radius: 8px;
+    background: #0A0F14;
+    color: #FFFFFF;
+    text-align: left;
+}
+
+.theme-picker-panel {
+    width: min(100%, 360px);
+    padding: 20px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #0A0F14;
+}
+
+.theme-picker-panel h2 {
+    margin-bottom: 16px;
+    font-size: 20px;
+}
+
+.theme-colour-picker {
+    width: 100%;
+    height: 86px;
+    margin-bottom: 16px;
+    padding: 0;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: transparent;
+}
+
+.theme-input-row,
+.theme-rgb-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #8B949E;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.theme-rgb-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.theme-picker-panel input[type="text"],
+.theme-picker-panel input[type="number"] {
+    width: 100%;
+    height: 44px;
+    padding: 0 10px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: #05080C;
+    color: #FFFFFF;
+    font: inherit;
+}
+
+.theme-picker-panel .profile-photo-actions .primary {
+    background: var(--theme-color);
+    color: var(--theme-text-color);
 }
 
 .profile-account-summary {
@@ -958,11 +1039,13 @@ button:disabled {
 }
 
 .theme-peter .account-settings-group button {
-    background: #58A6FF;
+    background: var(--peter-theme);
+    color: var(--peter-theme-text);
 }
 
 .theme-jadey .account-settings-group button {
-    background: #b685bd;
+    background: var(--jadey-theme);
+    color: var(--jadey-theme-text);
 }
 
 .account-settings-status {
@@ -1063,8 +1146,8 @@ button:disabled {
     font-weight: 800;
 }
 
-.peter-stats .stats-player-heading { background: #58A6FF; }
-.jadey-stats .stats-player-heading { background: #b685bd; }
+.peter-stats .stats-player-heading { background: var(--peter-theme); color: var(--peter-theme-text); }
+.jadey-stats .stats-player-heading { background: var(--jadey-theme); color: var(--jadey-theme-text); }
 
 .stats-row {
     border-top: 1px solid #161B22;
@@ -1230,6 +1313,11 @@ button:disabled {
     opacity: 0.55;
 }
 
+.word-search-grid.concealed .word-search-cell {
+    color: transparent;
+    text-shadow: none;
+}
+
 .word-search-cell {
     min-width: 0;
     min-height: 0;
@@ -1271,6 +1359,17 @@ button:disabled {
     border-radius: 6px;
     background: #2EA44F;
     color: #FFFFFF;
+}
+
+.word-search-result > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.word-search-result-note {
+    color: #8B949E;
+    font-size: 12px;
 }
 
 .word-search-settings {
@@ -1321,8 +1420,8 @@ button:disabled {
     color: #FFFFFF;
 }
 
-.word-stats-player.peter > h3 { background: #58A6FF; }
-.word-stats-player.jadey > h3 { background: #b685bd; }
+.word-stats-player.peter > h3 { background: var(--peter-theme); color: var(--peter-theme-text); }
+.word-stats-player.jadey > h3 { background: var(--jadey-theme); color: var(--jadey-theme-text); }
 
 .word-stats-mode {
     padding: 10px 12px;
@@ -1582,8 +1681,8 @@ button:disabled {
     color: #FFFFFF;
 }
 
-.battleship-stat-card.peter h3 { background: #58A6FF; }
-.battleship-stat-card.jadey h3 { background: #b685bd; }
+.battleship-stat-card.peter h3 { background: var(--peter-theme); color: var(--peter-theme-text); }
+.battleship-stat-card.jadey h3 { background: var(--jadey-theme); color: var(--jadey-theme-text); }
 
 .battleship-stat-card div {
     display: flex;
@@ -1671,11 +1770,11 @@ button:disabled {
 }
 
 .token-peter {
-    background: #58A6FF !important;
+    background: var(--peter-theme) !important;
 }
 
 .token-jadey {
-    background: #b685bd !important;
+    background: var(--jadey-theme) !important;
 }
 
 .connect-four-board {
@@ -1751,8 +1850,8 @@ button:disabled {
     padding: 12px 14px;
 }
 
-.connect-four-stat-card.peter h3 { background: #58A6FF; }
-.connect-four-stat-card.jadey h3 { background: #b685bd; }
+.connect-four-stat-card.peter h3 { background: var(--peter-theme); color: var(--peter-theme-text); }
+.connect-four-stat-card.jadey h3 { background: var(--jadey-theme); color: var(--jadey-theme-text); }
 
 .connect-four-stat-card div {
     display: flex;
@@ -1869,30 +1968,46 @@ button:disabled {
 
 /* Main Base Color Maps */
 .theme-peter .pfp-placeholder,
-.theme-peter #profile-main-avatar { border-color: #58A6FF; }
+.theme-peter #profile-main-avatar { border-color: var(--peter-theme); }
 
 .theme-jadey .pfp-placeholder,
-.theme-jadey #profile-main-avatar { border-color: #b685bd; }
+.theme-jadey #profile-main-avatar { border-color: var(--jadey-theme); }
 
 /* Dashboard Content Grid Borders */
-.theme-peter .grid-game-btn { border-color: #58A6FF; }
-.theme-jadey .grid-game-btn { border-color: #b685bd; }
+.theme-peter .grid-game-btn { border-color: var(--peter-theme); }
+.theme-jadey .grid-game-btn { border-color: var(--jadey-theme); }
 
 /* Shared Interface Module Color Overrides */
-.header-peter, .nav-peter { background-color: #58A6FF !important; }
-.header-jadey, .nav-jadey { background-color: #b685bd !important; }
+.header-peter, .nav-peter { background-color: var(--peter-theme) !important; color: var(--peter-theme-text); }
+.header-jadey, .nav-jadey { background-color: var(--jadey-theme) !important; color: var(--jadey-theme-text); }
+.header-peter .header-title,
+.header-peter .header-player-label,
+.header-peter .header-nickname,
+.nav-peter .nav-tab-btn,
+.nav-peter .nav-icon {
+    color: var(--peter-theme-text);
+    fill: var(--peter-theme-text);
+}
+.header-jadey .header-title,
+.header-jadey .header-player-label,
+.header-jadey .header-nickname,
+.nav-jadey .nav-tab-btn,
+.nav-jadey .nav-icon {
+    color: var(--jadey-theme-text);
+    fill: var(--jadey-theme-text);
+}
 
 .theme-peter .message-composer button,
-.theme-peter .notification-card button { background-color: #58A6FF; }
+.theme-peter .notification-card button { background-color: var(--peter-theme); color: var(--peter-theme-text); }
 
 .theme-jadey .message-composer button,
-.theme-jadey .notification-card button { background-color: #b685bd; }
+.theme-jadey .notification-card button { background-color: var(--jadey-theme); color: var(--jadey-theme-text); }
 
-.theme-peter .mode-option-btn.active-mode { border-color: #58A6FF; }
-.theme-jadey .mode-option-btn.active-mode { border-color: #b685bd; }
+.theme-peter .mode-option-btn.active-mode { border-color: var(--peter-theme); }
+.theme-jadey .mode-option-btn.active-mode { border-color: var(--jadey-theme); }
 
-.theme-peter .number-entry input:focus { border-color: #58A6FF; }
-.theme-jadey .number-entry input:focus { border-color: #b685bd; }
+.theme-peter .number-entry input:focus { border-color: var(--peter-theme); }
+.theme-jadey .number-entry input:focus { border-color: var(--jadey-theme); }
 
 /* =========================================================================
     1 TO 10 GAME WORKSPACE DESIGN SYSTEM
@@ -1914,13 +2029,13 @@ button:disabled {
 
 /* Clean, Non-conflicting Number Selection Outlines */
 .theme-peter .pad-num-btn.selected-key {
-    border-color: #58A6FF !important;
-    color: #58A6FF !important;
+    border-color: var(--peter-theme) !important;
+    color: var(--peter-theme) !important;
 }
 
 .theme-jadey .pad-num-btn.selected-key {
-    border-color: #b685bd !important;
-    color: #b685bd !important;
+    border-color: var(--jadey-theme) !important;
+    color: var(--jadey-theme) !important;
 }
 
 /* Base Guess Card Borders */
@@ -1931,11 +2046,11 @@ button:disabled {
 }
 
 /* In-Game Interactive Guess Card Highlight Borders */
-.theme-peter #flip-inner-guess .your-guess-border { border-color: #58A6FF; }
-.theme-peter #flip-inner-target .their-target-border { border-color: #b685bd; }
+.theme-peter #flip-inner-guess .your-guess-border { border-color: var(--peter-theme); }
+.theme-peter #flip-inner-target .their-target-border { border-color: var(--jadey-theme); }
 
-.theme-jadey #flip-inner-guess .your-guess-border { border-color: #b685bd; }
-.theme-jadey #flip-inner-target .their-target-border { border-color: #58A6FF; }
+.theme-jadey #flip-inner-guess .your-guess-border { border-color: var(--jadey-theme); }
+.theme-jadey #flip-inner-target .their-target-border { border-color: var(--peter-theme); }
 
 /* Dynamic Context Driven Action Submit Elements */
 #game-action-submit-strip {
