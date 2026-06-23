@@ -1555,6 +1555,7 @@ button:disabled {
 .battleship-fleet button.fleet-ship {
     min-height: 30px;
     cursor: pointer;
+    touch-action: none;
 }
 
 .battleship-fleet .fleet-ship.selected {
@@ -1611,6 +1612,20 @@ button:disabled {
 .battleship-cell.selected-ship {
     outline: 3px solid #FFFFFF;
     outline-offset: -4px;
+}
+
+.battleship-cell.placement-preview {
+    outline: 3px dashed rgba(255, 255, 255, 0.92);
+    outline-offset: -5px;
+    filter: brightness(1.18);
+}
+
+.battleship-cell.valid-preview {
+    box-shadow: inset 0 0 0 3px rgba(134, 239, 172, 0.92);
+}
+
+.battleship-cell.invalid-preview {
+    box-shadow: inset 0 0 0 3px rgba(252, 165, 165, 0.95);
 }
 
 .battleship-cell.miss {

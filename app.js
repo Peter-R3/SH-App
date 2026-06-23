@@ -196,9 +196,13 @@ function refreshActiveMultiplayerSession() {
     } else if (activeAppView === 'battleship') {
         database.ref('games/battleship/current').transaction(current => {
             if (!current || current.status === 'finished') return current;
-            current.players = current.players || {};
-            current.players[localPlayer] = true;
-            current.present = current.present || {};
+            if (typeof ensureBattleshipParticipant === 'function') {
+                ensureBattleshipParticipant(current, localPlayer);
+            } else {
+                current.players = current.players || {};
+                current.players[localPlayer] = true;
+                current.present = current.present || {};
+            }
             current.present[localPlayer] = now;
             return current;
         });
@@ -946,7 +950,6 @@ function pruneCollectionToLimit(path, limit) {
 
 function pruneNotifications() {
     return database.ref('notifications').orderByChild('createdAt').once('value').then(snapshot => {
-        const now = Date.now();
         const notifications = [];
 
         snapshot.forEach(child => {
@@ -954,21 +957,12 @@ function pruneNotifications() {
         });
 
         const removals = {};
-        notifications.forEach(notification => {
-            const recipient = notification.recipient;
-            const readAt = recipient && notification.readAt && notification.readAt[recipient];
-            if (readAt && now - readAt > READ_NOTIFICATION_RETENTION_MS) {
-                removals[`notifications/${notification.id}`] = null;
-            }
-        });
-
-        const keptAfterReadPrune = notifications
-            .filter(notification => removals[`notifications/${notification.id}`] !== null)
+        const sortedNotifications = notifications
             .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
-        if (keptAfterReadPrune.length > RETENTION_LIMIT) {
-            keptAfterReadPrune
-                .slice(0, keptAfterReadPrune.length - RETENTION_LIMIT)
+        if (sortedNotifications.length > RETENTION_LIMIT) {
+            sortedNotifications
+                .slice(0, sortedNotifications.length - RETENTION_LIMIT)
                 .forEach(notification => {
                     removals[`notifications/${notification.id}`] = null;
                 });
