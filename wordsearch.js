@@ -7,14 +7,21 @@ const WORD_SEARCH_DIRECTIONS = [
     [1, 1], [1, -1], [-1, 1], [-1, -1]
 ];
 const WORD_SEARCH_BANK = [
-    'APPLE', 'BEACH', 'BERRY', 'BLOOM', 'BOOK', 'BREAD', 'BRICK', 'CAKE', 'CANDY', 'CLOUD',
-    'CORAL', 'DAISY', 'DREAM', 'EARTH', 'FLAME', 'FLOWER', 'FOREST', 'FRUIT', 'GAMES', 'GRAPE',
-    'HAPPY', 'HEART', 'HONEY', 'HOUSE', 'JUICE', 'LEMON', 'LIGHT', 'MAGIC', 'MANGO', 'MUSIC',
-    'OCEAN', 'PANDA', 'PEACH', 'PEARL', 'PIZZA', 'PLANT', 'RAIN', 'RIVER', 'ROBOT', 'SMILE',
-    'SPACE', 'SPARK', 'STAR', 'STONE', 'STORM', 'SUGAR', 'SUNNY', 'SWEET', 'TIGER', 'TRAIN',
-    'WATER', 'WHALE', 'WORLD', 'ZEBRA', 'CASTLE', 'COFFEE', 'COOKIE', 'DRAGON', 'GARDEN', 'ISLAND',
-    'JUNGLE', 'KITTEN', 'PLANET', 'PURPLE', 'RAINBOW', 'ROCKET', 'SILVER', 'SUMMER', 'TURTLE',
-    'WINTER', 'COMPASS', 'DIAMOND', 'FREEDOM', 'MONSTER', 'POPCORN', 'TREASURE'
+    'ANT', 'BEE', 'CAT', 'CUP', 'DOG', 'FOX', 'GEM', 'HAT', 'INK', 'JAM', 'KEY', 'MAP', 'OWL', 'PEN',
+    'BOOK', 'CAKE', 'CAMP', 'CAVE', 'CORN', 'DOVE', 'FISH', 'FROG', 'GLOW', 'KITE', 'LION', 'MOON',
+    'MOSS', 'NEST', 'RAIN', 'ROSE', 'SHIP', 'SNOW', 'STAR', 'TREE', 'WAVE', 'WIND', 'WOLF',
+    'APPLE', 'BEACH', 'BERRY', 'BLOOM', 'BREAD', 'BRICK', 'CANDY', 'CLOUD', 'CORAL', 'DAISY',
+    'DREAM', 'EARTH', 'FLAME', 'FRUIT', 'GAMES', 'GRAPE', 'HAPPY', 'HEART', 'HONEY', 'HOUSE',
+    'JUICE', 'LEMON', 'LIGHT', 'MAGIC', 'MANGO', 'MUSIC', 'OCEAN', 'PANDA', 'PEACH', 'PEARL',
+    'PIZZA', 'PLANT', 'RIVER', 'ROBOT', 'SMILE', 'SPACE', 'SPARK', 'STONE', 'STORM', 'SUGAR',
+    'SUNNY', 'SWEET', 'TIGER', 'TRAIN', 'WATER', 'WHALE', 'WORLD', 'ZEBRA',
+    'ANCHOR', 'BANANA', 'BASKET', 'BUTTON', 'CASTLE', 'COFFEE', 'COOKIE', 'DRAGON', 'FLOWER',
+    'GARDEN', 'ISLAND', 'JUNGLE', 'KITTEN', 'MARKET', 'ORANGE', 'PLANET', 'PURPLE', 'RABBIT',
+    'ROCKET', 'SILVER', 'SUMMER', 'TURTLE', 'WINTER',
+    'BALLOON', 'BLOSSOM', 'COMPASS', 'DIAMOND', 'FREEDOM', 'HAMSTER', 'HOLIDAY', 'MONSTER',
+    'PENGUIN', 'POPCORN', 'RAINBOW', 'SUNRISE', 'UNICORN',
+    'ADVENTURE', 'BUTTERFLY', 'CHOCOLATE', 'DOLPHIN', 'FIREFLY', 'MOUNTAIN', 'PINEAPPLE',
+    'SEASHELL', 'STARDUST', 'SUNFLOWER', 'TREASURE', 'WATERFALL'
 ];
 
 let wordSearchSettings = { mode: 'solo', difficulty: 7 };
@@ -56,6 +63,7 @@ function launchWordSearch() {
     if (!localPlayer) return;
     setActiveAppView('word-search');
     loadWordSearchSettings();
+    concealWordSearchGrid(false);
     refreshWordSearchPresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('word-search-screen');
@@ -394,6 +402,7 @@ function stopWordSearchRealtime() {
 
 function applyWordSearchState(state) {
     if (!state?.puzzle) return;
+    concealWordSearchGrid(false);
     if (wordSearchSettings.mode === 'coop' && WORD_SEARCH_DIFFICULTIES.includes(Number(state.puzzle.size))) {
         wordSearchSettings.difficulty = Number(state.puzzle.size);
         saveWordSearchSettings();
