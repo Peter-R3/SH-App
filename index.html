@@ -60,6 +60,7 @@
                         <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('battleship')" style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('connect-four')" style="--game-art: url('./assets/games/connect-four.svg');"><img class="game-card-image" src="./assets/games/connect-four.svg" alt=""><span>Connect 4</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('sudoku')" style="--game-art: url('./assets/games/sudoku.svg');"><img class="game-card-image" src="./assets/games/sudoku.svg" alt=""><span>Sudoku</span></button>
                     </div>
                 </div>
 
@@ -236,6 +237,10 @@
                             <img src="./assets/games/connect-four.svg" alt="">
                             <span>Connect 4</span>
                         </button>
+                        <button class="stats-category-card" onclick="openStatsCategory('sudoku')">
+                            <img src="./assets/games/sudoku.svg" alt="">
+                            <span>Sudoku</span>
+                        </button>
                     </div>
                     <div id="stats-number-guess-detail" class="hidden">
                         <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
@@ -267,6 +272,11 @@
                         <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
                         <h2 class="stats-detail-title">Connect 4</h2>
                         <div id="connect-four-stats-content"></div>
+                    </div>
+                    <div id="stats-sudoku-detail" class="hidden">
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <h2 class="stats-detail-title">Sudoku</h2>
+                        <div id="sudoku-stats-content"></div>
                     </div>
                 </div>
 
@@ -549,6 +559,54 @@
                 </div>
             </section>
 
+            <section id="sudoku-screen" class="screen hidden sudoku-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="sudoku-header-shell" class="dashboard-header">
+                    <span class="header-title">Sudoku</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="sudoku-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="sudoku-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+                <div class="sudoku-content">
+                    <div id="sudoku-status" class="sudoku-status" aria-live="polite">Loading puzzle...</div>
+                    <div id="sudoku-board" class="sudoku-board" aria-label="Sudoku board"></div>
+                    <div id="sudoku-pad" class="sudoku-pad"></div>
+                    <div id="sudoku-result" class="sudoku-result hidden"></div>
+                </div>
+                <div id="sudoku-nav-shell" class="bottom-nav-bar game-bottom-nav">
+                    <button class="nav-tab-btn active-tab" onclick="exitSudoku()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="openSudokuSettings()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65-2-3.46-2.49 1a7.2 7.2 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.23-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65c-.04.32-.07.65-.07.98s.02.66.07.98l-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.75 1.69.98L11 21h4l.36-2.93c.6-.23 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65zM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5z"/></svg><span>Settings</span></button>
+                </div>
+            </section>
+
+            <section id="sudoku-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="sudoku-settings-header" class="dashboard-header">
+                    <span class="header-title">Sudoku Settings</span>
+                    <button class="header-action-btn" onclick="launchSudoku()">Back</button>
+                </div>
+                <div class="sudoku-settings">
+                    <label for="sudoku-mode">Mode</label>
+                    <select id="sudoku-mode" onchange="updateSudokuSetting('mode', this.value)">
+                        <option value="solo">Solo</option>
+                        <option value="coop">Co-op</option>
+                        <option value="versus">Versus</option>
+                    </select>
+                    <label for="sudoku-difficulty">Difficulty</label>
+                    <select id="sudoku-difficulty" onchange="updateSudokuSetting('difficulty', this.value)">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                    <button onclick="requestNewSudokuPuzzle()">New puzzle</button>
+                    <p id="sudoku-settings-note" class="management-status"></p>
+                </div>
+            </section>
+
             <section id="account-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="account-settings-header-shell" class="dashboard-header">
                     <span class="header-title">Account Settings</span>
@@ -610,7 +668,7 @@
                         <label for="score-profile">Profile scope</label>
                         <select id="score-profile"><option value="Peter">Peter</option><option value="Jadey">Jadey</option><option value="both">Both profiles</option></select>
                         <label for="score-game">Game</label>
-                        <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option><option value="battleship">Battleship</option><option value="connect-four">Connect 4</option></select>
+                        <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option><option value="battleship">Battleship</option><option value="connect-four">Connect 4</option><option value="sudoku">Sudoku</option></select>
                         <label for="score-mode">Mode</label>
                         <select id="score-mode"><option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option></select>
                         <div id="score-word-search-options" class="hidden management-subgroup">
@@ -626,6 +684,10 @@
                         <div id="score-connect-four-options" class="hidden management-subgroup">
                             <label for="connect-four-score-metric">Statistic</label>
                             <select id="connect-four-score-metric"><option value="all">All statistics</option><option value="wins">Wins</option><option value="losses">Losses</option><option value="draws">Draws</option><option value="gamesPlayed">Games played</option><option value="tokensPlaced">Tokens placed</option></select>
+                        </div>
+                        <div id="score-sudoku-options" class="hidden management-subgroup">
+                            <label for="sudoku-score-metric">Statistic</label>
+                            <select id="sudoku-score-metric"><option value="all">All statistics</option><option value="completedPuzzles">Completed puzzles</option><option value="bestTime">Best time</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
                         </div>
                         <div class="management-actions">
                             <button onclick="adjustManagedScores('reset')">Reset</button>
@@ -695,5 +757,6 @@
     <script src="wordsearch.js"></script>
     <script src="battleship.js"></script>
     <script src="connect-four.js"></script>
+    <script src="sudoku.js"></script>
 </body>
 </html>

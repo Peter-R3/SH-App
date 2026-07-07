@@ -220,6 +220,8 @@ function refreshActiveMultiplayerSession() {
             }
             return current;
         });
+    } else if (activeAppView === 'sudoku' && typeof refreshSudokuPresence === 'function') {
+        refreshSudokuPresence(now);
     }
 }
 
@@ -428,7 +430,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four'];
+    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -447,6 +449,11 @@ function switchTab(tabName) {
     if (battleshipVisible && typeof stopBattleshipSubscription === 'function') stopBattleshipSubscription();
     const connectFourVisible = !document.getElementById('connect-four-screen')?.classList.contains('hidden');
     if (connectFourVisible && typeof stopConnectFourSubscription === 'function') stopConnectFourSubscription();
+    const sudokuVisible = !document.getElementById('sudoku-screen')?.classList.contains('hidden');
+    if (sudokuVisible && typeof stopSudokuSubscription === 'function') {
+        if (typeof sudokuSettings !== 'undefined' && sudokuSettings.mode === 'versus') abandonSudokuVersus(true);
+        stopSudokuSubscription();
+    }
 
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
@@ -1043,9 +1050,11 @@ function openStatsCategory(gameId) {
     document.getElementById('stats-word-search-detail')?.classList.toggle('hidden', gameId !== 'word-search');
     document.getElementById('stats-battleship-detail')?.classList.toggle('hidden', gameId !== 'battleship');
     document.getElementById('stats-connect-four-detail')?.classList.toggle('hidden', gameId !== 'connect-four');
+    document.getElementById('stats-sudoku-detail')?.classList.toggle('hidden', gameId !== 'sudoku');
     if (gameId === 'word-search' && typeof renderWordSearchStats === 'function') renderWordSearchStats();
     if (gameId === 'battleship' && typeof renderBattleshipStats === 'function') renderBattleshipStats();
     if (gameId === 'connect-four' && typeof renderConnectFourStats === 'function') renderConnectFourStats();
+    if (gameId === 'sudoku' && typeof renderSudokuStats === 'function') renderSudokuStats();
 }
 
 function closeStatsCategory() {
@@ -1054,6 +1063,7 @@ function closeStatsCategory() {
     document.getElementById('stats-word-search-detail')?.classList.add('hidden');
     document.getElementById('stats-battleship-detail')?.classList.add('hidden');
     document.getElementById('stats-connect-four-detail')?.classList.add('hidden');
+    document.getElementById('stats-sudoku-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -1073,6 +1083,7 @@ function renderStats() {
     if (typeof renderWordSearchStats === 'function') renderWordSearchStats();
     if (typeof renderBattleshipStats === 'function') renderBattleshipStats();
     if (typeof renderConnectFourStats === 'function') renderConnectFourStats();
+    if (typeof renderSudokuStats === 'function') renderSudokuStats();
 }
 
 function sendMessage(event) {
@@ -1181,6 +1192,10 @@ function renderNotifications() {
             action = navigationButton('Join', 'game', 'connect-four');
         } else if (notification.action === 'check-connect-four' && isRecipient) {
             action = navigationButton('Check', 'game', 'connect-four');
+        } else if (notification.action === 'join-sudoku-versus' && isRecipient) {
+            action = navigationButton('Join', 'sudoku-versus', notification.difficulty || 'easy');
+        } else if (notification.action === 'check-sudoku' && isRecipient) {
+            action = navigationButton('Check', 'game', 'sudoku');
         }
 
         return `
@@ -1200,6 +1215,7 @@ function handleNotificationAction(notificationId, actionName, value) {
         if (actionName === 'messages') switchTab('messages');
         if (actionName === 'game') launchGame(value);
         if (actionName === 'wordsearch-versus') joinWordSearchVersus(Number(value) || 7);
+        if (actionName === 'sudoku-versus') joinSudokuVersus(value || 'easy');
     });
 }
 
@@ -1327,7 +1343,8 @@ function adjustManagedScores(operation) {
     const profiles = selectedProfiles('score-profile');
     const game = document.getElementById('score-game')?.value || 'number-guess';
     const selectedMode = document.getElementById('score-mode')?.value || 'all';
-    const availableModes = game === 'word-search' ? ['solo', 'coop', 'versus'] : ['ten', 'hundred', 'colours'];
+    const multiplayerPuzzleGame = game === 'word-search' || game === 'sudoku';
+    const availableModes = multiplayerPuzzleGame ? ['solo', 'coop', 'versus'] : ['ten', 'hundred', 'colours'];
     const modes = selectedMode === 'all' ? availableModes : [selectedMode];
     if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
@@ -1363,6 +1380,19 @@ function adjustManagedScores(operation) {
             path: `stats/connectFour/${profile}/${metric}`,
             isTime: false
         })));
+    } else if (game === 'sudoku') {
+        const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
+        const difficulties = selectedDifficulty === 'all' ? ['easy', 'medium', 'hard'] : [selectedDifficulty];
+        const selectedMetric = document.getElementById('sudoku-score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['completedPuzzles', 'bestTime', 'wins', 'losses']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
+            difficulties.flatMap(difficulty => metrics.map(metric => ({
+                path: `stats/sudoku/${profile}/${mode}/${difficulty}/${metric}`,
+                isTime: metric === 'bestTime'
+            })))
+        ));
     } else {
         scoreTargets = profiles.flatMap(profile => modes.map(mode => ({
             path: `stats/${profile}/${mode}`,
@@ -1384,18 +1414,27 @@ function syncManagedScoreControls() {
     const isWordSearch = document.getElementById('score-game')?.value === 'word-search';
     const isBattleship = document.getElementById('score-game')?.value === 'battleship';
     const isConnectFour = document.getElementById('score-game')?.value === 'connect-four';
+    const isSudoku = document.getElementById('score-game')?.value === 'sudoku';
     const modeSelect = document.getElementById('score-mode');
     const extraOptions = document.getElementById('score-word-search-options');
+    const difficultySelect = document.getElementById('score-difficulty');
     const battleshipOptions = document.getElementById('score-battleship-options');
     const connectFourOptions = document.getElementById('score-connect-four-options');
-    if (!modeSelect || !extraOptions || !battleshipOptions || !connectFourOptions) return;
+    const sudokuOptions = document.getElementById('score-sudoku-options');
+    if (!modeSelect || !extraOptions || !difficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions) return;
 
-    modeSelect.innerHTML = isWordSearch
+    modeSelect.innerHTML = (isWordSearch || isSudoku)
         ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus</option>'
         : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
-    extraOptions.classList.toggle('hidden', !isWordSearch);
+    difficultySelect.innerHTML = isSudoku
+        ? '<option value="all">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>'
+        : '<option value="all">All difficulties</option><option value="5">5 x 5</option><option value="6">6 x 6</option><option value="7">7 x 7</option><option value="8">8 x 8</option><option value="9">9 x 9</option>';
+    extraOptions.classList.toggle('hidden', !(isWordSearch || isSudoku));
+    document.querySelector('label[for="score-metric"]')?.classList.toggle('hidden', isSudoku);
+    document.getElementById('score-metric')?.classList.toggle('hidden', isSudoku);
     battleshipOptions.classList.toggle('hidden', !isBattleship);
     connectFourOptions.classList.toggle('hidden', !isConnectFour);
+    sudokuOptions.classList.toggle('hidden', !isSudoku);
     modeSelect.classList.toggle('hidden', isBattleship || isConnectFour);
     document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship || isConnectFour);
 }
@@ -1428,6 +1467,10 @@ function launchGame(gameId) {
     }
     if (gameId === 'connect-four') {
         launchConnectFour();
+        return;
+    }
+    if (gameId === 'sudoku') {
+        launchSudoku();
         return;
     }
     if (gameId !== 'number-guess') return;
