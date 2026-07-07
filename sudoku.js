@@ -272,6 +272,7 @@ function showSudokuResult(html, visible) {
     if (!result) return;
     result.innerHTML = html;
     result.classList.toggle('hidden', !visible);
+    document.getElementById('sudoku-screen')?.classList.toggle('sudoku-complete', visible && Boolean(html));
 }
 
 function sudokuEntriesForLocalPlayer() {
@@ -300,7 +301,9 @@ function renderSudokuBoard(concealed) {
     }).join('');
     pad.innerHTML = Array.from({ length: 9 }, (_, index) =>
         `<button onclick="setSudokuCell(${index + 1})">${index + 1}</button>`
-    ).join('') + '<button class="sudoku-erase" onclick="setSudokuCell(null)">Erase</button>';
+    ).join('') +
+        '<button class="sudoku-erase" onclick="setSudokuCell(null)">Erase</button>' +
+        '<button class="sudoku-clear" onclick="clearSudokuGrid()">Clear all</button>';
 }
 
 function selectSudokuCell(index) {
@@ -331,6 +334,32 @@ function setSudokuCell(value) {
         }
         renderSudokuBoard(false);
         checkSudokuCompletion();
+    });
+}
+
+function clearSudokuGrid() {
+    if (!sudokuState?.puzzle || !window.confirm('Clear all entries for this Sudoku grid?')) return;
+    sudokuSelectedCell = null;
+    const updates = { startedAt: Date.now(), completedAt: null };
+    if (sudokuSettings.mode === 'versus') {
+        if (sudokuState.status === 'finished') {
+            setSudokuStatus('This Versus match has finished. Start a new match from Modes.');
+            return;
+        }
+        database.ref(`sudoku/versus/current/entriesBy/${localPlayer}`).set({}).then(() => {
+            sudokuState.entriesBy = sudokuState.entriesBy || {};
+            sudokuState.entriesBy[localPlayer] = {};
+            renderSudokuBoard(false);
+        });
+        return;
+    }
+    const path = sudokuSettings.mode === 'coop' ? coopSudokuPath() : soloSudokuPath();
+    database.ref(path).update({ ...updates, entries: {} }).then(() => {
+        sudokuState.entries = {};
+        sudokuState.startedAt = updates.startedAt;
+        sudokuState.completedAt = null;
+        showSudokuResult('', false);
+        renderSudokuBoard(false);
     });
 }
 

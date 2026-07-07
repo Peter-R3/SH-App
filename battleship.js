@@ -380,8 +380,8 @@ function startBattleshipShipDrag(event, shipId) {
     selectedBattleshipShipId = shipId;
     battleshipDragShipId = shipId;
     battleshipDragPointerId = event.pointerId;
-    event.currentTarget?.setPointerCapture?.(event.pointerId);
-    renderBattleship();
+    const startCell = event.currentTarget?.dataset?.cellIndex;
+    if (startCell !== undefined) previewBattleshipPlacement(Number(startCell));
 }
 
 function handleBattleshipShipDragMove(event) {
@@ -393,6 +393,8 @@ function handleBattleshipShipDragMove(event) {
 
 function finishBattleshipShipDrag(event) {
     if (!battleshipDragShipId || battleshipDragPointerId !== event.pointerId) return;
+    const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.battleship-cell[data-cell-index]');
+    if (cell) previewBattleshipPlacement(Number(cell.dataset.cellIndex));
     const preview = battleshipPlacementPreview;
     const startIndex = preview?.cells?.[0];
     battleshipDragShipId = null;
