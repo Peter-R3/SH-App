@@ -479,13 +479,13 @@
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
-                    <button class="nav-tab-btn" onclick="openWordSearchSettings()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58-1.92-3.32-2.39.96a7.28 7.28 0 0 0-1.63-.94L14.87 3h-3.84l-.36 2.18c-.58.24-1.12.55-1.63.94l-2.39-.96-1.92 3.32 2.03 1.58a7.43 7.43 0 0 0-.05.94c0 .32.02.63.05.94l-2.03 1.58 1.92 3.32 2.39-.96c.5.39 1.05.7 1.63.94l.36 2.18h3.84l.36-2.18c.58-.24 1.12-.55 1.63-.94l2.39.96 1.92-3.32-2.03-1.58zM12.95 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg><span>Settings</span></button>
+                    <button class="nav-tab-btn" onclick="openWordSearchSettings()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58-1.92-3.32-2.39.96a7.28 7.28 0 0 0-1.63-.94L14.87 3h-3.84l-.36 2.18c-.58.24-1.12.55-1.63.94l-2.39-.96-1.92 3.32 2.03 1.58a7.43 7.43 0 0 0-.05.94c0 .32.02.63.05.94l-2.03 1.58 1.92 3.32 2.39-.96c.5.39 1.05.7 1.63.94l.36 2.18h3.84l.36-2.18c.58-.24 1.12-.55 1.63-.94l2.39.96 1.92-3.32-2.03-1.58zM12.95 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg><span>Modes</span></button>
                 </div>
             </section>
 
             <section id="word-search-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="word-search-settings-header" class="dashboard-header">
-                    <span class="header-title">Word Search Settings</span>
+                    <span class="header-title">Word Search Modes</span>
                     <button onclick="launchWordSearch()" class="mode-select-btn" aria-label="Back to Word Search"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="word-search-settings">
@@ -493,7 +493,14 @@
                     <select id="word-search-mode" onchange="updateWordSearchSetting('mode', this.value)">
                         <option value="solo">Solo</option>
                         <option value="coop">Co-op</option>
-                        <option value="versus">Versus</option>
+                        <option value="versus">Versus: Player</option>
+                        <option value="versus-ai">Versus: Jaylin</option>
+                    </select>
+                    <label for="word-search-ai-difficulty">AI difficulty</label>
+                    <select id="word-search-ai-difficulty" onchange="updateWordSearchSetting('aiDifficulty', this.value)">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
                     </select>
                     <label for="word-search-difficulty">Difficulty</label>
                     <select id="word-search-difficulty" onchange="updateWordSearchSetting('difficulty', this.value)">
@@ -580,21 +587,29 @@
                     <button class="nav-tab-btn active-tab" onclick="exitSudoku()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
                     <button class="nav-tab-btn" onclick="openSudokuSettings()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M19.43 12.98c.04-.32.07-.65.07-.98s-.02-.66-.07-.98l2.11-1.65-2-3.46-2.49 1a7.2 7.2 0 0 0-1.69-.98L15 3h-4l-.36 2.93c-.6.23-1.17.56-1.69.98l-2.49-1-2 3.46 2.11 1.65c-.04.32-.07.65-.07.98s.02.66.07.98l-2.11 1.65 2 3.46 2.49-1c.52.42 1.09.75 1.69.98L11 21h4l.36-2.93c.6-.23 1.17-.56 1.69-.98l2.49 1 2-3.46-2.11-1.65zM13 15.5A3.5 3.5 0 1 1 13 8a3.5 3.5 0 0 1 0 7.5z"/></svg><span>Modes</span></button>
                 </div>
             </section>
 
             <section id="sudoku-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="sudoku-settings-header" class="dashboard-header">
-                    <span class="header-title">Sudoku Settings</span>
-                    <button class="header-action-btn" onclick="launchSudoku()">Back</button>
+                    <span class="header-title">Sudoku Modes</span>
+                    <button onclick="launchSudoku()" class="mode-select-btn" aria-label="Back to Sudoku"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="sudoku-settings">
                     <label for="sudoku-mode">Mode</label>
                     <select id="sudoku-mode" onchange="updateSudokuSetting('mode', this.value)">
                         <option value="solo">Solo</option>
                         <option value="coop">Co-op</option>
-                        <option value="versus">Versus</option>
+                        <option value="versus">Versus: Player</option>
+                        <option value="versus-ai">Versus: Jaylin</option>
+                    </select>
+                    <label for="sudoku-ai-difficulty">AI difficulty</label>
+                    <select id="sudoku-ai-difficulty" onchange="updateSudokuSetting('aiDifficulty', this.value)">
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
                     </select>
                     <label for="sudoku-difficulty">Difficulty</label>
                     <select id="sudoku-difficulty" onchange="updateSudokuSetting('difficulty', this.value)">

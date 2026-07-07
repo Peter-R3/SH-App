@@ -1372,6 +1372,23 @@ button:disabled {
     font-size: 12px;
 }
 
+.ai-progress {
+    width: 100%;
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #161B22;
+}
+
+.ai-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--other-theme-color), var(--theme-color));
+    transition: width 0.35s ease;
+}
+
 .word-search-settings {
     flex: 1;
     display: flex;
@@ -1492,15 +1509,15 @@ button:disabled {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
+    gap: 7px;
+    padding: 8px 14px;
     overflow-y: auto;
 }
 
 .battleship-status {
     width: 100%;
-    min-height: 42px;
-    padding: 11px;
+    min-height: 36px;
+    padding: 8px 10px;
     border: 1px solid rgba(255,255,255,0.28);
     border-radius: 8px;
     background: rgba(0, 20, 30, 0.72);
@@ -1535,15 +1552,16 @@ button:disabled {
 
 .battleship-fleet {
     width: 100%;
-    min-height: 48px;
+    min-height: 34px;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 6px;
+    gap: 5px;
+    flex-shrink: 0;
 }
 
 .battleship-fleet .fleet-ship {
-    padding: 6px 8px;
+    padding: 5px 7px;
     border: 1px solid rgba(255,255,255,0.25);
     border-radius: 6px;
     background: rgba(0, 20, 30, 0.68);
@@ -1570,7 +1588,7 @@ button:disabled {
 }
 
 .battleship-board {
-    width: min(100%, 420px);
+    width: min(100%, 360px);
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(8, minmax(0, 1fr));
@@ -1616,9 +1634,9 @@ button:disabled {
 }
 
 .battleship-cell.placement-preview {
-    outline: 3px dashed rgba(255, 255, 255, 0.92);
+    outline: 3px solid rgba(255, 255, 255, 0.95);
     outline-offset: -5px;
-    filter: brightness(1.18);
+    filter: brightness(1.2);
 }
 
 .battleship-cell.valid-preview {
@@ -1953,6 +1971,11 @@ button:disabled {
 
 .sudoku-board.concealed .sudoku-cell {
     color: transparent;
+}
+
+.sudoku-board.disabled .sudoku-cell {
+    pointer-events: none;
+    opacity: 0.82;
 }
 
 .sudoku-pad {

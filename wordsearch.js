@@ -6,6 +6,12 @@ const WORD_SEARCH_DIRECTIONS = [
     [0, 1], [0, -1], [1, 0], [-1, 0],
     [1, 1], [1, -1], [-1, 1], [-1, -1]
 ];
+const WORD_SEARCH_AI_NAME = 'Jaylin';
+const WORD_SEARCH_AI_LEVELS = {
+    easy: { label: 'Easy', baseMs: 190000 },
+    medium: { label: 'Medium', baseMs: 125000 },
+    hard: { label: 'Hard', baseMs: 76000 }
+};
 const WORD_SEARCH_BANK = [
     'ANT', 'BEE', 'CAT', 'CUP', 'DOG', 'FOX', 'GEM', 'HAT', 'INK', 'JAM', 'KEY', 'MAP', 'OWL', 'PEN',
     'BOOK', 'CAKE', 'CAMP', 'CAVE', 'CORN', 'DOVE', 'FISH', 'FROG', 'GLOW', 'KITE', 'LION', 'MOON',
@@ -74,7 +80,7 @@ const WORD_SEARCH_BANK = [
     'SUNLIGHT', 'TOOLBOX', 'TREELINE', 'WILDFIRE'
 ];
 
-let wordSearchSettings = { mode: 'solo', difficulty: 7 };
+let wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium' };
 let wordSearchPuzzle = null;
 let wordSearchFound = {};
 let wordSearchSelection = [];
@@ -88,6 +94,7 @@ let wordSearchRealtimeHandler = null;
 let wordSearchDisconnectHandle = null;
 let wordSearchVersusCountdown = null;
 let wordSearchCompletedLocally = false;
+let wordSearchAiTimer = null;
 
 function wordSearchSettingsKey() {
     return `word-search-settings-${localPlayer || 'unknown'}`;
@@ -97,11 +104,12 @@ function loadWordSearchSettings() {
     try {
         const saved = JSON.parse(localStorage.getItem(wordSearchSettingsKey()) || '{}');
         wordSearchSettings = {
-            mode: ['solo', 'coop', 'versus'].includes(saved.mode) ? saved.mode : 'solo',
-            difficulty: WORD_SEARCH_DIFFICULTIES.includes(Number(saved.difficulty)) ? Number(saved.difficulty) : 7
+            mode: ['solo', 'coop', 'versus', 'versus-ai'].includes(saved.mode) ? saved.mode : 'solo',
+            difficulty: WORD_SEARCH_DIFFICULTIES.includes(Number(saved.difficulty)) ? Number(saved.difficulty) : 7,
+            aiDifficulty: WORD_SEARCH_AI_LEVELS[saved.aiDifficulty] ? saved.aiDifficulty : 'medium'
         };
     } catch {
-        wordSearchSettings = { mode: 'solo', difficulty: 7 };
+        wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium' };
     }
 }
 
@@ -128,6 +136,7 @@ function launchWordSearch() {
     if (wordSearchSettings.mode === 'solo') loadSoloWordSearch();
     if (wordSearchSettings.mode === 'coop') loadCoopWordSearch();
     if (wordSearchSettings.mode === 'versus') loadVersusWordSearch();
+    if (wordSearchSettings.mode === 'versus-ai') loadAiWordSearch();
 }
 
 function openWordSearchSettings() {
@@ -141,6 +150,8 @@ function openWordSearchSettings() {
     }
     document.getElementById('word-search-mode').value = wordSearchSettings.mode;
     document.getElementById('word-search-difficulty').value = String(wordSearchSettings.difficulty);
+    document.getElementById('word-search-ai-difficulty').value = wordSearchSettings.aiDifficulty;
+    syncWordSearchModeControls();
     updateWordSearchSettingsNote();
 }
 
@@ -151,8 +162,16 @@ function updateWordSearchSetting(key, value) {
         if (previousMode === 'versus' && value !== 'versus') abandonVersusMatch(true);
     }
     if (key === 'difficulty') wordSearchSettings.difficulty = Number(value);
+    if (key === 'aiDifficulty' && WORD_SEARCH_AI_LEVELS[value]) wordSearchSettings.aiDifficulty = value;
     saveWordSearchSettings();
+    syncWordSearchModeControls();
     updateWordSearchSettingsNote();
+}
+
+function syncWordSearchModeControls() {
+    const showAi = wordSearchSettings.mode === 'versus-ai';
+    document.querySelector('label[for="word-search-ai-difficulty"]')?.classList.toggle('hidden', !showAi);
+    document.getElementById('word-search-ai-difficulty')?.classList.toggle('hidden', !showAi);
 }
 
 function updateWordSearchSettingsNote(message) {
@@ -161,6 +180,7 @@ function updateWordSearchSettingsNote(message) {
     note.innerText = message || (
         wordSearchSettings.mode === 'solo' ? 'Solo progress is saved separately for each profile and difficulty.' :
         wordSearchSettings.mode === 'coop' ? 'A new Co-op grid requires approval from the other player.' :
+        wordSearchSettings.mode === 'versus-ai' ? 'Race an AI opponent on your own grid.' :
         'Leaving a Versus match abandons it and discards the match.'
     );
 }
@@ -192,10 +212,13 @@ function requestNewWordSearchGrid() {
         return;
     }
 
-    if (!window.confirm(`Replace the current ${mode === 'versus' ? 'Versus match' : 'Solo grid'}?`)) return;
+    if (!window.confirm(`Replace the current ${mode === 'versus' || mode === 'versus-ai' ? 'Versus match' : 'Solo grid'}?`)) return;
     if (mode === 'solo') {
         const puzzle = createWordSearchPuzzle(difficulty);
         database.ref(soloWordSearchPath()).set(createWordSearchState(puzzle));
+        launchWordSearch();
+    } else if (mode === 'versus-ai') {
+        database.ref(aiWordSearchPath()).set(createAiWordSearchState(createWordSearchPuzzle(difficulty)));
         launchWordSearch();
     } else {
         abandonVersusMatch(false).then(() => createOrJoinVersusMatch(true)).then(launchWordSearch);
@@ -210,6 +233,10 @@ function coopWordSearchPath() {
     return 'wordSearch/coop/current';
 }
 
+function aiWordSearchPath() {
+    return `wordSearch/ai/${localPlayer}/${wordSearchSettings.difficulty}/${wordSearchSettings.aiDifficulty}`;
+}
+
 function createWordSearchState(puzzle) {
     return {
         puzzle,
@@ -218,6 +245,20 @@ function createWordSearchState(puzzle) {
         activeMs: 0,
         lastActivityAt: null,
         completedAt: null
+    };
+}
+
+function createAiWordSearchState(puzzle) {
+    const startedAt = Date.now();
+    const aiDuration = wordSearchAiDuration(puzzle.size, wordSearchSettings.aiDifficulty);
+    return {
+        ...createWordSearchState(puzzle),
+        startedAt,
+        activeMs: 0,
+        aiDifficulty: wordSearchSettings.aiDifficulty,
+        aiDuration,
+        aiCompletedAt: startedAt + aiDuration,
+        aiResolved: false
     };
 }
 
@@ -249,6 +290,22 @@ function loadCoopWordSearch() {
             return;
         }
         if (!state.completedAt && Object.keys(state.found || {}).length >= state.puzzle.words.length) completeWordSearch();
+    });
+}
+
+function loadAiWordSearch() {
+    const ref = database.ref(aiWordSearchPath());
+    ref.once('value').then(snapshot => {
+        const state = snapshot.val();
+        if (state?.puzzle && !state.completedAt && !state.aiResolved) {
+            applyWordSearchState(state);
+            scheduleWordSearchAi(state);
+        } else {
+            const fresh = createAiWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty));
+            ref.set(fresh);
+            applyWordSearchState(fresh);
+            scheduleWordSearchAi(fresh);
+        }
     });
 }
 
@@ -448,6 +505,8 @@ function stopWordSearchRealtime() {
     wordSearchRealtimeRef = null;
     wordSearchRealtimeHandler = null;
     window.clearInterval(wordSearchVersusCountdown);
+    window.clearInterval(wordSearchAiTimer);
+    wordSearchAiTimer = null;
 }
 
 function applyWordSearchState(state) {
@@ -463,12 +522,13 @@ function applyWordSearchState(state) {
     wordSearchActiveMs = Number(state.activeMs) || 0;
     wordSearchLastActivityAt = state.lastActivityAt || null;
     renderWordSearchBoard();
-    setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} • ${wordSearchPuzzle.size}×${wordSearchPuzzle.size}`);
+    setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${wordSearchPuzzle.size}x${wordSearchPuzzle.size}`);
     if (wordSearchSettings.mode === 'coop' && state.completedAt) {
         showCoopWordSearchComplete();
     } else {
         showWordSearchResult('', false);
         enableWordSearchGrid(true);
+        if (wordSearchSettings.mode === 'versus-ai') scheduleWordSearchAi(state);
     }
 }
 
@@ -614,6 +674,10 @@ function recordFoundWord(wordIndex) {
         claimPersistentWord(coopWordSearchPath(), wordIndex, localPlayer);
         return;
     }
+    if (mode === 'versus-ai') {
+        claimPersistentWord(aiWordSearchPath(), wordIndex, localPlayer);
+        return;
+    }
     database.ref(`wordSearch/versus/current/foundBy/${localPlayer}/${wordIndex}`).transaction(current => {
         if (current) return;
         return true;
@@ -695,7 +759,7 @@ function completeWordSearch() {
     wordSearchCompletedLocally = true;
     const mode = wordSearchSettings.mode;
     const difficulty = wordSearchSettings.difficulty;
-    const elapsed = mode === 'versus'
+    const elapsed = mode === 'versus' || mode === 'versus-ai'
         ? Math.max(1, Date.now() - (wordSearchStartedAt || Date.now()))
         : Math.max(1, wordSearchActiveMs);
     enableWordSearchGrid(false);
@@ -714,9 +778,68 @@ function completeWordSearch() {
             }
         });
         showCoopWordSearchComplete();
+    } else if (mode === 'versus-ai') {
+        finishAiWordSearch(elapsed);
     } else {
         finishVersusMatch(elapsed);
     }
+}
+
+function wordSearchAiDuration(size, level) {
+    const config = WORD_SEARCH_AI_LEVELS[level] || WORD_SEARCH_AI_LEVELS.medium;
+    return config.baseMs + (Number(size) || 7) * 9000 + Math.floor(Math.random() * 18000);
+}
+
+function scheduleWordSearchAi(state) {
+    window.clearTimeout(wordSearchAiTimer);
+    if (!state?.aiCompletedAt || state.completedAt || state.aiResolved) return;
+    const remaining = Math.max(0, Number(state.aiCompletedAt) - Date.now());
+    renderWordSearchAiProgress(state);
+    wordSearchAiTimer = window.setInterval(() => {
+        renderWordSearchAiProgress(state);
+        if (Date.now() >= Number(state.aiCompletedAt)) resolveWordSearchAiLoss();
+    }, 1000);
+}
+
+function resolveWordSearchAiLoss() {
+    if (wordSearchSettings.mode !== 'versus-ai' || wordSearchCompletedLocally) return;
+    wordSearchCompletedLocally = true;
+    enableWordSearchGrid(false);
+    database.ref(aiWordSearchPath()).update({
+        aiResolved: true,
+        completedAt: Date.now(),
+        winner: 'AI'
+    });
+    database.ref(`stats/wordSearch/${localPlayer}/versusAi/${wordSearchSettings.difficulty}/losses`).transaction(value => (value || 0) + 1);
+    showWordSearchResult(`<strong>${WORD_SEARCH_AI_NAME} won this round.</strong><button onclick="requestNewWordSearchGrid()">New grid</button>`, true);
+}
+
+function finishAiWordSearch(elapsed) {
+    window.clearInterval(wordSearchAiTimer);
+    database.ref(aiWordSearchPath()).transaction(current => {
+        if (!current || current.completedAt || current.aiResolved) return current;
+        current.completedAt = Date.now();
+        current.aiResolved = true;
+        current.winner = 'player';
+        return current;
+    }, (error, committed) => {
+        if (error || !committed) return;
+        incrementWordSearchCompletion(localPlayer, 'versusAi', wordSearchSettings.difficulty, elapsed);
+        database.ref(`stats/wordSearch/${localPlayer}/versusAi/${wordSearchSettings.difficulty}/wins`).transaction(value => (value || 0) + 1);
+        showWordSearchResult(`<strong>You beat ${WORD_SEARCH_AI_NAME}!</strong><button onclick="requestNewWordSearchGrid()">New grid</button>`, true);
+    });
+}
+
+function renderWordSearchAiProgress(state) {
+    const duration = Math.max(1, Number(state.aiDuration) || 1);
+    const elapsed = Math.max(0, Date.now() - Number(state.startedAt || Date.now()));
+    const percent = Math.min(99, Math.floor((elapsed / duration) * 100));
+    const level = WORD_SEARCH_AI_LEVELS[state.aiDifficulty]?.label || 'Medium';
+    setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${WORD_SEARCH_AI_NAME} ${percent}%`);
+    showWordSearchResult(
+        `<div><strong>${WORD_SEARCH_AI_NAME} is ${percent}% done</strong><span class="word-search-result-note">${level} pace</span></div><div class="ai-progress"><span style="width:${percent}%"></span></div>`,
+        true
+    );
 }
 
 function showCoopWordSearchComplete() {
@@ -768,12 +891,12 @@ function incrementWordSearchCompletion(player, mode, difficulty, elapsed) {
 function renderWordSearchStats() {
     const container = document.getElementById('word-search-stats-content');
     if (!container) return;
-    const modes = ['solo', 'coop', 'versus'];
+    const modes = ['solo', 'coop', 'versus', 'versusAi'];
     container.innerHTML = ['Peter', 'Jadey'].map(player => {
         const sections = modes.map(mode => {
             const rows = WORD_SEARCH_DIFFICULTIES.map(size => {
                 const values = latestStats?.wordSearch?.[player]?.[mode]?.[size] || {};
-                const result = mode === 'versus' ? `${values.wins || 0}W / ${values.losses || 0}L` : '—';
+                const result = mode === 'versus' || mode === 'versusAi' ? `${values.wins || 0}W / ${values.losses || 0}L` : '-';
                 return `<div class="word-stats-row"><strong>${size}×${size}</strong><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
             }).join('');
             return `<div class="word-stats-mode"><h4>${modeTitle(mode)}</h4><div class="word-stats-row word-stats-head"><strong>Grid</strong><span>Done</span><span>Words</span><span>Best</span><span>W/L</span></div>${rows}</div>`;
@@ -783,7 +906,7 @@ function renderWordSearchStats() {
 }
 
 function formatWordSearchTime(milliseconds) {
-    if (!milliseconds) return '—';
+    if (!milliseconds) return '-';
     const totalSeconds = Math.round(milliseconds / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
@@ -791,7 +914,9 @@ function formatWordSearchTime(milliseconds) {
 }
 
 function modeTitle(mode) {
-    return mode === 'coop' ? 'Co-op' : mode.charAt(0).toUpperCase() + mode.slice(1);
+    if (mode === 'coop') return 'Co-op';
+    if (mode === 'versus-ai' || mode === 'versusAi') return `Versus ${WORD_SEARCH_AI_NAME}`;
+    return mode.charAt(0).toUpperCase() + mode.slice(1);
 }
 
 function enableWordSearchGrid(enabled) {

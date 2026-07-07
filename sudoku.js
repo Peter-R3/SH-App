@@ -5,13 +5,20 @@ const SUDOKU_DIFFICULTIES = {
     medium: { label: 'Medium', givens: 34 },
     hard: { label: 'Hard', givens: 28 }
 };
+const SUDOKU_AI_NAME = 'Jaylin';
+const SUDOKU_AI_LEVELS = {
+    easy: { label: 'Easy', baseMs: 420000 },
+    medium: { label: 'Medium', baseMs: 260000 },
+    hard: { label: 'Hard', baseMs: 150000 }
+};
 
-let sudokuSettings = { mode: 'solo', difficulty: 'easy' };
+let sudokuSettings = { mode: 'solo', difficulty: 'easy', aiDifficulty: 'medium' };
 let sudokuState = null;
 let sudokuRef = null;
 let sudokuHandler = null;
 let sudokuSelectedCell = null;
 let sudokuVersusCountdown = null;
+let sudokuAiTimer = null;
 
 function sudokuSettingsKey() {
     return `sudoku-settings-${localPlayer || 'unknown'}`;
@@ -21,11 +28,12 @@ function loadSudokuSettings() {
     try {
         const saved = JSON.parse(localStorage.getItem(sudokuSettingsKey()) || '{}');
         sudokuSettings = {
-            mode: ['solo', 'coop', 'versus'].includes(saved.mode) ? saved.mode : 'solo',
-            difficulty: SUDOKU_DIFFICULTIES[saved.difficulty] ? saved.difficulty : 'easy'
+            mode: ['solo', 'coop', 'versus', 'versus-ai'].includes(saved.mode) ? saved.mode : 'solo',
+            difficulty: SUDOKU_DIFFICULTIES[saved.difficulty] ? saved.difficulty : 'easy',
+            aiDifficulty: SUDOKU_AI_LEVELS[saved.aiDifficulty] ? saved.aiDifficulty : 'medium'
         };
     } catch {
-        sudokuSettings = { mode: 'solo', difficulty: 'easy' };
+        sudokuSettings = { mode: 'solo', difficulty: 'easy', aiDifficulty: 'medium' };
     }
 }
 
@@ -48,6 +56,7 @@ function launchSudoku() {
     if (sudokuSettings.mode === 'solo') loadSoloSudoku();
     if (sudokuSettings.mode === 'coop') loadCoopSudoku();
     if (sudokuSettings.mode === 'versus') loadVersusSudoku(false);
+    if (sudokuSettings.mode === 'versus-ai') loadAiSudoku();
 }
 
 function openSudokuSettings() {
@@ -61,6 +70,8 @@ function openSudokuSettings() {
     }
     document.getElementById('sudoku-mode').value = sudokuSettings.mode;
     document.getElementById('sudoku-difficulty').value = sudokuSettings.difficulty;
+    document.getElementById('sudoku-ai-difficulty').value = sudokuSettings.aiDifficulty;
+    syncSudokuModeControls();
     updateSudokuSettingsNote();
 }
 
@@ -70,8 +81,16 @@ function updateSudokuSetting(key, value) {
         sudokuSettings.mode = value;
     }
     if (key === 'difficulty' && SUDOKU_DIFFICULTIES[value]) sudokuSettings.difficulty = value;
+    if (key === 'aiDifficulty' && SUDOKU_AI_LEVELS[value]) sudokuSettings.aiDifficulty = value;
     saveSudokuSettings();
+    syncSudokuModeControls();
     updateSudokuSettingsNote();
+}
+
+function syncSudokuModeControls() {
+    const showAi = sudokuSettings.mode === 'versus-ai';
+    document.querySelector('label[for="sudoku-ai-difficulty"]')?.classList.toggle('hidden', !showAi);
+    document.getElementById('sudoku-ai-difficulty')?.classList.toggle('hidden', !showAi);
 }
 
 function updateSudokuSettingsNote(message) {
@@ -80,6 +99,7 @@ function updateSudokuSettingsNote(message) {
     note.innerText = message || (
         sudokuSettings.mode === 'solo' ? 'Solo progress is saved separately for each profile and difficulty.' :
         sudokuSettings.mode === 'coop' ? 'Co-op uses one shared puzzle and board.' :
+        sudokuSettings.mode === 'versus-ai' ? 'Race an AI opponent on your own puzzle.' :
         'Versus gives both players the same puzzle and separate boards.'
     );
 }
@@ -91,6 +111,8 @@ function requestNewSudokuPuzzle() {
         database.ref(soloSudokuPath()).set(state).then(launchSudoku);
     } else if (sudokuSettings.mode === 'coop') {
         database.ref(coopSudokuPath()).set(state).then(launchSudoku);
+    } else if (sudokuSettings.mode === 'versus-ai') {
+        database.ref(aiSudokuPath()).set(createAiSudokuState(createSudokuPuzzle(sudokuSettings.difficulty))).then(launchSudoku);
     } else {
         abandonSudokuVersus(false).then(() => loadVersusSudoku(true)).then(launchSudoku);
     }
@@ -104,12 +126,29 @@ function coopSudokuPath() {
     return 'sudoku/coop/current';
 }
 
+function aiSudokuPath() {
+    return `sudoku/ai/${localPlayer}/${sudokuSettings.difficulty}/${sudokuSettings.aiDifficulty}`;
+}
+
 function createSudokuState(puzzle) {
     return {
         puzzle,
         entries: {},
         startedAt: Date.now(),
         completedAt: null
+    };
+}
+
+function createAiSudokuState(puzzle) {
+    const startedAt = Date.now();
+    const aiDuration = sudokuAiDuration(puzzle.difficulty, sudokuSettings.aiDifficulty);
+    return {
+        ...createSudokuState(puzzle),
+        startedAt,
+        aiDifficulty: sudokuSettings.aiDifficulty,
+        aiDuration,
+        aiCompletedAt: startedAt + aiDuration,
+        aiResolved: false
     };
 }
 
@@ -136,6 +175,22 @@ function loadCoopSudoku() {
     subscribeSudoku(coopSudokuPath(), state => {
         applySudokuState(state);
         if (state?.completedAt) showSudokuResult('Puzzle complete!', true);
+    });
+}
+
+function loadAiSudoku() {
+    const ref = database.ref(aiSudokuPath());
+    ref.once('value').then(snapshot => {
+        const state = snapshot.val();
+        if (state?.puzzle && !state.completedAt && !state.aiResolved) {
+            applySudokuState(state);
+            scheduleSudokuAi(state);
+        } else {
+            const fresh = createAiSudokuState(createSudokuPuzzle(sudokuSettings.difficulty));
+            ref.set(fresh);
+            applySudokuState(fresh);
+            scheduleSudokuAi(fresh);
+        }
     });
 }
 
@@ -211,6 +266,8 @@ function stopSudokuSubscription() {
     sudokuRef = null;
     sudokuHandler = null;
     window.clearInterval(sudokuVersusCountdown);
+    window.clearInterval(sudokuAiTimer);
+    sudokuAiTimer = null;
 }
 
 function applySudokuState(state) {
@@ -219,6 +276,7 @@ function applySudokuState(state) {
     const label = SUDOKU_DIFFICULTIES[state?.puzzle?.difficulty]?.label || 'Easy';
     setSudokuStatus(`${modeLabel(sudokuSettings.mode)} - ${label}`);
     showSudokuResult('', false);
+    if (sudokuSettings.mode === 'versus-ai') scheduleSudokuAi(state);
 }
 
 function renderSudokuVersusState(state) {
@@ -259,7 +317,9 @@ function renderSudokuVersusState(state) {
 }
 
 function modeLabel(mode) {
-    return mode === 'coop' ? 'Co-op' : mode === 'versus' ? 'Versus' : 'Solo';
+    if (mode === 'coop') return 'Co-op';
+    if (mode === 'versus-ai' || mode === 'versusAi') return `Versus ${SUDOKU_AI_NAME}`;
+    return mode === 'versus' ? 'Versus' : 'Solo';
 }
 
 function setSudokuStatus(message) {
@@ -308,6 +368,7 @@ function renderSudokuBoard(concealed) {
 
 function selectSudokuCell(index) {
     const givens = sudokuState?.puzzle?.givens || [];
+    if (sudokuState?.completedAt || sudokuState?.aiResolved || sudokuState?.status === 'finished') return;
     if (givens[index]) return;
     sudokuSelectedCell = index;
     renderSudokuBoard(false);
@@ -315,9 +376,12 @@ function selectSudokuCell(index) {
 
 function setSudokuCell(value) {
     if (sudokuSelectedCell === null || !sudokuState?.puzzle) return;
+    if (sudokuState.completedAt || sudokuState.aiResolved || sudokuState.status === 'finished') return;
     const index = sudokuSelectedCell;
     const path = sudokuSettings.mode === 'versus'
         ? `sudoku/versus/current/entriesBy/${localPlayer}/${index}`
+        : sudokuSettings.mode === 'versus-ai'
+            ? `${aiSudokuPath()}/entries/${index}`
         : sudokuSettings.mode === 'coop'
             ? `sudoku/coop/current/entries/${index}`
             : `${soloSudokuPath()}/entries/${index}`;
@@ -341,6 +405,12 @@ function clearSudokuGrid() {
     if (!sudokuState?.puzzle || !window.confirm('Clear all entries for this Sudoku grid?')) return;
     sudokuSelectedCell = null;
     const updates = { startedAt: Date.now(), completedAt: null };
+    if (sudokuSettings.mode === 'versus-ai') {
+        updates.aiResolved = false;
+        updates.winner = null;
+        updates.aiDuration = sudokuAiDuration(sudokuSettings.difficulty, sudokuSettings.aiDifficulty);
+        updates.aiCompletedAt = updates.startedAt + updates.aiDuration;
+    }
     if (sudokuSettings.mode === 'versus') {
         if (sudokuState.status === 'finished') {
             setSudokuStatus('This Versus match has finished. Start a new match from Modes.');
@@ -353,12 +423,23 @@ function clearSudokuGrid() {
         });
         return;
     }
-    const path = sudokuSettings.mode === 'coop' ? coopSudokuPath() : soloSudokuPath();
+    const path = sudokuSettings.mode === 'coop'
+        ? coopSudokuPath()
+        : sudokuSettings.mode === 'versus-ai'
+            ? aiSudokuPath()
+            : soloSudokuPath();
     database.ref(path).update({ ...updates, entries: {} }).then(() => {
         sudokuState.entries = {};
         sudokuState.startedAt = updates.startedAt;
         sudokuState.completedAt = null;
         showSudokuResult('', false);
+        if (sudokuSettings.mode === 'versus-ai') {
+            sudokuState.aiResolved = false;
+            sudokuState.winner = null;
+            sudokuState.aiDuration = updates.aiDuration;
+            sudokuState.aiCompletedAt = updates.aiCompletedAt;
+            scheduleSudokuAi(sudokuState);
+        }
         renderSudokuBoard(false);
     });
 }
@@ -389,6 +470,8 @@ function completeSudokuPuzzle() {
         }, (error, committed) => {
             if (!error && committed) ['Peter', 'Jadey'].forEach(player => incrementSudokuCompletion(player, 'coop', sudokuSettings.difficulty, elapsed));
         });
+    } else if (sudokuSettings.mode === 'versus-ai') {
+        finishAiSudoku(elapsed);
     } else {
         database.ref('sudoku/versus/current').transaction(current => {
             if (!current || current.status !== 'active') return current;
@@ -405,6 +488,71 @@ function completeSudokuPuzzle() {
             }
         });
     }
+}
+
+function sudokuAiDuration(difficulty, level) {
+    const config = SUDOKU_AI_LEVELS[level] || SUDOKU_AI_LEVELS.medium;
+    const difficultyBonus = difficulty === 'hard' ? 70000 : difficulty === 'medium' ? 35000 : 0;
+    return config.baseMs + difficultyBonus + Math.floor(Math.random() * 30000);
+}
+
+function scheduleSudokuAi(state) {
+    window.clearInterval(sudokuAiTimer);
+    if (!state?.aiCompletedAt || state.completedAt || state.aiResolved) return;
+    renderSudokuAiProgress(state);
+    sudokuAiTimer = window.setInterval(() => {
+        renderSudokuAiProgress(state);
+        if (Date.now() >= Number(state.aiCompletedAt)) resolveSudokuAiLoss();
+    }, 1000);
+}
+
+function renderSudokuAiProgress(state) {
+    const duration = Math.max(1, Number(state.aiDuration) || 1);
+    const elapsed = Math.max(0, Date.now() - Number(state.startedAt || Date.now()));
+    const percent = Math.min(99, Math.floor((elapsed / duration) * 100));
+    const level = SUDOKU_AI_LEVELS[state.aiDifficulty]?.label || 'Medium';
+    setSudokuStatus(`${modeLabel(sudokuSettings.mode)} - ${SUDOKU_AI_NAME} ${percent}%`);
+    showSudokuResult(
+        `<strong>${SUDOKU_AI_NAME} is ${percent}% done</strong><div class="ai-progress"><span style="width:${percent}%"></span></div><span class="word-search-result-note">${level} pace</span>`,
+        true
+    );
+}
+
+function resolveSudokuAiLoss() {
+    if (sudokuSettings.mode !== 'versus-ai' || sudokuState?.completedAt || sudokuState?.aiResolved) return;
+    sudokuState.completedAt = Date.now();
+    sudokuState.aiResolved = true;
+    enableSudokuBoard(false);
+    database.ref(aiSudokuPath()).update({
+        aiResolved: true,
+        completedAt: sudokuState.completedAt,
+        winner: 'AI'
+    });
+    database.ref(`stats/sudoku/${localPlayer}/versusAi/${sudokuSettings.difficulty}/losses`).transaction(value => (value || 0) + 1);
+    showSudokuResult(`<strong>${SUDOKU_AI_NAME} solved it first.</strong><button onclick="requestNewSudokuPuzzle()">New puzzle</button>`, true);
+}
+
+function finishAiSudoku(elapsed) {
+    window.clearInterval(sudokuAiTimer);
+    database.ref(aiSudokuPath()).transaction(current => {
+        if (!current || current.completedAt || current.aiResolved) return current;
+        current.completedAt = Date.now();
+        current.aiResolved = true;
+        current.winner = 'player';
+        return current;
+    }, (error, committed) => {
+        if (error || !committed) return;
+        sudokuState.completedAt = Date.now();
+        sudokuState.aiResolved = true;
+        incrementSudokuCompletion(localPlayer, 'versusAi', sudokuSettings.difficulty, elapsed);
+        database.ref(`stats/sudoku/${localPlayer}/versusAi/${sudokuSettings.difficulty}/wins`).transaction(value => (value || 0) + 1);
+        renderSudokuBoard(false);
+        showSudokuResult(`<strong>You beat ${SUDOKU_AI_NAME}!</strong><button onclick="requestNewSudokuPuzzle()">New puzzle</button>`, true);
+    });
+}
+
+function enableSudokuBoard(enabled) {
+    document.getElementById('sudoku-board')?.classList.toggle('disabled', !enabled);
 }
 
 function incrementSudokuCompletion(player, mode, difficulty, elapsed) {
@@ -587,13 +735,13 @@ function shuffleSudoku(values) {
 function renderSudokuStats() {
     const container = document.getElementById('sudoku-stats-content');
     if (!container) return;
-    const modes = ['solo', 'coop', 'versus'];
+    const modes = ['solo', 'coop', 'versus', 'versusAi'];
     const difficulties = Object.keys(SUDOKU_DIFFICULTIES);
     container.innerHTML = ['Peter', 'Jadey'].map(player => {
         const rows = modes.flatMap(mode => difficulties.map(difficulty => {
             const values = latestStats?.sudoku?.[player]?.[mode]?.[difficulty] || {};
             const best = values.bestTime ? formatSudokuTime(values.bestTime) : '-';
-            const result = mode === 'versus' ? ` - ${values.wins || 0}W/${values.losses || 0}L` : '';
+            const result = mode === 'versus' || mode === 'versusAi' ? ` - ${values.wins || 0}W/${values.losses || 0}L` : '';
             return `<div><span>${modeLabel(mode)} ${SUDOKU_DIFFICULTIES[difficulty].label}</span><strong>${values.completedPuzzles || 0} - ${best}${result}</strong></div>`;
         }));
         return `<section class="sudoku-stat-card ${player.toLowerCase()}">

@@ -17,6 +17,7 @@ let battleshipPlacementPreview = null;
 let battleshipDragShipId = null;
 let battleshipDragPointerId = null;
 let battleshipLastTap = { shipId: null, at: 0 };
+let battleshipDragOffset = 0;
 
 function launchBattleship() {
     if (!localPlayer) return;
@@ -123,6 +124,7 @@ function stopBattleshipSubscription() {
     battleshipPlacementPreview = null;
     battleshipDragShipId = null;
     battleshipDragPointerId = null;
+    battleshipDragOffset = 0;
     battleshipLastTap = { shipId: null, at: 0 };
 }
 
@@ -255,10 +257,11 @@ function renderBattleshipBoard(view) {
         const shot = board.shotsReceived?.[index];
         const ship = shipByCell[index];
         const classes = ['battleship-cell'];
-        if (view === 'own' && ship) classes.push('ship', `ship-${ship.id}`);
+        const draggingOriginalShip = view === 'own' && ship?.id === battleshipDragShipId && battleshipPlacementPreview;
+        if (view === 'own' && ship && !draggingOriginalShip) classes.push('ship', `ship-${ship.id}`);
         if (view === 'own' && ship?.id === selectedBattleshipShipId) classes.push('selected-ship');
         if (previewCells.has(index)) {
-            classes.push('placement-preview', battleshipPlacementPreview.valid ? 'valid-preview' : 'invalid-preview');
+            classes.push('ship', `ship-${battleshipPlacementPreview.shipId}`, 'placement-preview', battleshipPlacementPreview.valid ? 'valid-preview' : 'invalid-preview');
         }
         if (shot?.hit) classes.push('hit');
         if (shot && !shot.hit) classes.push('miss');
@@ -338,11 +341,12 @@ function findRotatedBattleshipCells(board, ship) {
     return null;
 }
 
-function previewBattleshipPlacement(startIndex) {
+function previewBattleshipPlacement(targetIndex) {
     if (battleshipState?.status !== 'placement' || battleshipState.ready?.[localPlayer] || !selectedBattleshipShipId) return;
     const board = battleshipState.boards?.[localPlayer];
     const ship = board?.ships?.find(item => item.id === selectedBattleshipShipId);
     if (!board || !ship) return;
+    const startIndex = targetIndex - battleshipDragOffset;
     const orientation = battleshipShipOrientation(ship);
     const cells = battleshipCellsFromStart(startIndex, ship.size, orientation);
     const validCells = battleshipBuildPlacement(board, ship, startIndex, orientation);
@@ -380,8 +384,13 @@ function startBattleshipShipDrag(event, shipId) {
     selectedBattleshipShipId = shipId;
     battleshipDragShipId = shipId;
     battleshipDragPointerId = event.pointerId;
-    const startCell = event.currentTarget?.dataset?.cellIndex;
-    if (startCell !== undefined) previewBattleshipPlacement(Number(startCell));
+    const board = battleshipState.boards?.[localPlayer];
+    const ship = board?.ships?.find(item => item.id === shipId);
+    const touchedCell = event.currentTarget?.dataset?.cellIndex;
+    battleshipDragOffset = ship && touchedCell !== undefined
+        ? Math.max(0, ship.cells.indexOf(Number(touchedCell)))
+        : 0;
+    if (touchedCell !== undefined) previewBattleshipPlacement(Number(touchedCell));
 }
 
 function handleBattleshipShipDragMove(event) {
@@ -400,6 +409,10 @@ function finishBattleshipShipDrag(event) {
     battleshipDragShipId = null;
     battleshipDragPointerId = null;
     if (preview?.valid && Number.isInteger(startIndex)) {
+        const board = battleshipState?.boards?.[localPlayer];
+        const ship = board?.ships?.find(item => item.id === selectedBattleshipShipId);
+        if (ship) ship.cells = preview.cells.slice();
+        renderBattleshipBoard('own');
         moveSelectedBattleshipShip(startIndex);
     } else {
         battleshipPlacementPreview = null;
@@ -428,6 +441,7 @@ function updateSelectedBattleshipShip(startIndex, rotate) {
     }, (error, committed) => {
         battleshipPlacementPreview = null;
         if (!error && (!committed || !moved)) setBattleshipStatus('That position is blocked or outside the grid');
+        renderBattleshipBoard('own');
     });
 }
 

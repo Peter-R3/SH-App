@@ -1344,7 +1344,7 @@ function adjustManagedScores(operation) {
     const game = document.getElementById('score-game')?.value || 'number-guess';
     const selectedMode = document.getElementById('score-mode')?.value || 'all';
     const multiplayerPuzzleGame = game === 'word-search' || game === 'sudoku';
-    const availableModes = multiplayerPuzzleGame ? ['solo', 'coop', 'versus'] : ['ten', 'hundred', 'colours'];
+    const availableModes = multiplayerPuzzleGame ? ['solo', 'coop', 'versus', 'versusAi'] : ['ten', 'hundred', 'colours'];
     const modes = selectedMode === 'all' ? availableModes : [selectedMode];
     if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
@@ -1424,7 +1424,7 @@ function syncManagedScoreControls() {
     if (!modeSelect || !extraOptions || !difficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions) return;
 
     modeSelect.innerHTML = (isWordSearch || isSudoku)
-        ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus</option>'
+        ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus: Player</option><option value="versusAi">Versus: Jaylin</option>'
         : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
     difficultySelect.innerHTML = isSudoku
         ? '<option value="all">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>'
