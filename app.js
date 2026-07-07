@@ -165,6 +165,9 @@ let retentionCleanupRunning = false;
 let authRejectionMessage = '';
 let activeAppView = 'signed-out';
 let presenceDisconnectHandle = null;
+let messageHoldTimer = null;
+let selectedMessageActionId = null;
+let notificationSwipe = null;
 window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
@@ -1138,10 +1141,13 @@ function renderMessages() {
         const meta = mine
             ? `<time>${timeLabel}</time><span>${senderProfile.nickname}</span>`
             : `<span>${senderProfile.nickname}</span><time>${timeLabel}</time>`;
+        const bubbleActions = mine
+            ? `onpointerdown="startMessageHold(event, '${message.id}')" onpointerup="cancelMessageHold()" onpointercancel="cancelMessageHold()" onpointerleave="cancelMessageHold()"`
+            : '';
         const bubble = `
             <div class="message-stack">
                 <div class="message-meta">${meta}</div>
-                <div class="message-bubble" style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
+                <div class="message-bubble" ${bubbleActions} style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
             </div>
         `;
 
@@ -1199,7 +1205,7 @@ function renderNotifications() {
         }
 
         return `
-            <div class="notification-card">
+            <div class="notification-card" onpointerdown="startNotificationSwipe(event, '${notification.id}')" onpointermove="moveNotificationSwipe(event)" onpointerup="finishNotificationSwipe(event)" onpointercancel="cancelNotificationSwipe()">
                 <div>
                     <div class="notification-meta"><span class="notification-type">${escapeHtml(notification.type || 'Update')}</span><time>${timeLabel}</time></div>
                     <div class="notification-body">${escapeHtml(notification.body || '')}</div>
@@ -1208,6 +1214,110 @@ function renderNotifications() {
             </div>
         `;
     }).join('');
+}
+
+function startMessageHold(event, messageId) {
+    const message = latestMessages.find(item => item.id === messageId);
+    if (!message || message.sender !== localPlayer) return;
+    cancelMessageHold();
+    messageHoldTimer = window.setTimeout(() => {
+        openMessageActionMenu(messageId, event.clientX, event.clientY);
+    }, 520);
+}
+
+function cancelMessageHold() {
+    if (messageHoldTimer) window.clearTimeout(messageHoldTimer);
+    messageHoldTimer = null;
+}
+
+function openMessageActionMenu(messageId, x, y) {
+    const message = latestMessages.find(item => item.id === messageId);
+    if (!message || message.sender !== localPlayer) return;
+    selectedMessageActionId = messageId;
+    const menu = document.getElementById('message-action-menu');
+    if (!menu) return;
+    menu.classList.remove('hidden');
+    const left = Math.min(Math.max(12, x || window.innerWidth / 2), window.innerWidth - 156);
+    const top = Math.min(Math.max(12, y || window.innerHeight / 2), window.innerHeight - 154);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+}
+
+function closeMessageActionMenu() {
+    selectedMessageActionId = null;
+    document.getElementById('message-action-menu')?.classList.add('hidden');
+}
+
+function editSelectedMessage() {
+    const message = latestMessages.find(item => item.id === selectedMessageActionId);
+    if (!message || message.sender !== localPlayer) {
+        closeMessageActionMenu();
+        return;
+    }
+    const updated = window.prompt('Edit message', message.text || '');
+    if (updated !== null) {
+        const text = updated.trim();
+        if (text) database.ref(`messages/${message.id}/text`).set(text);
+    }
+    closeMessageActionMenu();
+}
+
+function deleteSelectedMessage() {
+    const message = latestMessages.find(item => item.id === selectedMessageActionId);
+    if (!message || message.sender !== localPlayer) {
+        closeMessageActionMenu();
+        return;
+    }
+    if (window.confirm('Delete this message?')) {
+        database.ref(`messages/${message.id}`).remove();
+    }
+    closeMessageActionMenu();
+}
+
+function startNotificationSwipe(event, notificationId) {
+    if (event.target?.closest?.('button')) return;
+    const card = event.currentTarget;
+    notificationSwipe = {
+        id: notificationId,
+        startX: event.clientX,
+        startY: event.clientY,
+        dx: 0,
+        card
+    };
+    card.setPointerCapture?.(event.pointerId);
+}
+
+function moveNotificationSwipe(event) {
+    if (!notificationSwipe || notificationSwipe.card !== event.currentTarget) return;
+    const dx = event.clientX - notificationSwipe.startX;
+    const dy = event.clientY - notificationSwipe.startY;
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) return;
+    notificationSwipe.dx = dx;
+    const opacity = Math.max(0.25, 1 - Math.abs(dx) / 180);
+    notificationSwipe.card.style.transform = `translateX(${dx}px)`;
+    notificationSwipe.card.style.opacity = String(opacity);
+}
+
+function finishNotificationSwipe(event) {
+    if (!notificationSwipe || notificationSwipe.card !== event.currentTarget) return;
+    const { id, dx, card } = notificationSwipe;
+    notificationSwipe = null;
+    if (Math.abs(dx) > 86) {
+        card.style.transform = `translateX(${dx > 0 ? 120 : -120}%)`;
+        card.style.opacity = '0';
+        database.ref(`notifications/${id}`).remove();
+        return;
+    }
+    card.style.transform = '';
+    card.style.opacity = '';
+}
+
+function cancelNotificationSwipe() {
+    if (notificationSwipe?.card) {
+        notificationSwipe.card.style.transform = '';
+        notificationSwipe.card.style.opacity = '';
+    }
+    notificationSwipe = null;
 }
 
 function handleNotificationAction(notificationId, actionName, value) {

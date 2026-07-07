@@ -257,6 +257,7 @@ function createAiWordSearchState(puzzle) {
         activeMs: 0,
         aiDifficulty: wordSearchSettings.aiDifficulty,
         aiDuration,
+        aiActiveMs: 0,
         aiCompletedAt: startedAt + aiDuration,
         aiResolved: false
     };
@@ -792,12 +793,15 @@ function wordSearchAiDuration(size, level) {
 
 function scheduleWordSearchAi(state) {
     window.clearTimeout(wordSearchAiTimer);
-    if (!state?.aiCompletedAt || state.completedAt || state.aiResolved) return;
-    const remaining = Math.max(0, Number(state.aiCompletedAt) - Date.now());
+    if (!state?.aiDuration || state.completedAt || state.aiResolved) return;
+    state.aiActiveMs = Number(state.aiActiveMs) || 0;
     renderWordSearchAiProgress(state);
     wordSearchAiTimer = window.setInterval(() => {
+        if (wordSearchSettings.mode !== 'versus-ai' || activeAppView !== 'word-search' || document.hidden) return;
+        state.aiActiveMs = Math.min(Number(state.aiDuration), (Number(state.aiActiveMs) || 0) + 1000);
         renderWordSearchAiProgress(state);
-        if (Date.now() >= Number(state.aiCompletedAt)) resolveWordSearchAiLoss();
+        database.ref(`${aiWordSearchPath()}/aiActiveMs`).set(state.aiActiveMs);
+        if (state.aiActiveMs >= Number(state.aiDuration)) resolveWordSearchAiLoss();
     }, 1000);
 }
 
@@ -832,12 +836,13 @@ function finishAiWordSearch(elapsed) {
 
 function renderWordSearchAiProgress(state) {
     const duration = Math.max(1, Number(state.aiDuration) || 1);
-    const elapsed = Math.max(0, Date.now() - Number(state.startedAt || Date.now()));
-    const percent = Math.min(99, Math.floor((elapsed / duration) * 100));
+    const elapsed = Math.max(0, Number(state.aiActiveMs) || 0);
+    const wordCount = Math.max(1, wordSearchPuzzle?.words?.length || state.puzzle?.words?.length || 1);
+    const foundEstimate = Math.min(wordCount - 1, Math.floor((elapsed / duration) * wordCount));
     const level = WORD_SEARCH_AI_LEVELS[state.aiDifficulty]?.label || 'Medium';
-    setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${WORD_SEARCH_AI_NAME} ${percent}%`);
+    setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${WORD_SEARCH_AI_NAME} ${foundEstimate}/${wordCount}`);
     showWordSearchResult(
-        `<div><strong>${WORD_SEARCH_AI_NAME} is ${percent}% done</strong><span class="word-search-result-note">${level} pace</span></div><div class="ai-progress"><span style="width:${percent}%"></span></div>`,
+        `<div><strong>${WORD_SEARCH_AI_NAME} found ${foundEstimate} of ${wordCount} words</strong><span class="word-search-result-note">${level} pace</span></div>`,
         true
     );
 }

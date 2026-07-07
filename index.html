@@ -761,6 +761,12 @@
                     <button class="profile-photo-reset" onclick="resetThemeColour()">Reset to default</button>
                 </div>
             </div>
+
+            <div id="message-action-menu" class="message-action-menu hidden" role="menu" aria-label="Message actions">
+                <button onclick="editSelectedMessage()">Edit</button>
+                <button class="danger-action" onclick="deleteSelectedMessage()">Delete</button>
+                <button onclick="closeMessageActionMenu()">Cancel</button>
+            </div>
         </main>
     </div>
 
