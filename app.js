@@ -75,7 +75,7 @@ const playerProfiles = {
 };
 
 const DEFAULT_THEME_COLOURS = {
-    Peter: '#58A6FF',
+    Peter: '#15AFD1',
     Jadey: '#FFD1DC'
 };
 
@@ -241,6 +241,39 @@ function sendAppNotification(notification, suppressWhenViewing = null) {
     if (!suppressWhenViewing) return send();
     return recipientIsViewing(notification.recipient, suppressWhenViewing)
         .then(isViewing => isViewing ? null : send());
+}
+
+function removeMatchingNotifications(predicate) {
+    return database.ref('notifications').once('value').then(snapshot => {
+        const updates = {};
+        snapshot.forEach(child => {
+            const notification = { id: child.key, ...child.val() };
+            if (predicate(notification)) updates[`notifications/${child.key}`] = null;
+        });
+        return Object.keys(updates).length ? database.ref().update(updates) : null;
+    });
+}
+
+function clearGameNotifications(actions, players = ['Peter', 'Jadey']) {
+    const actionSet = new Set(actions);
+    return removeMatchingNotifications(notification =>
+        actionSet.has(notification.action) &&
+        (players.includes(notification.sender) || players.includes(notification.recipient))
+    );
+}
+
+function removeNotificationsForMessage(message) {
+    if (!message) return Promise.resolve();
+    return removeMatchingNotifications(notification =>
+        notification.action === 'reply' &&
+        (
+            notification.messageId === message.id ||
+            (!notification.messageId &&
+                notification.sender === message.sender &&
+                notification.recipient === message.recipient &&
+                notification.body === message.text)
+        )
+    );
 }
 
 // =========================================================================
@@ -1098,7 +1131,8 @@ function sendMessage(event) {
     const recipient = otherPlayer(localPlayer);
     const senderNickname = playerProfiles[localPlayer]?.nickname || localPlayer;
 
-    database.ref('messages').push({
+    const messageRef = database.ref('messages').push();
+    messageRef.set({
         sender: localPlayer,
         recipient,
         text,
@@ -1107,6 +1141,7 @@ function sendMessage(event) {
     sendAppNotification({
         type: `Message from ${senderNickname}`,
         action: 'reply',
+        messageId: messageRef.key,
         sender: localPlayer,
         recipient,
         body: text,
@@ -1255,6 +1290,13 @@ function closeMessageActionMenu() {
     document.getElementById('message-action-menu')?.classList.add('hidden');
 }
 
+document.addEventListener('pointerdown', event => {
+    const menu = document.getElementById('message-action-menu');
+    if (!menu || menu.classList.contains('hidden')) return;
+    if (menu.contains(event.target)) return;
+    closeMessageActionMenu();
+});
+
 function editSelectedMessage() {
     const message = latestMessages.find(item => item.id === selectedMessageActionId);
     if (!message || message.sender !== localPlayer) {
@@ -1276,7 +1318,10 @@ function deleteSelectedMessage() {
         return;
     }
     if (window.confirm('Delete this message?')) {
-        database.ref(`messages/${message.id}`).remove();
+        Promise.all([
+            database.ref(`messages/${message.id}`).remove(),
+            removeNotificationsForMessage(message)
+        ]);
     }
     closeMessageActionMenu();
 }
@@ -1310,9 +1355,9 @@ function finishNotificationSwipe(event) {
     const { id, dx, card } = notificationSwipe;
     notificationSwipe = null;
     if (Math.abs(dx) > 86) {
-        card.style.transform = `translateX(${dx > 0 ? 120 : -120}%)`;
+        card.style.transform = `translateX(${dx > 0 ? 110 : -110}vw)`;
         card.style.opacity = '0';
-        database.ref(`notifications/${id}`).remove();
+        window.setTimeout(() => database.ref(`notifications/${id}`).remove(), 180);
         return;
     }
     card.style.transform = '';
@@ -1469,6 +1514,10 @@ function adjustManagedScores(operation) {
     if (game === 'word-search') {
         const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
         const difficulties = selectedDifficulty === 'all' ? [5, 6, 7, 8, 9] : [Number(selectedDifficulty)];
+        const selectedAiDifficulty = selectedMode === 'versusAi'
+            ? (document.getElementById('score-ai-difficulty')?.value || 'all')
+            : 'all';
+        const aiDifficulties = selectedAiDifficulty === 'all' ? ['easy', 'medium', 'hard'] : [selectedAiDifficulty];
         const selectedMetric = document.getElementById('score-metric')?.value || 'all';
         const metrics = selectedMetric === 'all'
             ? ['completedGrids', 'wordsFound', 'bestTime', 'wins', 'losses']
@@ -1476,7 +1525,7 @@ function adjustManagedScores(operation) {
         scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
             difficulties.flatMap(difficulty => metrics.flatMap(metric => {
                 const targets = mode === 'versusAi'
-                    ? ['easy', 'medium', 'hard'].map(aiDifficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
+                    ? aiDifficulties.map(aiDifficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
                     : [`stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`];
                 return targets.map(path => ({
                     path,
@@ -1505,6 +1554,10 @@ function adjustManagedScores(operation) {
     } else if (game === 'sudoku') {
         const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
         const difficulties = selectedDifficulty === 'all' ? ['easy', 'medium', 'hard'] : [selectedDifficulty];
+        const selectedAiDifficulty = selectedMode === 'versusAi'
+            ? (document.getElementById('score-ai-difficulty')?.value || 'all')
+            : 'all';
+        const aiDifficulties = selectedAiDifficulty === 'all' ? ['easy', 'medium', 'hard'] : [selectedAiDifficulty];
         const selectedMetric = document.getElementById('sudoku-score-metric')?.value || 'all';
         const metrics = selectedMetric === 'all'
             ? ['completedPuzzles', 'bestTime', 'wins', 'losses']
@@ -1512,7 +1565,7 @@ function adjustManagedScores(operation) {
         scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
             difficulties.flatMap(difficulty => metrics.flatMap(metric => {
                 const targets = mode === 'versusAi'
-                    ? ['easy', 'medium', 'hard'].map(aiDifficulty => `stats/sudoku/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
+                    ? aiDifficulties.map(aiDifficulty => `stats/sudoku/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
                     : [`stats/sudoku/${profile}/${mode}/${difficulty}/${metric}`];
                 return targets.map(path => ({
                     path,
@@ -1545,18 +1598,26 @@ function syncManagedScoreControls() {
     const modeSelect = document.getElementById('score-mode');
     const extraOptions = document.getElementById('score-word-search-options');
     const difficultySelect = document.getElementById('score-difficulty');
+    const aiDifficultySelect = document.getElementById('score-ai-difficulty');
     const battleshipOptions = document.getElementById('score-battleship-options');
     const connectFourOptions = document.getElementById('score-connect-four-options');
     const sudokuOptions = document.getElementById('score-sudoku-options');
-    if (!modeSelect || !extraOptions || !difficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions) return;
+    if (!modeSelect || !extraOptions || !difficultySelect || !aiDifficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions) return;
 
+    const previousMode = modeSelect.value;
     modeSelect.innerHTML = (isWordSearch || isSudoku)
         ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus: Player</option><option value="versusAi">Versus: Jaylin</option>'
         : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
+    if (Array.from(modeSelect.options).some(option => option.value === previousMode)) {
+        modeSelect.value = previousMode;
+    }
     difficultySelect.innerHTML = isSudoku
         ? '<option value="all">All difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>'
         : '<option value="all">All difficulties</option><option value="5">5 x 5</option><option value="6">6 x 6</option><option value="7">7 x 7</option><option value="8">8 x 8</option><option value="9">9 x 9</option>';
     extraOptions.classList.toggle('hidden', !(isWordSearch || isSudoku));
+    const showAiDifficulty = (isWordSearch || isSudoku) && modeSelect.value === 'versusAi';
+    document.querySelector('label[for="score-ai-difficulty"]')?.classList.toggle('hidden', !showAiDifficulty);
+    aiDifficultySelect.classList.toggle('hidden', !showAiDifficulty);
     document.querySelector('label[for="score-metric"]')?.classList.toggle('hidden', isSudoku);
     document.getElementById('score-metric')?.classList.toggle('hidden', isSudoku);
     battleshipOptions.classList.toggle('hidden', !isBattleship);
@@ -1945,6 +2006,7 @@ function handleGameStateUpdate() {
 }
 
 function openModesSelection() {
+    setActiveAppView('number-guess-modes');
     const gameScreen = document.getElementById('game-1-to-10-screen');
     const modesScreen = document.getElementById('modes-screen');
     const headerShell = document.getElementById('modes-header-shell');

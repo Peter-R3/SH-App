@@ -8,9 +8,9 @@ const WORD_SEARCH_DIRECTIONS = [
 ];
 const WORD_SEARCH_AI_NAME = 'Jaylin';
 const WORD_SEARCH_AI_LEVELS = {
-    easy: { label: 'Easy', baseMs: 190000 },
-    medium: { label: 'Medium', baseMs: 125000 },
-    hard: { label: 'Hard', baseMs: 76000 }
+    easy: { label: 'Easy', baseMs: 100000 },
+    medium: { label: 'Medium', baseMs: 70000 },
+    hard: { label: 'Hard', baseMs: 38000 }
 };
 const WORD_SEARCH_BANK = [
     'ANT', 'BEE', 'CAT', 'CUP', 'DOG', 'FOX', 'GEM', 'HAT', 'INK', 'JAM', 'KEY', 'MAP', 'OWL', 'PEN',
@@ -140,7 +140,7 @@ function launchWordSearch() {
 }
 
 function openWordSearchSettings() {
-    setActiveAppView('word-search');
+    setActiveAppView('word-search-settings');
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('word-search-settings-screen')?.classList.remove('hidden');
     const header = document.getElementById('word-search-settings-header');
@@ -795,7 +795,7 @@ function completeWordSearch() {
 
 function wordSearchAiDuration(size, level) {
     const config = WORD_SEARCH_AI_LEVELS[level] || WORD_SEARCH_AI_LEVELS.medium;
-    return config.baseMs + (Number(size) || 7) * 9000 + Math.floor(Math.random() * 18000);
+    return config.baseMs + (Number(size) || 7) * 4000 + Math.floor(Math.random() * 8000);
 }
 
 function scheduleWordSearchAi(state) {
@@ -900,6 +900,11 @@ function incrementWordSearchCompletion(player, mode, difficulty, elapsed, aiDiff
     database.ref(`${base}/bestTime`).transaction(current => !current || elapsed < current ? elapsed : current);
 }
 
+function wordSearchCountLabel(value, singular, plural) {
+    const count = Number(value) || 0;
+    return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function renderWordSearchStatsLegacy() {
     const container = document.getElementById('word-search-stats-content');
     if (!container) return;
@@ -928,12 +933,12 @@ function renderWordSearchStats() {
                 ? WORD_SEARCH_DIFFICULTIES.flatMap(size => Object.keys(WORD_SEARCH_AI_LEVELS).map(aiDifficulty => {
                     const values = latestStats?.wordSearch?.[player]?.[mode]?.[size]?.[aiDifficulty] || {};
                     const result = `${values.wins || 0}W / ${values.losses || 0}L`;
-                    return `<div class="word-stats-row ai-stats-row"><strong>${size}x${size}</strong><span>${WORD_SEARCH_AI_LEVELS[aiDifficulty].label}</span><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
+                    return `<div class="word-stats-row ai-stats-row"><strong>${size}x${size}</strong><span>${WORD_SEARCH_AI_LEVELS[aiDifficulty].label}</span><span>${wordSearchCountLabel(values.completedGrids, 'grid', 'grids')}</span><span>${wordSearchCountLabel(values.wordsFound, 'word', 'words')}</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
                 })).join('')
                 : WORD_SEARCH_DIFFICULTIES.map(size => {
                     const values = latestStats?.wordSearch?.[player]?.[mode]?.[size] || {};
                     const result = mode === 'versus' ? `${values.wins || 0}W / ${values.losses || 0}L` : '-';
-                    return `<div class="word-stats-row"><strong>${size}x${size}</strong><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
+                    return `<div class="word-stats-row"><strong>${size}x${size}</strong><span>${wordSearchCountLabel(values.completedGrids, 'grid', 'grids')}</span><span>${wordSearchCountLabel(values.wordsFound, 'word', 'words')}</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
                 }).join('');
             const head = aiMode
                 ? '<div class="word-stats-row word-stats-head ai-stats-row"><strong>Grid</strong><span>AI</span><span>Done</span><span>Words</span><span>Best</span><span>W/L</span></div>'
@@ -1018,9 +1023,11 @@ function abandonVersusMatch(notifyOpponent) {
         const updates = { 'wordSearch/versus/current': null };
         if (notifyOpponent && match.players?.[otherPlayer(localPlayer)]) {
             return database.ref().update(updates)
+                .then(() => clearGameNotifications(['join-wordsearch-versus'], ['Peter', 'Jadey']))
                 .then(() => sendAppNotification(notification, 'word-search'));
         }
-        return database.ref().update(updates);
+        return database.ref().update(updates)
+            .then(() => clearGameNotifications(['join-wordsearch-versus'], ['Peter', 'Jadey']));
     }).finally(() => {
         wordSearchDisconnectHandle?.cancel?.();
         wordSearchDisconnectHandle = null;

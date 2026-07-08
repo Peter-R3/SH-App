@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 
-                <div style="padding: 0 24px; flex: 1; display: flex; flex-direction: column;">
+                <div class="games-content">
                     <h2 class="menu-prompt">Select a Game</h2>
                     
                     <div class="games-grid">
@@ -685,10 +685,12 @@
                         <label for="score-game">Game</label>
                         <select id="score-game" onchange="syncManagedScoreControls()"><option value="number-guess">1 to 10</option><option value="word-search">Word Search</option><option value="battleship">Battleship</option><option value="connect-four">Connect 4</option><option value="sudoku">Sudoku</option></select>
                         <label for="score-mode">Mode</label>
-                        <select id="score-mode"><option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option></select>
+                        <select id="score-mode" onchange="syncManagedScoreControls()"><option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option></select>
                         <div id="score-word-search-options" class="hidden management-subgroup">
                             <label for="score-difficulty">Difficulty</label>
                             <select id="score-difficulty"><option value="all">All difficulties</option><option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option><option value="8">8 × 8</option><option value="9">9 × 9</option></select>
+                            <label for="score-ai-difficulty">AI difficulty</label>
+                            <select id="score-ai-difficulty"><option value="all">All AI difficulties</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
                             <label for="score-metric">Statistic</label>
                             <select id="score-metric"><option value="all">All statistics</option><option value="completedGrids">Completed grids</option><option value="wordsFound">Words found</option><option value="bestTime">Best time</option><option value="wins">Wins</option><option value="losses">Losses</option></select>
                         </div>

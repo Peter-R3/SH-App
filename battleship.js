@@ -633,8 +633,9 @@ function abandonBattleshipMatch() {
     }, (error, committed) => {
         if (error || !committed || !result) return;
         if (result.counted) recordBattleshipResult(result.opponent, localPlayer);
-        if (result.joined) {
-            sendAppNotification({
+        clearGameNotifications(['join-battleship', 'check-battleship'], ['Peter', 'Jadey']).then(() => {
+            if (!result.joined) return;
+            return sendAppNotification({
                 type: 'Battleship',
                 action: 'check-battleship',
                 sender: localPlayer,
@@ -643,7 +644,7 @@ function abandonBattleshipMatch() {
                 createdAt: Date.now(),
                 readBy: {}
             }, 'battleship');
-        }
+        });
     });
 }
 

@@ -17,11 +17,11 @@ body {
 }
 
 :root {
-    --peter-theme: #58A6FF;
+    --peter-theme: #15AFD1;
     --jadey-theme: #FFD1DC;
     --peter-theme-text: #FFFFFF;
     --jadey-theme-text: #111111;
-    --theme-color: #58A6FF;
+    --theme-color: #15AFD1;
     --theme-text-color: #FFFFFF;
     --other-theme-color: #FFD1DC;
 }
@@ -462,8 +462,18 @@ button:disabled {
     font-size: 20px;
     font-weight: bold;
     color: #FFFFFF;
-    margin: 24px 0 16px 0;
+    margin: 4px 0 16px 0;
     text-align: left;
+}
+
+.games-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 10px 18px 18px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .games-grid {
@@ -475,7 +485,7 @@ button:disabled {
 
 .grid-game-btn {
     background-color: #000000;
-    border: 2px solid #58A6FF;
+    border: 2px solid var(--theme-color);
     border-radius: 20px;
     aspect-ratio: 1 / 1; /* Forces cards to stay perfectly square, preventing squishing */
     display: flex;
@@ -1393,8 +1403,8 @@ button:disabled {
 .word-search-result button {
     padding: 9px 12px;
     border-radius: 6px;
-    background: #2EA44F;
-    color: #FFFFFF;
+    background: var(--theme-color);
+    color: var(--theme-text-color);
 }
 
 .word-search-result > div {
@@ -1456,8 +1466,8 @@ button:disabled {
     width: 100%;
     margin-top: 8px;
     border-radius: 8px;
-    background: #161B22;
-    color: #FFFFFF;
+    background: var(--theme-color);
+    color: var(--theme-text-color);
 }
 
 .word-stats-player {

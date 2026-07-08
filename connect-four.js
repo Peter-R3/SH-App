@@ -259,9 +259,9 @@ function abandonConnectFourMatch() {
     }, (error, committed) => {
         if (error || !committed || !result) return;
         if (result.counted) recordConnectFourResult(result.opponent, localPlayer);
-        if (result.joined) {
-            sendConnectFourNotification(result.opponent, `${playerProfiles[localPlayer]?.nickname || localPlayer} abandoned the Connect 4 match`);
-        }
+        clearGameNotifications(['join-connect-four', 'check-connect-four'], ['Peter', 'Jadey']).then(() => {
+            if (result.joined) sendConnectFourNotification(result.opponent, `${playerProfiles[localPlayer]?.nickname || localPlayer} abandoned the Connect 4 match`);
+        });
     });
 }
 
