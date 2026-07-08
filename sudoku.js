@@ -535,7 +535,7 @@ function resolveSudokuAiLoss() {
         completedAt: sudokuState.completedAt,
         winner: 'AI'
     });
-    database.ref(`stats/sudoku/${localPlayer}/versusAi/${sudokuSettings.difficulty}/losses`).transaction(value => (value || 0) + 1);
+    database.ref(`${sudokuStatsPath(localPlayer, 'versusAi', sudokuSettings.difficulty)}/losses`).transaction(value => (value || 0) + 1);
     showSudokuResult(`<strong>${SUDOKU_AI_NAME} solved it first.</strong><button onclick="requestNewSudokuPuzzle()">New puzzle</button>`, true);
 }
 
@@ -551,8 +551,8 @@ function finishAiSudoku(elapsed) {
         if (error || !committed) return;
         sudokuState.completedAt = Date.now();
         sudokuState.aiResolved = true;
-        incrementSudokuCompletion(localPlayer, 'versusAi', sudokuSettings.difficulty, elapsed);
-        database.ref(`stats/sudoku/${localPlayer}/versusAi/${sudokuSettings.difficulty}/wins`).transaction(value => (value || 0) + 1);
+        incrementSudokuCompletion(localPlayer, 'versusAi', sudokuSettings.difficulty, elapsed, sudokuSettings.aiDifficulty);
+        database.ref(`${sudokuStatsPath(localPlayer, 'versusAi', sudokuSettings.difficulty)}/wins`).transaction(value => (value || 0) + 1);
         renderSudokuBoard(false);
         showSudokuResult(`<strong>You beat ${SUDOKU_AI_NAME}!</strong><button onclick="requestNewSudokuPuzzle()">New puzzle</button>`, true);
     });
@@ -562,8 +562,15 @@ function enableSudokuBoard(enabled) {
     document.getElementById('sudoku-board')?.classList.toggle('disabled', !enabled);
 }
 
-function incrementSudokuCompletion(player, mode, difficulty, elapsed) {
-    const base = `stats/sudoku/${player}/${mode}/${difficulty}`;
+function sudokuStatsPath(player, mode, difficulty, aiDifficulty = sudokuSettings.aiDifficulty) {
+    const normalisedMode = mode === 'versus-ai' ? 'versusAi' : mode;
+    return normalisedMode === 'versusAi'
+        ? `stats/sudoku/${player}/versusAi/${difficulty}/${aiDifficulty || 'medium'}`
+        : `stats/sudoku/${player}/${normalisedMode}/${difficulty}`;
+}
+
+function incrementSudokuCompletion(player, mode, difficulty, elapsed, aiDifficulty) {
+    const base = sudokuStatsPath(player, mode, difficulty, aiDifficulty);
     database.ref(`${base}/completedPuzzles`).transaction(value => (value || 0) + 1);
     database.ref(`${base}/bestTime`).transaction(value => !value || elapsed < value ? elapsed : value);
 }
@@ -746,14 +753,24 @@ function renderSudokuStats() {
     const difficulties = Object.keys(SUDOKU_DIFFICULTIES);
     container.innerHTML = ['Peter', 'Jadey'].map(player => {
         const sections = modes.map(mode => {
-            const rows = difficulties.map(difficulty => {
-                const values = latestStats?.sudoku?.[player]?.[mode]?.[difficulty] || {};
-                const result = mode === 'versus' || mode === 'versusAi'
-                    ? `${values.wins || 0}W/${values.losses || 0}L`
-                    : '-';
-                return `<div class="word-stats-row"><strong>${SUDOKU_DIFFICULTIES[difficulty].label}</strong><span>${values.completedPuzzles || 0} puzzles</span><span>${formatSudokuTime(values.bestTime)}</span><span>${result}</span></div>`;
-            }).join('');
-            return `<div class="word-stats-mode"><h4>${modeLabel(mode)}</h4><div class="word-stats-row word-stats-head"><strong>Difficulty</strong><span>Done</span><span>Best</span><span>W/L</span></div>${rows}</div>`;
+            const aiMode = mode === 'versusAi';
+            const rows = aiMode
+                ? difficulties.flatMap(difficulty => Object.keys(SUDOKU_AI_LEVELS).map(aiDifficulty => {
+                    const values = latestStats?.sudoku?.[player]?.[mode]?.[difficulty]?.[aiDifficulty] || {};
+                    const result = `${values.wins || 0}W/${values.losses || 0}L`;
+                    return `<div class="word-stats-row sudoku-ai-stats-row"><strong>${SUDOKU_DIFFICULTIES[difficulty].label}</strong><span>${SUDOKU_AI_LEVELS[aiDifficulty].label}</span><span>${values.completedPuzzles || 0} puzzles</span><span>${formatSudokuTime(values.bestTime)}</span><span>${result}</span></div>`;
+                })).join('')
+                : difficulties.map(difficulty => {
+                    const values = latestStats?.sudoku?.[player]?.[mode]?.[difficulty] || {};
+                    const result = mode === 'versus'
+                        ? `${values.wins || 0}W/${values.losses || 0}L`
+                        : '-';
+                    return `<div class="word-stats-row"><strong>${SUDOKU_DIFFICULTIES[difficulty].label}</strong><span>${values.completedPuzzles || 0} puzzles</span><span>${formatSudokuTime(values.bestTime)}</span><span>${result}</span></div>`;
+                }).join('');
+            const head = aiMode
+                ? '<div class="word-stats-row word-stats-head sudoku-ai-stats-row"><strong>Difficulty</strong><span>AI</span><span>Done</span><span>Best</span><span>W/L</span></div>'
+                : '<div class="word-stats-row word-stats-head"><strong>Difficulty</strong><span>Done</span><span>Best</span><span>W/L</span></div>';
+            return `<div class="word-stats-mode"><h4>${modeLabel(mode)}</h4>${head}${rows}</div>`;
         }).join('');
         return `<section class="word-stats-player ${player.toLowerCase()}"><h3>${escapeHtml(playerProfiles[player]?.nickname || player)}</h3>${sections}</section>`;
     }).join('');

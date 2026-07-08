@@ -719,13 +719,20 @@ function claimPersistentWord(path, wordIndex, finder) {
         wordSearchLastActivityAt = now;
         database.ref(`${path}/activeMs`).transaction(current => (Number(current) || 0) + addedActiveMs);
         database.ref(`${path}/lastActivityAt`).set(now);
-        incrementWordSearchWordsFound(finder, wordSearchSettings.mode, wordSearchSettings.difficulty);
+        incrementWordSearchWordsFound(finder, wordSearchSettings.mode, wordSearchSettings.difficulty, wordSearchSettings.aiDifficulty);
         if (Object.keys(wordSearchFound).length >= wordSearchPuzzle.words.length) completeWordSearch();
     });
 }
 
-function incrementWordSearchWordsFound(player, mode, difficulty) {
-    database.ref(`stats/wordSearch/${player}/${mode}/${difficulty}/wordsFound`)
+function wordSearchStatsPath(player, mode, difficulty, aiDifficulty = wordSearchSettings.aiDifficulty) {
+    const normalisedMode = mode === 'versus-ai' ? 'versusAi' : mode;
+    return normalisedMode === 'versusAi'
+        ? `stats/wordSearch/${player}/versusAi/${difficulty}/${aiDifficulty || 'medium'}`
+        : `stats/wordSearch/${player}/${normalisedMode}/${difficulty}`;
+}
+
+function incrementWordSearchWordsFound(player, mode, difficulty, aiDifficulty) {
+    database.ref(`${wordSearchStatsPath(player, mode, difficulty, aiDifficulty)}/wordsFound`)
         .transaction(value => (value || 0) + 1);
 }
 
@@ -814,7 +821,7 @@ function resolveWordSearchAiLoss() {
         completedAt: Date.now(),
         winner: 'AI'
     });
-    database.ref(`stats/wordSearch/${localPlayer}/versusAi/${wordSearchSettings.difficulty}/losses`).transaction(value => (value || 0) + 1);
+    database.ref(`${wordSearchStatsPath(localPlayer, 'versusAi', wordSearchSettings.difficulty)}/losses`).transaction(value => (value || 0) + 1);
     showWordSearchResult(`<strong>${WORD_SEARCH_AI_NAME} won this round.</strong><button onclick="requestNewWordSearchGrid()">New grid</button>`, true);
 }
 
@@ -828,8 +835,8 @@ function finishAiWordSearch(elapsed) {
         return current;
     }, (error, committed) => {
         if (error || !committed) return;
-        incrementWordSearchCompletion(localPlayer, 'versusAi', wordSearchSettings.difficulty, elapsed);
-        database.ref(`stats/wordSearch/${localPlayer}/versusAi/${wordSearchSettings.difficulty}/wins`).transaction(value => (value || 0) + 1);
+        incrementWordSearchCompletion(localPlayer, 'versusAi', wordSearchSettings.difficulty, elapsed, wordSearchSettings.aiDifficulty);
+        database.ref(`${wordSearchStatsPath(localPlayer, 'versusAi', wordSearchSettings.difficulty)}/wins`).transaction(value => (value || 0) + 1);
         showWordSearchResult(`<strong>You beat ${WORD_SEARCH_AI_NAME}!</strong><button onclick="requestNewWordSearchGrid()">New grid</button>`, true);
     });
 }
@@ -887,13 +894,13 @@ function finishVersusMatch(elapsed) {
     });
 }
 
-function incrementWordSearchCompletion(player, mode, difficulty, elapsed) {
-    const base = `stats/wordSearch/${player}/${mode}/${difficulty}`;
+function incrementWordSearchCompletion(player, mode, difficulty, elapsed, aiDifficulty) {
+    const base = wordSearchStatsPath(player, mode, difficulty, aiDifficulty);
     database.ref(`${base}/completedGrids`).transaction(value => (value || 0) + 1);
     database.ref(`${base}/bestTime`).transaction(current => !current || elapsed < current ? elapsed : current);
 }
 
-function renderWordSearchStats() {
+function renderWordSearchStatsLegacy() {
     const container = document.getElementById('word-search-stats-content');
     if (!container) return;
     const modes = ['solo', 'coop', 'versus', 'versusAi'];
@@ -905,6 +912,33 @@ function renderWordSearchStats() {
                 return `<div class="word-stats-row"><strong>${size}×${size}</strong><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
             }).join('');
             return `<div class="word-stats-mode"><h4>${modeTitle(mode)}</h4><div class="word-stats-row word-stats-head"><strong>Grid</strong><span>Done</span><span>Words</span><span>Best</span><span>W/L</span></div>${rows}</div>`;
+        }).join('');
+        return `<section class="word-stats-player ${player.toLowerCase()}"><h3>${player}</h3>${sections}</section>`;
+    }).join('');
+}
+
+function renderWordSearchStats() {
+    const container = document.getElementById('word-search-stats-content');
+    if (!container) return;
+    const modes = ['solo', 'coop', 'versus', 'versusAi'];
+    container.innerHTML = ['Peter', 'Jadey'].map(player => {
+        const sections = modes.map(mode => {
+            const aiMode = mode === 'versusAi';
+            const rows = aiMode
+                ? WORD_SEARCH_DIFFICULTIES.flatMap(size => Object.keys(WORD_SEARCH_AI_LEVELS).map(aiDifficulty => {
+                    const values = latestStats?.wordSearch?.[player]?.[mode]?.[size]?.[aiDifficulty] || {};
+                    const result = `${values.wins || 0}W / ${values.losses || 0}L`;
+                    return `<div class="word-stats-row ai-stats-row"><strong>${size}x${size}</strong><span>${WORD_SEARCH_AI_LEVELS[aiDifficulty].label}</span><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
+                })).join('')
+                : WORD_SEARCH_DIFFICULTIES.map(size => {
+                    const values = latestStats?.wordSearch?.[player]?.[mode]?.[size] || {};
+                    const result = mode === 'versus' ? `${values.wins || 0}W / ${values.losses || 0}L` : '-';
+                    return `<div class="word-stats-row"><strong>${size}x${size}</strong><span>${values.completedGrids || 0} grids</span><span>${values.wordsFound || 0} words</span><span>${formatWordSearchTime(values.bestTime)}</span><span>${result}</span></div>`;
+                }).join('');
+            const head = aiMode
+                ? '<div class="word-stats-row word-stats-head ai-stats-row"><strong>Grid</strong><span>AI</span><span>Done</span><span>Words</span><span>Best</span><span>W/L</span></div>'
+                : '<div class="word-stats-row word-stats-head"><strong>Grid</strong><span>Done</span><span>Words</span><span>Best</span><span>W/L</span></div>';
+            return `<div class="word-stats-mode"><h4>${modeTitle(mode)}</h4>${head}${rows}</div>`;
         }).join('');
         return `<section class="word-stats-player ${player.toLowerCase()}"><h3>${player}</h3>${sections}</section>`;
     }).join('');

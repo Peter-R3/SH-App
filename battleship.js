@@ -1,4 +1,6 @@
 const BATTLESHIP_SIZE = 8;
+const BATTLESHIP_DRAG_CELL = 34;
+const BATTLESHIP_DRAG_GAP = 3;
 const BATTLESHIP_FLEET = [
     { id: 'carrier', name: 'Carrier', size: 4 },
     { id: 'cruiser', name: 'Cruiser', size: 3 },
@@ -20,6 +22,7 @@ let battleshipDragOffset = 0;
 let battleshipDragGhost = null;
 let battleshipDragHoldTimer = null;
 let battleshipPendingDrag = null;
+let battleshipDragPointer = { clientX: 0, clientY: 0 };
 
 function launchBattleship() {
     if (!localPlayer) return;
@@ -401,8 +404,8 @@ function finishBattleshipShipDrag(event) {
     const shipId = battleshipDragShipId;
     const board = battleshipState?.boards?.[localPlayer];
     const ship = board?.ships?.find(item => item.id === shipId);
-    const cell = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('.battleship-cell[data-cell-index]');
-    const startIndex = cell && ship ? Number(cell.dataset.cellIndex) - battleshipDragOffset : null;
+    battleshipDragPointer = { clientX: event.clientX, clientY: event.clientY };
+    const startIndex = ship ? battleshipDropStartIndex(ship) : null;
     const orientation = ship ? battleshipShipOrientation(ship) : null;
     const cells = Number.isInteger(startIndex) ? battleshipBuildPlacement(board, ship, startIndex, orientation) : null;
     clearBattleshipPendingDrag();
@@ -437,8 +440,44 @@ function createBattleshipDragGhost(ship) {
 
 function updateBattleshipDragGhost(event) {
     if (!battleshipDragGhost) return;
-    battleshipDragGhost.style.left = `${event.clientX}px`;
-    battleshipDragGhost.style.top = `${event.clientY}px`;
+    battleshipDragPointer = { clientX: event.clientX, clientY: event.clientY };
+    const ship = battleshipState?.boards?.[localPlayer]?.ships?.find(item => item.id === battleshipDragShipId);
+    if (!ship) return;
+    const metrics = battleshipDragMetrics(ship, event.clientX, event.clientY, battleshipDragOffset);
+    battleshipDragGhost.style.left = `${metrics.centerX}px`;
+    battleshipDragGhost.style.top = `${metrics.centerY}px`;
+}
+
+function battleshipDragMetrics(ship, pointerX, pointerY, heldSegmentIndex = 0) {
+    const orientation = battleshipShipOrientation(ship);
+    const step = BATTLESHIP_DRAG_CELL + BATTLESHIP_DRAG_GAP;
+    const width = orientation === 'horizontal'
+        ? ship.size * BATTLESHIP_DRAG_CELL + (ship.size - 1) * BATTLESHIP_DRAG_GAP
+        : BATTLESHIP_DRAG_CELL;
+    const height = orientation === 'vertical'
+        ? ship.size * BATTLESHIP_DRAG_CELL + (ship.size - 1) * BATTLESHIP_DRAG_GAP
+        : BATTLESHIP_DRAG_CELL;
+    const heldX = orientation === 'horizontal'
+        ? heldSegmentIndex * step + BATTLESHIP_DRAG_CELL / 2
+        : BATTLESHIP_DRAG_CELL / 2;
+    const heldY = orientation === 'vertical'
+        ? heldSegmentIndex * step + BATTLESHIP_DRAG_CELL / 2
+        : BATTLESHIP_DRAG_CELL / 2;
+    const centerX = pointerX + width / 2 - heldX;
+    const centerY = pointerY + height / 2 - heldY;
+    return {
+        centerX,
+        centerY,
+        firstSegmentX: centerX - width / 2 + BATTLESHIP_DRAG_CELL / 2,
+        firstSegmentY: centerY - height / 2 + BATTLESHIP_DRAG_CELL / 2
+    };
+}
+
+function battleshipDropStartIndex(ship) {
+    if (!ship) return null;
+    const metrics = battleshipDragMetrics(ship, battleshipDragPointer.clientX, battleshipDragPointer.clientY, battleshipDragOffset);
+    const cell = document.elementFromPoint(metrics.firstSegmentX, metrics.firstSegmentY)?.closest?.('.battleship-cell[data-cell-index]');
+    return cell ? Number(cell.dataset.cellIndex) : null;
 }
 
 function removeBattleshipDragGhost() {

@@ -779,6 +779,9 @@ button:disabled {
     border-radius: 10px;
     background: #0A0F14;
     box-shadow: 0 14px 34px rgba(0,0,0,0.42);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .message-action-menu button {
@@ -788,6 +791,8 @@ button:disabled {
     color: #FFFFFF;
     font-size: 13px;
     font-weight: 800;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .message-action-menu .danger-action {
@@ -1489,6 +1494,14 @@ button:disabled {
     padding: 5px 0;
     color: #8B949E;
     font-size: 10px;
+}
+
+.word-stats-row.ai-stats-row {
+    grid-template-columns: 42px 42px repeat(4, minmax(0, 1fr));
+}
+
+.word-stats-row.sudoku-ai-stats-row {
+    grid-template-columns: 68px 42px repeat(3, minmax(0, 1fr));
 }
 
 .word-stats-row strong {

@@ -1219,8 +1219,11 @@ function renderNotifications() {
 function startMessageHold(event, messageId) {
     const message = latestMessages.find(item => item.id === messageId);
     if (!message || message.sender !== localPlayer) return;
+    event.preventDefault();
+    window.getSelection?.()?.removeAllRanges?.();
     cancelMessageHold();
     messageHoldTimer = window.setTimeout(() => {
+        window.getSelection?.()?.removeAllRanges?.();
         openMessageActionMenu(messageId, event.clientX, event.clientY);
     }, 520);
 }
@@ -1237,8 +1240,12 @@ function openMessageActionMenu(messageId, x, y) {
     const menu = document.getElementById('message-action-menu');
     if (!menu) return;
     menu.classList.remove('hidden');
-    const left = Math.min(Math.max(12, x || window.innerWidth / 2), window.innerWidth - 156);
-    const top = Math.min(Math.max(12, y || window.innerHeight / 2), window.innerHeight - 154);
+    const left = Math.min(Math.max(12, (x || window.innerWidth / 2) - 72), window.innerWidth - 156);
+    const preferredTop = (y || window.innerHeight / 2) - 164;
+    const fallbackTop = (y || window.innerHeight / 2) + 22;
+    const top = preferredTop >= 12
+        ? preferredTop
+        : Math.min(fallbackTop, window.innerHeight - 154);
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
 }
@@ -1467,10 +1474,15 @@ function adjustManagedScores(operation) {
             ? ['completedGrids', 'wordsFound', 'bestTime', 'wins', 'losses']
             : [selectedMetric];
         scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
-            difficulties.flatMap(difficulty => metrics.map(metric => ({
-                path: `stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`,
-                isTime: metric === 'bestTime'
-            })))
+            difficulties.flatMap(difficulty => metrics.flatMap(metric => {
+                const targets = mode === 'versusAi'
+                    ? ['easy', 'medium', 'hard'].map(aiDifficulty => `stats/wordSearch/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
+                    : [`stats/wordSearch/${profile}/${mode}/${difficulty}/${metric}`];
+                return targets.map(path => ({
+                    path,
+                    isTime: metric === 'bestTime'
+                }));
+            }))
         ));
     } else if (game === 'battleship') {
         const selectedMetric = document.getElementById('battleship-score-metric')?.value || 'all';
@@ -1498,10 +1510,15 @@ function adjustManagedScores(operation) {
             ? ['completedPuzzles', 'bestTime', 'wins', 'losses']
             : [selectedMetric];
         scoreTargets = profiles.flatMap(profile => modes.flatMap(mode =>
-            difficulties.flatMap(difficulty => metrics.map(metric => ({
-                path: `stats/sudoku/${profile}/${mode}/${difficulty}/${metric}`,
-                isTime: metric === 'bestTime'
-            })))
+            difficulties.flatMap(difficulty => metrics.flatMap(metric => {
+                const targets = mode === 'versusAi'
+                    ? ['easy', 'medium', 'hard'].map(aiDifficulty => `stats/sudoku/${profile}/${mode}/${difficulty}/${aiDifficulty}/${metric}`)
+                    : [`stats/sudoku/${profile}/${mode}/${difficulty}/${metric}`];
+                return targets.map(path => ({
+                    path,
+                    isTime: metric === 'bestTime'
+                }));
+            }))
         ));
     } else {
         scoreTargets = profiles.flatMap(profile => modes.map(mode => ({
