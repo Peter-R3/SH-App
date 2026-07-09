@@ -466,7 +466,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku'];
+    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -490,6 +490,10 @@ function switchTab(tabName) {
         if (typeof sudokuSettings !== 'undefined' && sudokuSettings.mode === 'versus') abandonSudokuVersus(true);
         stopSudokuSubscription();
     }
+    const ticTacToeVisible = !document.getElementById('tic-tac-toe-screen')?.classList.contains('hidden');
+    if (ticTacToeVisible && typeof stopTicTacToeSubscription === 'function') stopTicTacToeSubscription();
+    const rpsVisible = !document.getElementById('rps-screen')?.classList.contains('hidden');
+    if (rpsVisible && typeof stopRpsSubscription === 'function') stopRpsSubscription();
 
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
@@ -1087,10 +1091,14 @@ function openStatsCategory(gameId) {
     document.getElementById('stats-battleship-detail')?.classList.toggle('hidden', gameId !== 'battleship');
     document.getElementById('stats-connect-four-detail')?.classList.toggle('hidden', gameId !== 'connect-four');
     document.getElementById('stats-sudoku-detail')?.classList.toggle('hidden', gameId !== 'sudoku');
+    document.getElementById('stats-tic-tac-toe-detail')?.classList.toggle('hidden', gameId !== 'tic-tac-toe');
+    document.getElementById('stats-rps-detail')?.classList.toggle('hidden', gameId !== 'rps');
     if (gameId === 'word-search' && typeof renderWordSearchStats === 'function') renderWordSearchStats();
     if (gameId === 'battleship' && typeof renderBattleshipStats === 'function') renderBattleshipStats();
     if (gameId === 'connect-four' && typeof renderConnectFourStats === 'function') renderConnectFourStats();
     if (gameId === 'sudoku' && typeof renderSudokuStats === 'function') renderSudokuStats();
+    if (gameId === 'tic-tac-toe' && typeof renderTicTacToeStats === 'function') renderTicTacToeStats();
+    if (gameId === 'rps' && typeof renderRpsStats === 'function') renderRpsStats();
 }
 
 function closeStatsCategory() {
@@ -1100,6 +1108,8 @@ function closeStatsCategory() {
     document.getElementById('stats-battleship-detail')?.classList.add('hidden');
     document.getElementById('stats-connect-four-detail')?.classList.add('hidden');
     document.getElementById('stats-sudoku-detail')?.classList.add('hidden');
+    document.getElementById('stats-tic-tac-toe-detail')?.classList.add('hidden');
+    document.getElementById('stats-rps-detail')?.classList.add('hidden');
 }
 
 function renderStats() {
@@ -1120,6 +1130,8 @@ function renderStats() {
     if (typeof renderBattleshipStats === 'function') renderBattleshipStats();
     if (typeof renderConnectFourStats === 'function') renderConnectFourStats();
     if (typeof renderSudokuStats === 'function') renderSudokuStats();
+    if (typeof renderTicTacToeStats === 'function') renderTicTacToeStats();
+    if (typeof renderRpsStats === 'function') renderRpsStats();
 }
 
 function sendMessage(event) {
@@ -1237,6 +1249,14 @@ function renderNotifications() {
             action = navigationButton('Join', 'sudoku-versus', notification.difficulty || 'easy');
         } else if (notification.action === 'check-sudoku' && isRecipient) {
             action = navigationButton('Check', 'game', 'sudoku');
+        } else if (notification.action === 'join-tic-tac-toe' && isRecipient) {
+            action = navigationButton('Join', 'game', 'tic-tac-toe');
+        } else if (notification.action === 'check-tic-tac-toe' && isRecipient) {
+            action = navigationButton('Check', 'game', 'tic-tac-toe');
+        } else if (notification.action === 'join-rps' && isRecipient) {
+            action = navigationButton('Join', 'game', 'rps');
+        } else if (notification.action === 'check-rps' && isRecipient) {
+            action = navigationButton('Check', 'game', 'rps');
         }
 
         return `
@@ -1506,7 +1526,12 @@ function adjustManagedScores(operation) {
     const game = document.getElementById('score-game')?.value || 'number-guess';
     const selectedMode = document.getElementById('score-mode')?.value || 'all';
     const multiplayerPuzzleGame = game === 'word-search' || game === 'sudoku';
-    const availableModes = multiplayerPuzzleGame ? ['solo', 'coop', 'versus', 'versusAi'] : ['ten', 'hundred', 'colours'];
+    const duelGame = game === 'tic-tac-toe' || game === 'rps';
+    const availableModes = multiplayerPuzzleGame
+        ? ['solo', 'coop', 'versus', 'versusAi']
+        : duelGame
+            ? ['versus', 'versusAi']
+            : ['ten', 'hundred', 'colours'];
     const modes = selectedMode === 'all' ? availableModes : [selectedMode];
     if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
@@ -1551,6 +1576,24 @@ function adjustManagedScores(operation) {
             path: `stats/connectFour/${profile}/${metric}`,
             isTime: false
         })));
+    } else if (game === 'tic-tac-toe') {
+        const selectedMetric = document.getElementById('duel-score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['wins', 'losses', 'draws', 'gamesPlayed', 'moves']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => modes.flatMap(mode => metrics.map(metric => ({
+            path: `stats/ticTacToe/${profile}/${mode}/${metric}`,
+            isTime: false
+        }))));
+    } else if (game === 'rps') {
+        const selectedMetric = document.getElementById('duel-score-metric')?.value || 'all';
+        const metrics = selectedMetric === 'all'
+            ? ['wins', 'losses', 'draws', 'roundsPlayed']
+            : [selectedMetric];
+        scoreTargets = profiles.flatMap(profile => modes.flatMap(mode => metrics.map(metric => ({
+            path: `stats/rps/${profile}/${mode}/${metric}`,
+            isTime: false
+        }))));
     } else if (game === 'sudoku') {
         const selectedDifficulty = document.getElementById('score-difficulty')?.value || 'all';
         const difficulties = selectedDifficulty === 'all' ? ['easy', 'medium', 'hard'] : [selectedDifficulty];
@@ -1595,6 +1638,7 @@ function syncManagedScoreControls() {
     const isBattleship = document.getElementById('score-game')?.value === 'battleship';
     const isConnectFour = document.getElementById('score-game')?.value === 'connect-four';
     const isSudoku = document.getElementById('score-game')?.value === 'sudoku';
+    const isDuelGame = document.getElementById('score-game')?.value === 'tic-tac-toe' || document.getElementById('score-game')?.value === 'rps';
     const modeSelect = document.getElementById('score-mode');
     const extraOptions = document.getElementById('score-word-search-options');
     const difficultySelect = document.getElementById('score-difficulty');
@@ -1602,12 +1646,16 @@ function syncManagedScoreControls() {
     const battleshipOptions = document.getElementById('score-battleship-options');
     const connectFourOptions = document.getElementById('score-connect-four-options');
     const sudokuOptions = document.getElementById('score-sudoku-options');
-    if (!modeSelect || !extraOptions || !difficultySelect || !aiDifficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions) return;
+    const duelOptions = document.getElementById('score-duel-options');
+    const duelMetricSelect = document.getElementById('duel-score-metric');
+    if (!modeSelect || !extraOptions || !difficultySelect || !aiDifficultySelect || !battleshipOptions || !connectFourOptions || !sudokuOptions || !duelOptions || !duelMetricSelect) return;
 
     const previousMode = modeSelect.value;
     modeSelect.innerHTML = (isWordSearch || isSudoku)
         ? '<option value="all">All modes</option><option value="solo">Solo</option><option value="coop">Co-op</option><option value="versus">Versus: Player</option><option value="versusAi">Versus: Jaylin</option>'
-        : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
+        : isDuelGame
+            ? '<option value="all">All modes</option><option value="versus">Versus: Player</option><option value="versusAi">Versus: Jaylin</option>'
+            : '<option value="all">All modes</option><option value="ten">1 to 10</option><option value="hundred">1 to 100</option><option value="colours">Colours</option>';
     if (Array.from(modeSelect.options).some(option => option.value === previousMode)) {
         modeSelect.value = previousMode;
     }
@@ -1623,6 +1671,14 @@ function syncManagedScoreControls() {
     battleshipOptions.classList.toggle('hidden', !isBattleship);
     connectFourOptions.classList.toggle('hidden', !isConnectFour);
     sudokuOptions.classList.toggle('hidden', !isSudoku);
+    duelOptions.classList.toggle('hidden', !isDuelGame);
+    const previousMetric = duelMetricSelect.value;
+    duelMetricSelect.innerHTML = document.getElementById('score-game')?.value === 'rps'
+        ? '<option value="all">All statistics</option><option value="wins">Wins</option><option value="losses">Losses</option><option value="draws">Draws</option><option value="roundsPlayed">Rounds played</option>'
+        : '<option value="all">All statistics</option><option value="wins">Wins</option><option value="losses">Losses</option><option value="draws">Draws</option><option value="gamesPlayed">Games played</option><option value="moves">Moves</option>';
+    if (Array.from(duelMetricSelect.options).some(option => option.value === previousMetric)) {
+        duelMetricSelect.value = previousMetric;
+    }
     modeSelect.classList.toggle('hidden', isBattleship || isConnectFour);
     document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship || isConnectFour);
 }
@@ -1659,6 +1715,14 @@ function launchGame(gameId) {
     }
     if (gameId === 'sudoku') {
         launchSudoku();
+        return;
+    }
+    if (gameId === 'tic-tac-toe') {
+        launchTicTacToe();
+        return;
+    }
+    if (gameId === 'rps') {
+        launchRps();
         return;
     }
     if (gameId !== 'number-guess') return;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sweethearts-app-v20';
+const CACHE_NAME = 'sweethearts-app-v21';
 const APP_SHELL = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const APP_SHELL = [
   './battleship.js',
   './connect-four.js',
   './sudoku.js',
+  './tic-tac-toe.js',
+  './rps.js',
   './vendor/firebase/firebase-app-compat.js',
   './vendor/firebase/firebase-auth-compat.js',
   './vendor/firebase/firebase-database-compat.js',
@@ -19,7 +21,9 @@ const APP_SHELL = [
   './assets/games/word-search.svg',
   './assets/games/battleship.svg',
   './assets/games/connect-four.svg',
-  './assets/games/sudoku.svg'
+  './assets/games/sudoku.svg',
+  './assets/games/tic-tac-toe.svg',
+  './assets/games/rps.png'
 ];
 
 self.addEventListener('install', event => {
