@@ -2201,11 +2201,14 @@ button:disabled {
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
     gap: 8px;
 }
 
 .ttt-cell {
     min-width: 0;
+    min-height: 0;
+    padding: 0;
     border: 1px solid #21262D;
     border-radius: 8px;
     background: #0A0F14;
@@ -2343,17 +2346,18 @@ button:disabled {
 }
 
 .duel-stat-mode {
-    padding: 12px 14px;
+    padding: 0;
     border-top: 1px solid #161B22;
 }
 
 .duel-stat-mode h4 {
-    margin-bottom: 8px;
+    margin: 0;
+    padding: 12px 14px;
     font-size: 14px;
 }
 
 .duel-stat-mode .stats-row {
-    margin: 0 -14px;
+    margin: 0;
 }
 
 @keyframes token-drop {
