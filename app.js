@@ -1760,6 +1760,7 @@ function launchGame(gameId) {
         navShell.classList.remove('nav-peter', 'nav-jadey');
         navShell.classList.add(localPlayer === 'Peter' ? 'nav-peter' : 'nav-jadey');
     }
+    showNumberGuessPlayArea();
 
     database.ref('games/1-to-10').once('value', (snapshot) => {
         const data = snapshot.val();
@@ -2166,6 +2167,18 @@ function handleGameStateUpdate() {
     }
 }
 
+function showNumberGuessPlayArea() {
+    document.getElementById('number-guess-play-area')?.classList.remove('hidden', 'number-guess-blurred-field');
+    const menuArea = document.getElementById('number-guess-menu-area');
+    if (menuArea) {
+        menuArea.classList.add('hidden');
+        menuArea.classList.remove('number-guess-pause-view', 'number-guess-submenu-view');
+    }
+    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
+        document.getElementById(id)?.classList.add('hidden');
+    });
+}
+
 function openNumberGuessMenu(view = 'pause') {
     const viewConfig = {
         pause: { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' },
@@ -2175,32 +2188,21 @@ function openNumberGuessMenu(view = 'pause') {
 
     setActiveAppView(`number-guess-${view}`);
     const gameScreen = document.getElementById('game-1-to-10-screen');
-    const modesScreen = document.getElementById('modes-screen');
-    const headerShell = document.getElementById('modes-header-shell');
-    const navShell = document.getElementById('modes-nav-shell');
-    const title = document.getElementById('number-guess-menu-title');
-    const backButton = document.getElementById('number-guess-menu-back-btn');
-    if (gameScreen) gameScreen.classList.add('hidden');
-    if (modesScreen) {
-        modesScreen.classList.remove('hidden');
-        modesScreen.classList.remove('number-guess-pause-view', 'number-guess-submenu-view');
-        modesScreen.classList.add(viewConfig.screenClass);
-        modesScreen.classList.remove('theme-peter', 'theme-jadey');
-        modesScreen.classList.add(localPlayer === 'Peter' ? 'theme-peter' : 'theme-jadey');
+    const menuArea = document.getElementById('number-guess-menu-area');
+    const playArea = document.getElementById('number-guess-play-area');
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+    if (gameScreen) {
+        gameScreen.classList.remove('hidden');
+        gameScreen.classList.remove('theme-peter', 'theme-jadey');
+        gameScreen.classList.add(localPlayer === 'Peter' ? 'theme-peter' : 'theme-jadey');
     }
-    if (headerShell) {
-        headerShell.classList.remove('header-peter', 'header-jadey');
-        headerShell.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
+    if (playArea) {
+        playArea.classList.add('hidden');
+        playArea.classList.remove('number-guess-blurred-field');
     }
-    if (navShell) {
-        navShell.classList.remove('nav-peter', 'nav-jadey');
-        navShell.classList.add(localPlayer === 'Peter' ? 'nav-peter' : 'nav-jadey');
-    }
-    if (title) title.innerText = viewConfig.title;
-    if (backButton) {
-        backButton.setAttribute('onclick', view === 'pause' ? "launchGame('number-guess')" : 'openNumberGuessPause()');
-        backButton.setAttribute('aria-label', view === 'pause' ? 'Back to game' : 'Back to pause menu');
-        backButton.classList.toggle('hidden', view === 'pause');
+    if (menuArea) {
+        menuArea.classList.remove('hidden', 'number-guess-pause-view', 'number-guess-submenu-view');
+        menuArea.classList.add(viewConfig.screenClass);
     }
     ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
         document.getElementById(id)?.classList.toggle('hidden', id !== viewConfig.activePanel);
@@ -2305,6 +2307,7 @@ function selectGameMode(modeKey) {
 function exitGame() {
     const gameScreen = document.getElementById('game-1-to-10-screen');
     if (gameScreen) gameScreen.classList.add('hidden');
+    showNumberGuessPlayArea();
     const dash = document.getElementById('main-dashboard');
     if (dash) dash.classList.remove('hidden');
     initialiseMainDashboard();
