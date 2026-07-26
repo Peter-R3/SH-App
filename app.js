@@ -2197,8 +2197,8 @@ function openNumberGuessMenu(view = 'pause') {
         gameScreen.classList.add(localPlayer === 'Peter' ? 'theme-peter' : 'theme-jadey');
     }
     if (playArea) {
-        playArea.classList.add('hidden');
-        playArea.classList.remove('number-guess-blurred-field');
+        playArea.classList.toggle('hidden', view !== 'pause');
+        playArea.classList.toggle('number-guess-blurred-field', view === 'pause');
     }
     if (menuArea) {
         menuArea.classList.remove('hidden', 'number-guess-pause-view', 'number-guess-submenu-view');
