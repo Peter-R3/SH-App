@@ -2168,10 +2168,10 @@ function handleGameStateUpdate() {
 
 function openNumberGuessMenu(view = 'pause') {
     const viewConfig = {
-        pause: { title: 'Paused', activePanel: 'number-guess-pause-panel' },
-        modes: { title: 'Modes', activePanel: 'number-guess-modes-panel' },
-        history: { title: 'History', activePanel: 'number-guess-history-panel' }
-    }[view] || { title: 'Paused', activePanel: 'number-guess-pause-panel' };
+        pause: { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' },
+        modes: { title: 'Modes', activePanel: 'number-guess-modes-panel', screenClass: 'number-guess-submenu-view' },
+        history: { title: 'History', activePanel: 'number-guess-history-panel', screenClass: 'number-guess-submenu-view' }
+    }[view] || { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' };
 
     setActiveAppView(`number-guess-${view}`);
     const gameScreen = document.getElementById('game-1-to-10-screen');
@@ -2183,6 +2183,8 @@ function openNumberGuessMenu(view = 'pause') {
     if (gameScreen) gameScreen.classList.add('hidden');
     if (modesScreen) {
         modesScreen.classList.remove('hidden');
+        modesScreen.classList.remove('number-guess-pause-view', 'number-guess-submenu-view');
+        modesScreen.classList.add(viewConfig.screenClass);
         modesScreen.classList.remove('theme-peter', 'theme-jadey');
         modesScreen.classList.add(localPlayer === 'Peter' ? 'theme-peter' : 'theme-jadey');
     }
@@ -2198,6 +2200,7 @@ function openNumberGuessMenu(view = 'pause') {
     if (backButton) {
         backButton.setAttribute('onclick', view === 'pause' ? "launchGame('number-guess')" : 'openNumberGuessPause()');
         backButton.setAttribute('aria-label', view === 'pause' ? 'Back to game' : 'Back to pause menu');
+        backButton.classList.toggle('hidden', view === 'pause');
     }
     ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
         document.getElementById(id)?.classList.toggle('hidden', id !== viewConfig.activePanel);
