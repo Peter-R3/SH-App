@@ -155,6 +155,8 @@ let gameState1To10 = {
 
 let currentSelectedGuess = null;
 let isRevealingRound = false; // Guard to stop frame collision anomalies
+let lastNumberGuessTurnCueKey = null;
+let numberGuessSummaryTimer = null;
 let latestMessages = [];
 let latestNotifications = [];
 let latestStats = {};
@@ -1742,6 +1744,7 @@ function launchGame(gameId) {
 
     currentSelectedGuess = null;
     isRevealingRound = false;
+    lastNumberGuessTurnCueKey = null;
 
     resetVisualCards();
 
@@ -1800,6 +1803,95 @@ function createFreshRound(mode, targetSetter) {
 
 function getCurrentMode() {
     return gameModes[gameState1To10.mode] || gameModes.ten;
+}
+
+function getNumberGuessActingPlayer(state = gameState1To10) {
+    if (state.phase === 'SETTING_TARGET') return state.targetSetter;
+    if (state.phase === 'GUESSING') return state.guesser;
+    return null;
+}
+
+function numberGuessTurnCueKey(state = gameState1To10) {
+    const actingPlayer = getNumberGuessActingPlayer(state);
+    if (!actingPlayer) return null;
+    return `${state.phase}:${actingPlayer}:${state.mode}:${state.targetSetter}:${state.guesser}:${state.chosenTargetValue ?? 'unset'}`;
+}
+
+function maybeShowNumberGuessTurnCue() {
+    const gameScreen = document.getElementById('game-1-to-10-screen');
+    if (!gameScreen || gameScreen.classList.contains('hidden')) return;
+    if (isRevealingRound || getNumberGuessActingPlayer() !== localPlayer) return;
+
+    const cueKey = numberGuessTurnCueKey();
+    if (!cueKey || cueKey === lastNumberGuessTurnCueKey) return;
+    lastNumberGuessTurnCueKey = cueKey;
+
+    const overlay = document.getElementById('number-guess-turn-overlay');
+    if (!overlay) return;
+    overlay.classList.remove('hidden', 'show-turn-cue');
+    void overlay.offsetWidth;
+    overlay.classList.add('show-turn-cue');
+    window.setTimeout(() => overlay.classList.add('hidden'), 1050);
+}
+
+function formatNumberGuessValue(modeKey, value) {
+    const mode = gameModes[modeKey] || gameModes.ten;
+    if (mode.inputType !== 'colours') return value ?? '?';
+    return mode.values.find(colour => colour.value === value)?.name || value || '?';
+}
+
+function getNumberGuessColour(modeKey, value) {
+    const mode = gameModes[modeKey] || gameModes.ten;
+    if (mode.inputType !== 'colours') return null;
+    return mode.values.find(colour => colour.value === value) || null;
+}
+
+function miniNumberGuessCard(modeKey, value) {
+    const colour = getNumberGuessColour(modeKey, value);
+    if (!colour) return `<span class="history-mini-card">${escapeHtml(formatNumberGuessValue(modeKey, value))}</span>`;
+    return `<span class="history-mini-card colour ${colour.light ? 'light-label' : ''}" style="background-color: ${colour.color};">${escapeHtml(colour.name)}</span>`;
+}
+
+function recordNumberGuessHistory(round, wasCorrect) {
+    const points = { Peter: 0, Jadey: 0 };
+    if (wasCorrect) points[round.guesser] = 1;
+    const record = {
+        mode: round.mode || 'ten',
+        setter: round.targetSetter,
+        guesser: round.guesser,
+        target: round.chosenTargetValue,
+        guess: round.currentGuessValue,
+        correct: Boolean(wasCorrect),
+        points,
+        completedAt: Date.now()
+    };
+
+    const historyRef = database.ref('history/numberGuess');
+    return historyRef.push(record).then(() =>
+        historyRef.orderByChild('completedAt').once('value').then(snapshot => {
+            const removals = [];
+            snapshot.forEach(child => removals.push(child.key));
+            const extra = removals.length - 7;
+            if (extra <= 0) return null;
+            const updates = {};
+            removals.slice(0, extra).forEach(key => { updates[`history/numberGuess/${key}`] = null; });
+            return database.ref().update(updates);
+        })
+    );
+}
+
+function showNumberGuessRoundSummary(round, wasCorrect) {
+    const summary = document.getElementById('number-guess-round-summary');
+    if (!summary) return;
+    const guesserName = playerProfiles[round.guesser]?.nickname || round.guesser;
+    summary.innerHTML = wasCorrect
+        ? `<strong>${escapeHtml(guesserName)} scored!</strong><span>Roles swapped</span>`
+        : '<strong>No point this round</strong><span>Roles swapped</span>';
+    summary.classList.remove('hidden', 'show-round-summary');
+    void summary.offsetWidth;
+    summary.classList.add('show-round-summary');
+    window.clearTimeout(numberGuessSummaryTimer);
+    numberGuessSummaryTimer = window.setTimeout(() => summary.classList.add('hidden'), 1800);
 }
 
 function renderGameModeControls() {
@@ -2005,6 +2097,10 @@ function advanceRoundAfterReveal(revealRound) {
             const scoringMode = revealRound.mode || 'ten';
             database.ref(`stats/${scoringPlayer}/${scoringMode}`).transaction(score => (score || 0) + 1);
         }
+        if (committed) {
+            recordNumberGuessHistory(revealRound, wasCorrect).catch(error => console.log('History save failed:', error));
+            showNumberGuessRoundSummary(revealRound, wasCorrect);
+        }
 
         const latestState = snapshot.val();
         if (latestState) gameState1To10 = normalizeGameState(latestState);
@@ -2066,15 +2162,24 @@ function handleGameStateUpdate() {
         startRevealSequence();
     } else {
         updateGameUIFlow();
+        maybeShowNumberGuessTurnCue();
     }
 }
 
-function openModesSelection() {
-    setActiveAppView('number-guess-modes');
+function openNumberGuessMenu(view = 'pause') {
+    const viewConfig = {
+        pause: { title: 'Paused', activePanel: 'number-guess-pause-panel' },
+        modes: { title: 'Modes', activePanel: 'number-guess-modes-panel' },
+        history: { title: 'History', activePanel: 'number-guess-history-panel' }
+    }[view] || { title: 'Paused', activePanel: 'number-guess-pause-panel' };
+
+    setActiveAppView(`number-guess-${view}`);
     const gameScreen = document.getElementById('game-1-to-10-screen');
     const modesScreen = document.getElementById('modes-screen');
     const headerShell = document.getElementById('modes-header-shell');
     const navShell = document.getElementById('modes-nav-shell');
+    const title = document.getElementById('number-guess-menu-title');
+    const backButton = document.getElementById('number-guess-menu-back-btn');
     if (gameScreen) gameScreen.classList.add('hidden');
     if (modesScreen) {
         modesScreen.classList.remove('hidden');
@@ -2089,7 +2194,81 @@ function openModesSelection() {
         navShell.classList.remove('nav-peter', 'nav-jadey');
         navShell.classList.add(localPlayer === 'Peter' ? 'nav-peter' : 'nav-jadey');
     }
-    updateModeButtons();
+    if (title) title.innerText = viewConfig.title;
+    if (backButton) {
+        backButton.setAttribute('onclick', view === 'pause' ? "launchGame('number-guess')" : 'openNumberGuessPause()');
+        backButton.setAttribute('aria-label', view === 'pause' ? 'Back to game' : 'Back to pause menu');
+    }
+    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', id !== viewConfig.activePanel);
+    });
+    if (view === 'modes') updateModeButtons();
+    if (view === 'history') loadNumberGuessHistory();
+}
+
+function openNumberGuessPause() {
+    openNumberGuessMenu('pause');
+}
+
+function openModesSelection() {
+    openNumberGuessMenu('modes');
+}
+
+function openNumberGuessHistory() {
+    openNumberGuessMenu('history');
+}
+
+function loadNumberGuessHistory() {
+    const list = document.getElementById('number-guess-history-list');
+    if (!list) return;
+    list.innerHTML = '<p class="history-empty">Loading history...</p>';
+    database.ref('history/numberGuess').orderByChild('completedAt').limitToLast(7).once('value')
+        .then(snapshot => {
+            const records = [];
+            snapshot.forEach(child => records.push({ id: child.key, ...child.val() }));
+            renderNumberGuessHistory(records.reverse());
+        })
+        .catch(error => {
+            list.innerHTML = `<p class="history-empty">Could not load history: ${escapeHtml(error.message)}</p>`;
+        });
+}
+
+function renderNumberGuessHistory(records) {
+    const list = document.getElementById('number-guess-history-list');
+    if (!list) return;
+    if (!records.length) {
+        list.innerHTML = '<p class="history-empty">No completed rounds yet.</p>';
+        return;
+    }
+
+    list.innerHTML = records.map(round => {
+        const mode = gameModes[round.mode] || gameModes.ten;
+        const setter = round.setter || 'Peter';
+        const guesser = round.guesser || otherPlayer(setter);
+        const setterName = playerProfiles[setter]?.nickname || setter;
+        const guesserName = playerProfiles[guesser]?.nickname || guesser;
+        const peterPoints = Number(round.points?.Peter) || 0;
+        const jadeyPoints = Number(round.points?.Jadey) || 0;
+        const resultClass = round.correct ? 'correct' : 'missed';
+        return `
+            <article class="history-card ${resultClass}">
+                <h3>${escapeHtml(mode.title)}</h3>
+                <div class="history-match-row">
+                    <strong>${escapeHtml(setterName)}</strong>
+                    ${miniNumberGuessCard(round.mode, round.target)}
+                    <span class="history-divider">:</span>
+                    ${miniNumberGuessCard(round.mode, round.guess)}
+                    <strong>${escapeHtml(guesserName)}</strong>
+                </div>
+                <div class="history-role-row">
+                    <span>Picked</span>
+                    <span>Guessed</span>
+                </div>
+                <div class="history-score-row ${peterPoints ? 'scored peter' : ''}"><span>${escapeHtml(playerProfiles.Peter?.nickname || 'Peter')}</span><strong>+${peterPoints} pts</strong></div>
+                <div class="history-score-row ${jadeyPoints ? 'scored jadey' : ''}"><span>${escapeHtml(playerProfiles.Jadey?.nickname || 'Jadey')}</span><strong>+${jadeyPoints} pts</strong></div>
+            </article>
+        `;
+    }).join('');
 }
 
 function updateModeButtons() {
