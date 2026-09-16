@@ -11,6 +11,7 @@
     <title>Sweetheart's App</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="realm-hub.css">
+    <link rel="stylesheet" href="game-pause.css">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
@@ -572,7 +573,7 @@
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
-                    <button class="nav-tab-btn" onclick="openNumberGuessPause()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg><span>Pause</span></button>
+                    <button class="nav-tab-btn" onclick="toggleNumberGuessPause()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z"/></svg><span>Pause</span></button>
                 </div>
             </section>
 
@@ -996,5 +997,6 @@
     <script src="tic-tac-toe.js"></script>
     <script src="rps.js"></script>
     <script src="realm-hub.js"></script>
+    <script src="game-pause.js"></script>
 </body>
 </html>

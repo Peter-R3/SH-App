@@ -178,6 +178,7 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    if (typeof sharedPauseSession !== 'undefined' && sharedPauseSession && view !== `${sharedPauseSession.id}-menu`) closeSharedGameMenu();
     activeAppView = view;
     updateAppPresence();
 }
@@ -469,6 +470,7 @@ function showAuthenticatedApp(playerName) {
     localPlayer = playerName;
     loadSoundEffectsPreference(playerName);
     normaliseBottomNavigation();
+    if (typeof initialiseGamePauseMenus === 'function') initialiseGamePauseMenus();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('home-screen')?.classList.remove('hidden');
     initialiseHomeScreen();
@@ -2486,6 +2488,7 @@ function handleGameStateUpdate() {
 }
 
 function showNumberGuessPlayArea() {
+    if (typeof setGamePauseTab === 'function') setGamePauseTab(document.querySelector('[onclick="toggleNumberGuessPause()"]'), false);
     document.getElementById('number-guess-play-area')?.classList.remove('hidden', 'number-guess-blurred-field');
     const menuArea = document.getElementById('number-guess-menu-area');
     if (menuArea) {
@@ -2498,6 +2501,7 @@ function showNumberGuessPlayArea() {
 }
 
 function openNumberGuessMenu(view = 'pause') {
+    if (typeof setGamePauseTab === 'function') setGamePauseTab(document.querySelector('[onclick="toggleNumberGuessPause()"]'), true);
     const viewConfig = {
         pause: { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' },
         modes: { title: 'Modes', activePanel: 'number-guess-modes-panel', screenClass: 'number-guess-submenu-view' },

@@ -39,14 +39,7 @@ function launchRps() {
 }
 
 function openRpsSettings() {
-    setActiveAppView('rps-settings');
-    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
-    document.getElementById('rps-settings-screen')?.classList.remove('hidden');
-    const header = document.getElementById('rps-settings-header');
-    if (header) {
-        header.classList.remove('header-peter', 'header-jadey');
-        header.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
-    }
+    openSharedGameMenu('rps', 'modes');
     document.getElementById('rps-mode').value = rpsSettings.mode;
 }
 
@@ -57,6 +50,7 @@ function updateRpsSetting(key, value) {
 
 function createRpsRound(mode = 'versus') {
     return {
+        roundId: database.ref('games/rps/roundIds').push().key,
         mode,
         status: mode === 'versus' ? 'waiting' : 'active',
         players: mode === 'versus' ? { [localPlayer]: true } : { [localPlayer]: true, Jaylin: true },
@@ -83,7 +77,8 @@ function loadRpsAi() {
 function loadRpsVersus() {
     subscribeRps();
     database.ref('games/rps/current').transaction(current => {
-        if (!current || current.status === 'finished') return createRpsRound('versus');
+        if (!current) return createRpsRound('versus');
+        if (current.status === 'finished') return;
         current.players = current.players || {};
         current.players[localPlayer] = true;
         if (current.status === 'waiting' && current.players.Peter && current.players.Jadey) {
@@ -103,6 +98,19 @@ function subscribeRps() {
     rpsHandler = snapshot => {
         rpsState = snapshot.val();
         renderRps();
+        if (rpsSettings.mode === 'versus' && rpsState?.status === 'waiting' && !rpsState.players?.[localPlayer]) {
+            const roundId = rpsState.roundId || rpsState.createdAt;
+            database.ref('games/rps/current').transaction(current => {
+                if (!current || (current.roundId || current.createdAt) !== roundId || current.status !== 'waiting') return;
+                current.players = current.players || {};
+                current.players[localPlayer] = true;
+                if (current.players.Peter && current.players.Jadey) {
+                    current.status = 'active';
+                    current.startedAt = Date.now();
+                }
+                return current;
+            }, undefined, false).catch(() => setRpsStatus('Could not join this round. Please reopen RPS to retry.'));
+        }
     };
     rpsRef.on('value', rpsHandler);
 }
@@ -169,6 +177,7 @@ function chooseRps(choice) {
 }
 
 function chooseRpsAi(choice) {
+    if (!rpsState || rpsState.status !== 'active') return;
     const aiChoice = RPS_CHOICES[Math.floor(Math.random() * RPS_CHOICES.length)];
     const winner = resolveRpsWinner(choice, aiChoice, localPlayer, 'Jaylin');
     rpsState = { ...rpsState, status: 'finished', choices: { [localPlayer]: choice, Jaylin: aiChoice }, winner, completedAt: Date.now() };
@@ -178,9 +187,9 @@ function chooseRpsAi(choice) {
 }
 
 function chooseRpsVersus(choice) {
-    let result = null;
+    const roundId = rpsState?.roundId || rpsState?.createdAt;
     database.ref('games/rps/current').transaction(current => {
-        if (!current || current.status !== 'active' || current.choices?.[localPlayer]) return;
+        if (!current || (current.roundId || current.createdAt) !== roundId || current.status !== 'active' || current.choices?.[localPlayer]) return;
         current.choices = current.choices || {};
         current.choices[localPlayer] = choice;
         const opponent = otherPlayer(localPlayer);
@@ -188,16 +197,17 @@ function chooseRpsVersus(choice) {
             current.status = 'finished';
             current.winner = resolveRpsWinner(current.choices[localPlayer], current.choices[opponent], localPlayer, opponent);
             current.completedAt = Date.now();
-            result = { finished: true, winner: current.winner, opponent };
-        } else {
-            result = { finished: false, opponent };
         }
         return current;
-    }, (error, committed) => {
-        if (error || !committed || !result) return;
-        if (result.finished) recordRpsResult(result.winner, 'versus', localPlayer, result.opponent);
-        sendRpsNotification(result.opponent, result.finished ? 'Your RPS round finished' : `${playerProfiles[localPlayer]?.nickname || localPlayer} chose their RPS move`);
-    });
+    }, (error, committed, snapshot) => {
+        if (error) { setRpsStatus('Could not send your move. Please try again.'); return; }
+        if (!committed) return;
+        const state = snapshot.val();
+        const finished = state.status === 'finished';
+        const opponent = otherPlayer(localPlayer);
+        if (finished) recordRpsResult(state.winner, 'versus', localPlayer, opponent);
+        sendRpsNotification(opponent, finished ? 'Your RPS round finished' : `${playerProfiles[localPlayer]?.nickname || localPlayer} chose their RPS move`);
+    }, false);
 }
 
 function resolveRpsWinner(a, b, playerA, playerB) {
@@ -235,12 +245,21 @@ function recordRpsResult(winner, mode, player, opponent) {
 function startNewRpsRound() {
     if (!window.confirm('Start a new RPS round?')) return;
     if (rpsSettings.mode === 'versus-ai') database.ref(rpsAiPath()).set(createRpsRound('versus-ai')).then(launchRps);
-    else database.ref('games/rps/current').set(createRpsRound('versus')).then(sendRpsInvite);
+    else {
+        const previousId = rpsState?.roundId || rpsState?.createdAt;
+        const next = createRpsRound('versus');
+        database.ref('games/rps/current').transaction(current => {
+            if (current && (current.status !== 'finished' || (current.roundId || current.createdAt) !== previousId)) return;
+            return next;
+        }, undefined, false).then(result => { if (result.committed) sendRpsInvite(); })
+            .catch(() => setRpsStatus('Could not start a round. Please try again.'));
+    }
 }
 
 function abandonRpsRound() {
     if (!window.confirm('Abandon this RPS round?')) return;
     if (rpsSettings.mode === 'versus-ai') {
+        if (!rpsState || rpsState.status === 'finished') return;
         rpsState = { ...rpsState, status: 'finished', winner: 'Jaylin', abandonedBy: localPlayer, completedAt: Date.now() };
         database.ref(rpsAiPath()).set(rpsState);
         recordRpsResult('Jaylin', 'versusAi', localPlayer, 'Jaylin');
@@ -248,7 +267,7 @@ function abandonRpsRound() {
         return;
     }
     database.ref('games/rps/current').transaction(current => {
-        if (!current || current.status === 'finished') return current;
+        if (!current || current.status === 'finished') return;
         current.status = 'finished';
         current.winner = otherPlayer(localPlayer);
         current.abandonedBy = localPlayer;

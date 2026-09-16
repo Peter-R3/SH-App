@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sweethearts-app-v29';
+const CACHE_NAME = 'sweethearts-app-v30';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const APP_SHELL = [
   './app.js',
   './realm-hub.js',
   './realm-hub.css',
+  './game-pause.js',
+  './game-pause.css',
   './wordsearch.js',
   './battleship.js',
   './connect-four.js',

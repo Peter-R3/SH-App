@@ -1,0 +1,150 @@
+const sharedPauseGames = {
+    'word-search': { launch: launchWordSearch, modes: openWordSearchSettings, settings: () => wordSearchSettings, stats: 'word-search-stats-content', render: renderWordSearchStats },
+    sudoku: { launch: launchSudoku, modes: openSudokuSettings, settings: () => sudokuSettings, stats: 'sudoku-stats-content', render: renderSudokuStats },
+    battleship: { launch: launchBattleship, stats: 'battleship-stats-content', render: renderBattleshipStats },
+    'connect-four': { launch: launchConnectFour, stats: 'connect-four-stats-content', render: renderConnectFourStats },
+    'tic-tac-toe': { launch: launchTicTacToe, modes: openTicTacToeSettings, settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
+    rps: { launch: launchRps, modes: openRpsSettings, settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
+};
+let sharedPauseSession = null;
+
+function setGamePauseTab(button, paused) {
+    if (!button) return;
+    button.innerHTML = `<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${paused ? 'M8 5v14l11-7z' : 'M6 5h4v14H6V5zm8 0h4v14h-4V5z'}"/></svg><span>${paused ? 'Play' : 'Pause'}</span>`;
+    button.setAttribute('aria-label', paused ? 'Resume game' : 'Open pause menu');
+}
+
+function initialiseGamePauseMenus() {
+    for (const [id, config] of Object.entries(sharedPauseGames)) {
+        const screen = document.getElementById(`${id}-screen`);
+        if (!screen || screen.querySelector('.shared-game-menu')) continue;
+        screen.classList.add('shared-pause-game');
+        const nav = screen.querySelector('.bottom-nav-bar');
+        nav.classList.add('game-bottom-nav');
+        let tab = [...nav.children].find(button => button.textContent.trim() === 'Modes');
+        if (!tab) { tab = document.createElement('button'); tab.className = 'nav-tab-btn'; nav.append(tab); }
+        tab.removeAttribute('onclick');
+        tab.dataset.pauseGame = id;
+        tab.addEventListener('click', () => sharedPauseSession?.id === id ? resumeSharedGame() : openSharedGameMenu(id));
+        setGamePauseTab(tab, false);
+        const menu = document.createElement('div');
+        menu.className = 'shared-game-menu hidden';
+        menu.innerHTML = `<div class="shared-pause-panel"><button class="sound-effects-toggle" onclick="toggleSoundEffects()"></button><h2>Paused</h2><p class="shared-pause-note"></p><button class="pause-option-btn primary" data-pause-action="resume">Resume</button>${config.modes ? '<button class="pause-option-btn" data-pause-action="modes">Modes</button>' : ''}<button class="pause-option-btn" data-pause-action="stats">Statistics</button></div><div class="shared-submenu hidden"><div class="number-guess-submenu-heading"><h2></h2><button class="mode-select-btn" data-pause-action="back" aria-label="Back to pause menu" title="Back to pause menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button></div><div class="shared-submenu-content"></div></div>`;
+        menu.addEventListener('click', event => {
+            const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
+            if (!action) return;
+            playUiSound('tap');
+            if (action === 'resume') resumeSharedGame();
+            else if (action === 'modes') config.modes();
+            else openSharedGameMenu(id, action === 'stats' ? 'stats' : 'pause');
+        });
+        screen.insertBefore(menu, nav);
+        const resize = () => {
+            screen.style.setProperty('--pause-header-height', `${screen.querySelector('.dashboard-header').getBoundingClientRect().height}px`);
+            screen.style.setProperty('--pause-nav-height', `${nav.getBoundingClientRect().height}px`);
+        };
+        new ResizeObserver(resize).observe(screen);
+        config.resize = resize;
+    }
+    updateSoundEffectControls();
+}
+
+function restoreSharedMenuContent() {
+    if (sharedPauseSession?.placeholder) {
+        sharedPauseSession.placeholder.replaceWith(sharedPauseSession.content);
+        sharedPauseSession.placeholder = null;
+        sharedPauseSession.content = null;
+    }
+}
+
+function openSharedGameMenu(id, view = 'pause') {
+    initialiseGamePauseMenus();
+    const config = sharedPauseGames[id];
+    if (!config || !localPlayer) return;
+    if (sharedPauseSession && sharedPauseSession.id !== id) closeSharedGameMenu();
+    if (!sharedPauseSession) {
+        sharedPauseSession = { id, openedAt: Date.now(), settings: JSON.stringify(config.settings?.()), mode: config.settings?.().mode };
+        if (id === 'sudoku' && sudokuSettings.mode === 'solo' && sudokuState) {
+            sharedPauseSession.sudokuState = sudokuState;
+            sharedPauseSession.sudokuPath = soloSudokuPath();
+        }
+    }
+    restoreSharedMenuContent();
+    setActiveAppView(`${id}-menu`);
+    const screen = document.getElementById(`${id}-screen`);
+    document.querySelectorAll('.screen').forEach(element => element.classList.add('hidden'));
+    screen.classList.remove('hidden');
+    applyThemeToScreen(`${id}-screen`, `${id}-header-shell`, `${id}-nav-shell`);
+    refreshSharedHeader(id);
+    setActiveNavigationTab('games');
+    screen.classList.add('shared-game-paused');
+    const menu = screen.querySelector('.shared-game-menu');
+    menu.classList.remove('hidden');
+    menu.classList.toggle('shared-menu-solid', view !== 'pause');
+    menu.querySelector('.shared-pause-panel').classList.toggle('hidden', view !== 'pause');
+    menu.querySelector('.shared-submenu').classList.toggle('hidden', view === 'pause');
+    const mode = sharedPauseSession.mode;
+    menu.querySelector('.shared-pause-note').textContent = mode === 'solo' ? 'Game paused. Your timer is stopped.' : mode === 'versus-ai' ? 'Game paused. Jaylin waits for you.' : 'Multiplayer keeps syncing while this menu is open.';
+    for (const child of screen.children) {
+        if (!child.matches('.dashboard-header, .bottom-nav-bar, .shared-game-menu')) child.inert = true;
+    }
+    if (view !== 'pause') {
+        menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : 'Modes';
+        const content = view === 'stats' ? document.getElementById(config.stats) : document.getElementById(`${id}-settings-screen`)?.children[1];
+        if (content) {
+            const placeholder = document.createComment('Game menu content');
+            content.before(placeholder);
+            sharedPauseSession.placeholder = placeholder;
+            sharedPauseSession.content = content;
+            menu.querySelector('.shared-submenu-content').append(content);
+        }
+        if (view === 'stats') config.render();
+    }
+    setGamePauseTab(screen.querySelector('[data-pause-game]'), true);
+    updateSoundEffectControls();
+    config.resize();
+}
+
+function closeSharedGameMenu() {
+    const session = sharedPauseSession;
+    if (!session) return;
+    restoreSharedMenuContent();
+    const duration = Math.max(0, Date.now() - session.openedAt);
+    if (session.id === 'word-search' && ['solo', 'versus-ai'].includes(session.mode)) {
+        if (wordSearchLastActivityAt) wordSearchLastActivityAt += duration;
+        if (wordSearchSessionStartedAt) wordSearchSessionStartedAt += duration;
+    }
+    if (session.sudokuState && !session.sudokuState.completedAt) {
+        session.sudokuState.pausedMs = (Number(session.sudokuState.pausedMs) || 0) + duration;
+        const startedAt = session.sudokuState.startedAt;
+        database.ref(session.sudokuPath).transaction(current => {
+            if (!current || current.startedAt !== startedAt || current.completedAt) return;
+            current.pausedMs = (Number(current.pausedMs) || 0) + duration;
+            return current;
+        }, undefined, false).catch(() => {});
+    }
+    const screen = document.getElementById(`${session.id}-screen`);
+    screen.classList.remove('shared-game-paused');
+    screen.querySelector('.shared-game-menu').classList.add('hidden');
+    for (const child of screen.children) child.inert = false;
+    setGamePauseTab(screen.querySelector('[data-pause-game]'), false);
+    sharedPauseSession = null;
+}
+
+function resumeSharedGame() {
+    if (!sharedPauseSession) return;
+    const { id, settings } = sharedPauseSession;
+    const config = sharedPauseGames[id];
+    const changed = settings !== JSON.stringify(config.settings?.());
+    closeSharedGameMenu();
+    if (changed) config.launch();
+    else setActiveAppView(id);
+}
+
+function toggleNumberGuessPause() {
+    if (!document.getElementById('number-guess-menu-area').classList.contains('hidden')) {
+        showNumberGuessPlayArea();
+        setActiveAppView('number-guess');
+        handleGameStateUpdate();
+    } else openNumberGuessPause();
+}

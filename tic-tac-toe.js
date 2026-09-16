@@ -41,14 +41,7 @@ function launchTicTacToe() {
 }
 
 function openTicTacToeSettings() {
-    setActiveAppView('tic-tac-toe-settings');
-    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
-    document.getElementById('tic-tac-toe-settings-screen')?.classList.remove('hidden');
-    const header = document.getElementById('tic-tac-toe-settings-header');
-    if (header) {
-        header.classList.remove('header-peter', 'header-jadey');
-        header.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
-    }
+    openSharedGameMenu('tic-tac-toe', 'modes');
     document.getElementById('tic-tac-toe-mode').value = ticTacToeSettings.mode;
 }
 

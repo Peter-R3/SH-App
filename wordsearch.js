@@ -140,14 +140,7 @@ function launchWordSearch() {
 }
 
 function openWordSearchSettings() {
-    setActiveAppView('word-search-settings');
-    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
-    document.getElementById('word-search-settings-screen')?.classList.remove('hidden');
-    const header = document.getElementById('word-search-settings-header');
-    if (header) {
-        header.classList.remove('header-peter', 'header-jadey');
-        header.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
-    }
+    openSharedGameMenu('word-search', 'modes');
     document.getElementById('word-search-mode').value = wordSearchSettings.mode;
     document.getElementById('word-search-difficulty').value = String(wordSearchSettings.difficulty);
     document.getElementById('word-search-ai-difficulty').value = wordSearchSettings.aiDifficulty;
@@ -767,7 +760,7 @@ function completeWordSearch() {
     wordSearchCompletedLocally = true;
     const mode = wordSearchSettings.mode;
     const difficulty = wordSearchSettings.difficulty;
-    const elapsed = mode === 'versus' || mode === 'versus-ai'
+    const elapsed = mode === 'versus'
         ? Math.max(1, Date.now() - (wordSearchStartedAt || Date.now()))
         : Math.max(1, wordSearchActiveMs);
     enableWordSearchGrid(false);

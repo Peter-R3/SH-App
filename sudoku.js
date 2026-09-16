@@ -60,14 +60,7 @@ function launchSudoku() {
 }
 
 function openSudokuSettings() {
-    setActiveAppView('sudoku-settings');
-    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
-    document.getElementById('sudoku-settings-screen')?.classList.remove('hidden');
-    const header = document.getElementById('sudoku-settings-header');
-    if (header) {
-        header.classList.remove('header-peter', 'header-jadey');
-        header.classList.add(localPlayer === 'Peter' ? 'header-peter' : 'header-jadey');
-    }
+    openSharedGameMenu('sudoku', 'modes');
     document.getElementById('sudoku-mode').value = sudokuSettings.mode;
     document.getElementById('sudoku-difficulty').value = sudokuSettings.difficulty;
     document.getElementById('sudoku-ai-difficulty').value = sudokuSettings.aiDifficulty;
@@ -405,7 +398,7 @@ function setSudokuCell(value) {
 function clearSudokuGrid() {
     if (!sudokuState?.puzzle || !window.confirm('Clear all entries for this Sudoku grid?')) return;
     sudokuSelectedCell = null;
-    const updates = { startedAt: Date.now(), completedAt: null };
+    const updates = { startedAt: Date.now(), completedAt: null, pausedMs: 0 };
     if (sudokuSettings.mode === 'versus-ai') {
         updates.aiResolved = false;
         updates.winner = null;
@@ -433,6 +426,7 @@ function clearSudokuGrid() {
     database.ref(path).update({ ...updates, entries: {} }).then(() => {
         sudokuState.entries = {};
         sudokuState.startedAt = updates.startedAt;
+        sudokuState.pausedMs = 0;
         sudokuState.completedAt = null;
         showSudokuResult('', false);
         if (sudokuSettings.mode === 'versus-ai') {
@@ -458,7 +452,8 @@ function checkSudokuCompletion() {
 }
 
 function completeSudokuPuzzle() {
-    const elapsed = Math.max(0, Date.now() - Number(sudokuState.startedAt || Date.now()));
+    const elapsed = sudokuSettings.mode === 'versus-ai' ? Math.max(0, Number(sudokuState.aiActiveMs) || 0)
+        : Math.max(0, Date.now() - Number(sudokuState.startedAt || Date.now()) - (sudokuSettings.mode === 'solo' ? Number(sudokuState.pausedMs) || 0 : 0));
     if (sudokuSettings.mode === 'solo') {
         sudokuState.completedAt = Date.now();
         database.ref(soloSudokuPath()).update({ completedAt: sudokuState.completedAt });
