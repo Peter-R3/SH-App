@@ -40,6 +40,40 @@
                 <h2 id="welcome-name" class="welcome-large"></h2>
             </section>
 
+            <section id="home-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
+                <div id="home-header-shell" class="dashboard-header">
+                    <span class="header-title">Home</span>
+                    <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
+                            <span class="header-player-label">Player</span>
+                            <span id="home-top-nickname" class="header-nickname"></span>
+                        </div>
+                        <div id="home-top-initial" class="pfp-placeholder"></div>
+                    </div>
+                </div>
+
+                <div class="home-content">
+                    <h2 class="menu-prompt">Quick access</h2>
+                    <div class="home-shortcut-grid">
+                        <button class="home-shortcut-card games" onclick="switchTab('games')">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
+                            <span>Games</span>
+                        </button>
+                        <button class="home-shortcut-card stats" onclick="openStatsScreen()">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg>
+                            <span>Game Stats</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="home-nav-shell" class="bottom-nav-bar">
+                    <button class="nav-tab-btn active-tab" onclick="switchTab('home')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3v-9.5z"/></svg><span>Home</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('games')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('messages')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg><span>Messages</span></button>
+                    <button class="nav-tab-btn" onclick="switchTab('alerts')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span>Alerts</span><span class="notification-badge hidden">0</span></button>
+                </div>
+            </section>
+
             <section id="main-dashboard" class="screen hidden" style="justify-content: flex-start; padding: 0;">
                 <div id="dashboard-header-shell" class="dashboard-header" onclick="switchTab('profile')" style="cursor: pointer;">
                     <span class="header-title">Game Selection</span>
@@ -107,13 +141,13 @@
                     </div>
                 </div>
 
-                <div class="profile-content" style="padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 28px;">
+                <div class="profile-content" style="padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 20px;">
                     
-                    <div style="display: flex; align-items: center; gap: 20px; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 16px; width: 100%;">
                         <button id="profile-main-avatar" class="profile-main-avatar" onclick="openProfilePhotoPicker()" aria-label="Change profile picture"></button>
                         <input id="profile-photo-input" class="hidden" type="file" accept="image/*" onchange="previewProfilePhoto(event)">
                         
-                        <div style="flex: 1; display: flex; flex-direction: column; gap: 12px;">
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
                             <div style="border-bottom: 1px solid #161B22; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
                                 <div>
                                     <span style="font-size: 10px; color: #6E7681; text-transform: uppercase; font-weight: bold;">Profile</span>
@@ -134,10 +168,10 @@
                     </div>
 
                     <div>
-                        <span style="font-size: 11px; color: #6E7681; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; display: block; margin-bottom: 16px;">Interactions</span>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+                        <span style="font-size: 11px; color: #6E7681; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; display: block; margin-bottom: 12px;">Interactions</span>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
                             
-                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                            <div style="background: #0A0F14; padding: 14px 8px; border-radius: 16px; border: 1px solid #161B22;">
                                 <button onclick="sendInteraction('hearts')" id="btn-emoji-heart" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
                                     🩵
                                 </button>
@@ -145,7 +179,7 @@
                                 <div id="count-hearts" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: var(--peter-theme);">0</span>:<span style="color: var(--jadey-theme);">0</span></div>
                             </div>
 
-                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                            <div style="background: #0A0F14; padding: 14px 8px; border-radius: 16px; border: 1px solid #161B22;">
                                 <button onclick="sendInteraction('hugs')" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
                                     🫂
                                 </button>
@@ -153,7 +187,7 @@
                                 <div id="count-hugs" style="font-size: 16px; font-weight: bold; letter-spacing: 3px;"><span style="color: var(--peter-theme);">0</span>:<span style="color: var(--jadey-theme);">0</span></div>
                             </div>
 
-                            <div style="background: #0A0F14; padding: 16px 8px; border-radius: 16px; border: 1px solid #161B22;">
+                            <div style="background: #0A0F14; padding: 14px 8px; border-radius: 16px; border: 1px solid #161B22;">
                                 <button onclick="sendInteraction('kisses')" style="background: none; padding: 0; width: auto; height: auto; font-size: 28px; line-height: 1;">
                                     💋
                                 </button>
@@ -210,7 +244,12 @@
 
             <section id="stats-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="stats-header-shell" class="dashboard-header">
-                    <span class="header-title">Game Stats</span>
+                    <div class="stats-header-title">
+                        <button class="header-back-btn" onclick="switchTab('home')" aria-label="Back to Home" title="Back to Home">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                        </button>
+                        <span class="header-title">Game Stats</span>
+                    </div>
                     <div class="header-profile-badge" onclick="switchTab('profile')" style="cursor: pointer;">
                         <div style="display: flex; flex-direction: column; align-items: flex-end; margin-right: 4px;">
                             <span class="header-player-label">Player</span>
@@ -253,7 +292,7 @@
                         </button>
                     </div>
                     <div id="stats-number-guess-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">1 to 10</h2>
                         <div class="stats-player-card peter-stats">
                             <div class="stats-player-heading"><span>Peter</span><strong id="stats-peter-total">0</strong></div>
@@ -269,32 +308,32 @@
                         </div>
                     </div>
                     <div id="stats-word-search-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">Word Search</h2>
                         <div id="word-search-stats-content"></div>
                     </div>
                     <div id="stats-battleship-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">Battleship</h2>
                         <div id="battleship-stats-content"></div>
                     </div>
                     <div id="stats-connect-four-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">Connect 4</h2>
                         <div id="connect-four-stats-content"></div>
                     </div>
                     <div id="stats-sudoku-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">Sudoku</h2>
                         <div id="sudoku-stats-content"></div>
                     </div>
                     <div id="stats-tic-tac-toe-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">Tic-Tac-Toe</h2>
                         <div id="tic-tac-toe-stats-content"></div>
                     </div>
                     <div id="stats-rps-detail" class="hidden">
-                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to games</button>
+                        <button class="stats-back-btn" onclick="closeStatsCategory()">Back to Game Stats</button>
                         <h2 class="stats-detail-title">RPS</h2>
                         <div id="rps-stats-content"></div>
                     </div>
@@ -435,6 +474,9 @@
 
                 <div id="number-guess-menu-area" class="number-guess-menu-area hidden">
                     <div id="number-guess-pause-panel" class="number-guess-menu-panel pause-panel">
+                        <button class="sound-effects-toggle" onclick="toggleSoundEffects()" aria-label="Mute sound effects" aria-pressed="true" title="Mute sound effects">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10H4zm12.5 2a4.5 4.5 0 0 0-2.1-3.8v7.6a4.5 4.5 0 0 0 2.1-3.8zm0-8.3v2.1a7 7 0 0 1 0 12.4v2.1a9 9 0 0 0 0-16.6z"/></svg>
+                        </button>
                         <h2 class="number-guess-menu-heading centred">Paused</h2>
                         <p class="number-guess-menu-subtitle">This turn-based game keeps syncing while this menu is open.</p>
                         <button class="pause-option-btn primary" onclick="launchGame('number-guess')">
@@ -448,6 +490,10 @@
                         <button class="pause-option-btn" onclick="openNumberGuessHistory()">
                             <span>History</span>
                             <small>View the last 7 completed rounds</small>
+                        </button>
+                        <button class="pause-option-btn" onclick="openNumberGuessStats()">
+                            <span>Statistics</span>
+                            <small>View 1 to 10 scores</small>
                         </button>
                     </div>
                     <div id="number-guess-modes-panel" class="number-guess-menu-panel hidden">
@@ -483,6 +529,28 @@
                             </button>
                         </div>
                         <div id="number-guess-history-list" class="history-list"></div>
+                    </div>
+                    <div id="number-guess-stats-panel" class="number-guess-menu-panel hidden">
+                        <div class="number-guess-submenu-heading">
+                            <div><h2>Statistics</h2></div>
+                            <button onclick="openNumberGuessPause()" class="mode-select-btn" aria-label="Back to pause menu">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                            </button>
+                        </div>
+                        <div class="number-guess-pause-stats">
+                            <article class="stats-player-card peter-stats">
+                                <div class="stats-player-heading"><span id="number-guess-pause-peter-name">Peter</span><strong id="number-guess-pause-peter-total">0</strong></div>
+                                <div class="stats-row"><span>1 to 10</span><strong id="number-guess-pause-peter-ten">0</strong></div>
+                                <div class="stats-row"><span>1 to 100</span><strong id="number-guess-pause-peter-hundred">0</strong></div>
+                                <div class="stats-row"><span>Colours</span><strong id="number-guess-pause-peter-colours">0</strong></div>
+                            </article>
+                            <article class="stats-player-card jadey-stats">
+                                <div class="stats-player-heading"><span id="number-guess-pause-jadey-name">Jadey</span><strong id="number-guess-pause-jadey-total">0</strong></div>
+                                <div class="stats-row"><span>1 to 10</span><strong id="number-guess-pause-jadey-ten">0</strong></div>
+                                <div class="stats-row"><span>1 to 100</span><strong id="number-guess-pause-jadey-hundred">0</strong></div>
+                                <div class="stats-row"><span>Colours</span><strong id="number-guess-pause-jadey-colours">0</strong></div>
+                            </article>
+                        </div>
                     </div>
                 </div>
 
@@ -868,7 +936,18 @@
             <div id="theme-picker-dialog" class="profile-photo-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="theme-picker-title">
                 <div class="theme-picker-panel">
                     <h2 id="theme-picker-title">Theme colour</h2>
-                    <input id="theme-colour-picker" class="theme-colour-picker" type="color" oninput="updateThemePickerFromColour(this.value)">
+                    <div id="theme-colour-preview" class="theme-colour-preview" aria-label="Selected theme colour"></div>
+                    <div id="theme-colour-field" class="theme-colour-field" role="slider" aria-label="Colour saturation and brightness" tabindex="0" onpointerdown="beginThemeColourField(event)" onpointermove="updateThemeColourField(event)" onpointerup="endThemeColourField(event)" onpointercancel="endThemeColourField(event)" onkeydown="adjustThemeColourField(event)">
+                        <span id="theme-colour-field-handle" class="theme-colour-field-handle"></span>
+                    </div>
+                    <label class="theme-hue-control" for="theme-hue-slider">
+                        <span>Hue</span>
+                        <input id="theme-hue-slider" type="range" min="0" max="360" value="0" oninput="updateThemePickerFromHue(this.value)">
+                    </label>
+                    <div class="theme-preset-row" aria-label="Default theme colours">
+                        <button class="theme-preset-option peter" type="button" onclick="selectThemePreset('#15AFD1')" aria-label="Use Peter's default blue" title="Peter's default blue"></button>
+                        <button class="theme-preset-option jadey" type="button" onclick="selectThemePreset('#FFD1DC')" aria-label="Use Jadey's default pink" title="Jadey's default pink"></button>
+                    </div>
                     <div class="theme-input-row">
                         <label for="theme-hex-input">Hex</label>
                         <input id="theme-hex-input" type="text" maxlength="7" placeholder="#58A6FF" oninput="updateThemePickerFromHex(this.value)">
@@ -878,7 +957,7 @@
                         <label>G<input id="theme-g-input" type="number" min="0" max="255" inputmode="numeric" oninput="updateThemePickerFromRgb()"></label>
                         <label>B<input id="theme-b-input" type="number" min="0" max="255" inputmode="numeric" oninput="updateThemePickerFromRgb()"></label>
                     </div>
-                    <p id="theme-picker-status" class="management-status" aria-live="polite"></p>
+                    <p id="theme-picker-status" class="management-status hidden" aria-live="polite"></p>
                     <div class="profile-photo-actions">
                         <button onclick="closeThemePicker()">Cancel</button>
                         <button class="primary" onclick="saveThemeColour()">Save</button>

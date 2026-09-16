@@ -157,6 +157,8 @@ let currentSelectedGuess = null;
 let isRevealingRound = false; // Guard to stop frame collision anomalies
 let lastNumberGuessTurnCueKey = null;
 let numberGuessSummaryTimer = null;
+let soundEffectsEnabled = true;
+let soundContext = null;
 let latestMessages = [];
 let latestNotifications = [];
 let latestStats = {};
@@ -176,6 +178,82 @@ window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 function setActiveAppView(view) {
     activeAppView = view;
     updateAppPresence();
+}
+
+function loadSoundEffectsPreference(player) {
+    try {
+        soundEffectsEnabled = window.localStorage.getItem(`sweethearts-app:sound-effects:${player}`) !== 'false';
+    } catch {
+        soundEffectsEnabled = true;
+    }
+    updateSoundEffectControls();
+}
+
+function updateSoundEffectControls() {
+    const speakerPath = soundEffectsEnabled
+        ? '<path d="M4 10v4h4l5 4V6L8 10H4zm12.5 2a4.5 4.5 0 0 0-2.1-3.8v7.6a4.5 4.5 0 0 0 2.1-3.8zm0-8.3v2.1a7 7 0 0 1 0 12.4v2.1a9 9 0 0 0 0-16.6z"/>'
+        : '<path d="M4 10v4h4l5 4v-4.2l-2.9-2.9L8 10H4zm15.2 2 2.1-2.1-1.4-1.4L17.8 10.6l-2.2-2.2-1.4 1.4 2.2 2.2-2.2 2.2 1.4 1.4 2.2-2.2 2.1 2.1 1.4-1.4L19.2 12z"/>';
+    document.querySelectorAll('.sound-effects-toggle').forEach(button => {
+        const label = soundEffectsEnabled ? 'Mute sound effects' : 'Enable sound effects';
+        button.setAttribute('aria-label', label);
+        button.setAttribute('title', label);
+        button.setAttribute('aria-pressed', String(soundEffectsEnabled));
+        button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${speakerPath}</svg>`;
+    });
+}
+
+function toggleSoundEffects() {
+    soundEffectsEnabled = !soundEffectsEnabled;
+    try {
+        window.localStorage.setItem(`sweethearts-app:sound-effects:${localPlayer}`, String(soundEffectsEnabled));
+    } catch {
+        // The setting remains active for this session if storage is unavailable.
+    }
+    updateSoundEffectControls();
+    if (soundEffectsEnabled) playUiSound('confirm');
+}
+
+function getSoundContext() {
+    if (soundContext) return soundContext;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return null;
+    soundContext = new AudioContext();
+    return soundContext;
+}
+
+function playUiTone(context, frequency, startOffset, duration, volume, type = 'sine', endFrequency = frequency) {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const start = context.currentTime + startOffset;
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, start);
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), start + duration);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(volume, start + Math.min(0.012, duration * 0.3));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.02);
+}
+
+function playUiSound(kind) {
+    if (!soundEffectsEnabled) return;
+    const context = getSoundContext();
+    if (!context) return;
+    if (context.state === 'suspended') context.resume().catch(() => {});
+
+    if (kind === 'tap') {
+        playUiTone(context, 520, 0, 0.045, 0.026, 'sine', 610);
+    } else if (kind === 'confirm') {
+        playUiTone(context, 392, 0, 0.07, 0.032, 'sine', 430);
+        playUiTone(context, 554, 0.055, 0.085, 0.03, 'sine', 610);
+    } else if (kind === 'success') {
+        playUiTone(context, 523, 0, 0.09, 0.03, 'sine', 555);
+        playUiTone(context, 659, 0.075, 0.1, 0.032, 'sine', 700);
+        playUiTone(context, 784, 0.15, 0.13, 0.028, 'sine', 880);
+    } else if (kind === 'error') {
+        playUiTone(context, 230, 0, 0.14, 0.028, 'triangle', 170);
+    }
 }
 
 function updateAppPresence() {
@@ -315,11 +393,13 @@ function showAuthScreen(message = 'Sign in with your approved account.', isError
 
 function showAuthenticatedApp(playerName) {
     localPlayer = playerName;
+    loadSoundEffectsPreference(playerName);
+    normaliseBottomNavigation();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
-    document.getElementById('main-dashboard')?.classList.remove('hidden');
-    initialiseMainDashboard();
+    document.getElementById('home-screen')?.classList.remove('hidden');
+    initialiseHomeScreen();
     initialiseRealtimeFeeds();
-    setActiveAppView('games');
+    setActiveAppView('home');
 }
 
 function authErrorMessage(error) {
@@ -410,6 +490,29 @@ function initialiseMainDashboard() {
     refreshSharedHeader('dashboard');
 }
 
+function initialiseHomeScreen() {
+    setActiveAppView('home');
+    applyThemeToScreen('home-screen', 'home-header-shell', 'home-nav-shell');
+    refreshSharedHeader('home');
+}
+
+function homeNavigationMarkup() {
+    return '<svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3v-9.5z"/></svg><span>Home</span>';
+}
+
+function normaliseBottomNavigation() {
+    document.querySelectorAll('.bottom-nav-bar .nav-tab-btn[onclick*="switchTab(\'stats\')"]').forEach(button => {
+        button.setAttribute('onclick', "switchTab('home')");
+        button.innerHTML = homeNavigationMarkup();
+        button.classList.remove('active-tab');
+    });
+}
+
+function setActiveNavigationTab(tabName) {
+    document.querySelectorAll('.nav-tab-btn').forEach(button => button.classList.remove('active-tab'));
+    document.querySelectorAll(`.nav-tab-btn[onclick*="${tabName}"]`).forEach(button => button.classList.add('active-tab'));
+}
+
 function applyThemeVariables() {
     document.documentElement.style.setProperty('--peter-theme', themeColorFor('Peter'));
     document.documentElement.style.setProperty('--jadey-theme', themeColorFor('Jadey'));
@@ -468,7 +571,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
+    const prefixes = ['dashboard', 'home', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -500,7 +603,11 @@ function switchTab(tabName) {
     const screens = document.querySelectorAll('.screen');
     screens.forEach(screen => screen.classList.add('hidden'));
 
-    if (tabName === 'games') {
+    if (tabName === 'home') {
+        const home = document.getElementById('home-screen');
+        if (home) home.classList.remove('hidden');
+        initialiseHomeScreen();
+    } else if (tabName === 'games') {
         const dash = document.getElementById('main-dashboard');
         if (dash) dash.classList.remove('hidden');
         initialiseMainDashboard();
@@ -518,8 +625,7 @@ function switchTab(tabName) {
         initialiseMainDashboard();
     }
 
-    document.querySelectorAll('.nav-tab-btn').forEach(btn => btn.classList.remove('active-tab'));
-    document.querySelectorAll(`.nav-tab-btn[onclick*="${tabName}"]`).forEach(btn => btn.classList.add('active-tab'));
+    setActiveNavigationTab(tabName);
     setActiveAppView(tabName);
 }
 
@@ -602,18 +708,83 @@ function rgbToHex(r, g, b) {
     return `#${values.map(value => Math.round(value).toString(16).padStart(2, '0')).join('').toUpperCase()}`;
 }
 
+function hexToHsv(hex) {
+    const rgb = hexToRgb(hex);
+    if (!rgb) return { h: 0, s: 0, v: 0 };
+    const red = rgb.r / 255;
+    const green = rgb.g / 255;
+    const blue = rgb.b / 255;
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const delta = max - min;
+    let hue = 0;
+    if (delta) {
+        if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+        else if (max === green) hue = 60 * (((blue - red) / delta) + 2);
+        else hue = 60 * (((red - green) / delta) + 4);
+    }
+    return {
+        h: (hue + 360) % 360,
+        s: max === 0 ? 0 : (delta / max) * 100,
+        v: max * 100
+    };
+}
+
+function hsvToHex(hue, saturation, value) {
+    const h = ((Number(hue) % 360) + 360) % 360;
+    const s = Math.max(0, Math.min(100, Number(saturation))) / 100;
+    const v = Math.max(0, Math.min(100, Number(value))) / 100;
+    const chroma = v * s;
+    const secondary = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
+    const match = v - chroma;
+    let channels;
+    if (h < 60) channels = [chroma, secondary, 0];
+    else if (h < 120) channels = [secondary, chroma, 0];
+    else if (h < 180) channels = [0, chroma, secondary];
+    else if (h < 240) channels = [0, secondary, chroma];
+    else if (h < 300) channels = [secondary, 0, chroma];
+    else channels = [chroma, 0, secondary];
+    return rgbToHex(...channels.map(channel => (channel + match) * 255));
+}
+
+function updateThemePickerVisuals(colour) {
+    const hsv = hexToHsv(colour);
+    const field = document.getElementById('theme-colour-field');
+    const handle = document.getElementById('theme-colour-field-handle');
+    const hueSlider = document.getElementById('theme-hue-slider');
+    const preview = document.getElementById('theme-colour-preview');
+    if (field) {
+        field.style.setProperty('--theme-picker-hue', `hsl(${hsv.h} 100% 50%)`);
+        field.setAttribute('aria-valuetext', `Saturation ${Math.round(hsv.s)}%, brightness ${Math.round(hsv.v)}%`);
+    }
+    if (handle) {
+        handle.style.left = `${hsv.s}%`;
+        handle.style.top = `${100 - hsv.v}%`;
+    }
+    if (hueSlider) hueSlider.value = String(Math.round(hsv.h));
+    if (preview) preview.style.backgroundColor = colour;
+}
+
 function syncThemePicker(colour) {
     const normalized = normalizeHexColour(colour);
     if (!normalized) return false;
     pendingThemeColour = normalized;
     const rgb = hexToRgb(normalized);
-    document.getElementById('theme-colour-picker').value = normalized;
+    updateThemePickerVisuals(normalized);
     document.getElementById('theme-hex-input').value = normalized;
     document.getElementById('theme-r-input').value = rgb.r;
     document.getElementById('theme-g-input').value = rgb.g;
     document.getElementById('theme-b-input').value = rgb.b;
-    document.getElementById('theme-picker-status').innerText = normalized;
+    setThemePickerStatus();
     return true;
+}
+
+function setThemePickerStatus(message = '', isError = false) {
+    const status = document.getElementById('theme-picker-status');
+    if (!status) return;
+    status.innerText = message;
+    status.classList.toggle('hidden', !message);
+    status.classList.toggle('error', isError);
 }
 
 function openThemePicker() {
@@ -628,6 +799,53 @@ function closeThemePicker() {
 
 function updateThemePickerFromColour(value) {
     syncThemePicker(value);
+}
+
+function selectThemePreset(colour) {
+    syncThemePicker(colour);
+}
+
+function updateThemePickerFromHue(hue) {
+    const hsv = hexToHsv(pendingThemeColour || themeColorFor(localPlayer));
+    syncThemePicker(hsvToHex(hue, hsv.s, hsv.v));
+}
+
+let isThemeColourFieldDragging = false;
+
+function updateThemeColourField(event) {
+    if (!isThemeColourFieldDragging) return;
+    const field = event.currentTarget;
+    const rect = field.getBoundingClientRect();
+    const saturation = Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100));
+    const value = Math.max(0, Math.min(100, (1 - ((event.clientY - rect.top) / rect.height)) * 100));
+    const hue = document.getElementById('theme-hue-slider')?.value || 0;
+    syncThemePicker(hsvToHex(hue, saturation, value));
+}
+
+function beginThemeColourField(event) {
+    isThemeColourFieldDragging = true;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    updateThemeColourField(event);
+}
+
+function endThemeColourField(event) {
+    isThemeColourFieldDragging = false;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+}
+
+function adjustThemeColourField(event) {
+    const changes = {
+        ArrowLeft: [-2, 0],
+        ArrowRight: [2, 0],
+        ArrowUp: [0, 2],
+        ArrowDown: [0, -2]
+    };
+    const change = changes[event.key];
+    if (!change) return;
+    event.preventDefault();
+    const hsv = hexToHsv(pendingThemeColour || themeColorFor(localPlayer));
+    const hue = document.getElementById('theme-hue-slider')?.value || 0;
+    syncThemePicker(hsvToHex(hue, hsv.s + change[0], hsv.v + change[1]));
 }
 
 function updateThemePickerFromHex(value) {
@@ -649,7 +867,7 @@ function saveThemeColour() {
     database.ref(`themes/${localPlayer}`).set(pendingThemeColour)
         .then(closeThemePicker)
         .catch(error => {
-            document.getElementById('theme-picker-status').innerText = `Could not save: ${error.message}`;
+            setThemePickerStatus(`Could not save: ${error.message}`, true);
         });
 }
 
@@ -1078,12 +1296,14 @@ function openNotificationsScreen() {
 
 function openStatsScreen() {
     setActiveAppView('stats');
+    document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('stats-screen');
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('stats-screen', 'stats-header-shell', 'stats-nav-shell');
     refreshSharedHeader('stats');
     closeStatsCategory();
     renderStats();
+    setActiveNavigationTab('home');
 }
 
 function openStatsCategory(gameId) {
@@ -1134,6 +1354,7 @@ function renderStats() {
     if (typeof renderSudokuStats === 'function') renderSudokuStats();
     if (typeof renderTicTacToeStats === 'function') renderTicTacToeStats();
     if (typeof renderRpsStats === 'function') renderRpsStats();
+    renderNumberGuessPauseStats();
 }
 
 function sendMessage(event) {
@@ -1785,6 +2006,7 @@ function normalizeGameState(state) {
         guesser: state.guesser || 'Jadey',
         chosenTargetValue: state.chosenTargetValue ?? null,
         currentGuessValue: state.currentGuessValue ?? null,
+        roundId: state.roundId || null,
         isActive: state.isActive !== false
     };
 }
@@ -1798,6 +2020,7 @@ function createFreshRound(mode, targetSetter) {
         guesser: otherPlayer(nextSetter),
         chosenTargetValue: null,
         currentGuessValue: null,
+        roundId: database.ref('history/numberGuess').push().key,
         isActive: true
     };
 }
@@ -1829,6 +2052,7 @@ function maybeShowNumberGuessTurnCue() {
 
     const overlay = document.getElementById('number-guess-turn-overlay');
     if (!overlay) return;
+    overlay.style.setProperty('--turn-cue-colour', themeColorFor(localPlayer));
     overlay.classList.remove('hidden', 'show-turn-cue');
     void overlay.offsetWidth;
     overlay.classList.add('show-turn-cue');
@@ -1847,10 +2071,11 @@ function getNumberGuessColour(modeKey, value) {
     return mode.values.find(colour => colour.value === value) || null;
 }
 
-function miniNumberGuessCard(modeKey, value) {
+function miniNumberGuessCard(modeKey, value, player) {
     const colour = getNumberGuessColour(modeKey, value);
-    if (!colour) return `<span class="history-mini-card">${escapeHtml(formatNumberGuessValue(modeKey, value))}</span>`;
-    return `<span class="history-mini-card colour ${colour.light ? 'light-label' : ''}" style="background-color: ${colour.color};">${escapeHtml(colour.name)}</span>`;
+    const playerClass = player === 'Jadey' ? 'jadey' : 'peter';
+    if (!colour) return `<span class="history-mini-card ${playerClass}">${escapeHtml(formatNumberGuessValue(modeKey, value))}</span>`;
+    return `<span class="history-mini-card colour ${playerClass} ${colour.light ? 'light-label' : ''}" style="background-color: ${colour.color};">${escapeHtml(colour.name)}</span>`;
 }
 
 function recordNumberGuessHistory(round, wasCorrect) {
@@ -1868,7 +2093,8 @@ function recordNumberGuessHistory(round, wasCorrect) {
     };
 
     const historyRef = database.ref('history/numberGuess');
-    return historyRef.push(record).then(() =>
+    const recordRef = round.roundId ? historyRef.child(round.roundId) : historyRef.push();
+    return recordRef.set(record).then(() =>
         historyRef.orderByChild('completedAt').once('value').then(snapshot => {
             const removals = [];
             snapshot.forEach(child => removals.push(child.key));
@@ -2007,6 +2233,7 @@ function selectGameValue(value) {
     if (gameState1To10.phase === 'SETTING_TARGET' && localPlayer !== gameState1To10.targetSetter) return;
     if (gameState1To10.phase === 'GUESSING' && localPlayer !== gameState1To10.guesser) return;
 
+    playUiSound('tap');
     currentSelectedGuess = value;
 
     const cardFront = document.getElementById('card-front-your-guess');
@@ -2034,6 +2261,7 @@ function processPadSubmission() {
     if (gameState1To10.phase === 'SETTING_TARGET') {
         if (localPlayer !== gameState1To10.targetSetter) return;
 
+        playUiSound('confirm');
         gameState1To10.chosenTargetValue = currentSelectedGuess;
         gameState1To10.phase = 'GUESSING';
         currentSelectedGuess = null;
@@ -2043,11 +2271,16 @@ function processPadSubmission() {
     } else if (gameState1To10.phase === 'GUESSING') {
         if (localPlayer !== gameState1To10.guesser) return;
 
+        playUiSound('confirm');
         gameState1To10.currentGuessValue = currentSelectedGuess;
         gameState1To10.phase = 'REVEAL';
+        const completedRound = { ...gameState1To10 };
+        const wasCorrect = completedRound.currentGuessValue === completedRound.chosenTargetValue;
         currentSelectedGuess = null;
 
-        database.ref('games/1-to-10').set(gameState1To10);
+        database.ref('games/1-to-10').set(gameState1To10)
+            .then(() => recordNumberGuessHistory(completedRound, wasCorrect))
+            .catch(error => console.log('Round submission or history save failed:', error));
         sendAppNotification({
             type: 'Game Update',
             action: 'check-game',
@@ -2061,6 +2294,7 @@ function processPadSubmission() {
 }
 
 function advanceRoundAfterReveal(revealRound) {
+    const nextRoundId = database.ref('history/numberGuess').push().key;
     database.ref('games/1-to-10').transaction((current) => {
         if (!current || current.phase !== 'REVEAL') return;
 
@@ -2082,6 +2316,7 @@ function advanceRoundAfterReveal(revealRound) {
             guesser: nextGuesser,
             chosenTargetValue: null,
             currentGuessValue: null,
+            roundId: nextRoundId,
             isActive: true
         };
     }, (error, committed, snapshot) => {
@@ -2099,7 +2334,6 @@ function advanceRoundAfterReveal(revealRound) {
             database.ref(`stats/${scoringPlayer}/${scoringMode}`).transaction(score => (score || 0) + 1);
         }
         if (committed) {
-            recordNumberGuessHistory(revealRound, wasCorrect).catch(error => console.log('History save failed:', error));
             showNumberGuessRoundSummary(revealRound, wasCorrect);
         }
 
@@ -2141,8 +2375,10 @@ function startRevealSequence() {
                 gameState1To10.currentGuessValue !== null &&
                 gameState1To10.currentGuessValue === gameState1To10.chosenTargetValue
             ) {
+                playUiSound('success');
                 promptLabel.innerText = "Correct Match! Point scored!";
             } else {
+                playUiSound('error');
                 promptLabel.innerText = "No Match!";
             }
         }
@@ -2174,7 +2410,7 @@ function showNumberGuessPlayArea() {
         menuArea.classList.add('hidden');
         menuArea.classList.remove('number-guess-pause-view', 'number-guess-submenu-view');
     }
-    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
+    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel', 'number-guess-stats-panel'].forEach(id => {
         document.getElementById(id)?.classList.add('hidden');
     });
 }
@@ -2183,10 +2419,12 @@ function openNumberGuessMenu(view = 'pause') {
     const viewConfig = {
         pause: { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' },
         modes: { title: 'Modes', activePanel: 'number-guess-modes-panel', screenClass: 'number-guess-submenu-view' },
-        history: { title: 'History', activePanel: 'number-guess-history-panel', screenClass: 'number-guess-submenu-view' }
+        history: { title: 'History', activePanel: 'number-guess-history-panel', screenClass: 'number-guess-submenu-view' },
+        stats: { title: 'Statistics', activePanel: 'number-guess-stats-panel', screenClass: 'number-guess-submenu-view' }
     }[view] || { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' };
 
     setActiveAppView(`number-guess-${view}`);
+    updateSoundEffectControls();
     const gameScreen = document.getElementById('game-1-to-10-screen');
     const menuArea = document.getElementById('number-guess-menu-area');
     const playArea = document.getElementById('number-guess-play-area');
@@ -2204,11 +2442,12 @@ function openNumberGuessMenu(view = 'pause') {
         menuArea.classList.remove('hidden', 'number-guess-pause-view', 'number-guess-submenu-view');
         menuArea.classList.add(viewConfig.screenClass);
     }
-    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel'].forEach(id => {
+    ['number-guess-pause-panel', 'number-guess-modes-panel', 'number-guess-history-panel', 'number-guess-stats-panel'].forEach(id => {
         document.getElementById(id)?.classList.toggle('hidden', id !== viewConfig.activePanel);
     });
     if (view === 'modes') updateModeButtons();
     if (view === 'history') loadNumberGuessHistory();
+    if (view === 'stats') renderNumberGuessPauseStats();
 }
 
 function openNumberGuessPause() {
@@ -2221,6 +2460,27 @@ function openModesSelection() {
 
 function openNumberGuessHistory() {
     openNumberGuessMenu('history');
+}
+
+function openNumberGuessStats() {
+    openNumberGuessMenu('stats');
+}
+
+function renderNumberGuessPauseStats() {
+    ['Peter', 'Jadey'].forEach(player => {
+        const key = player.toLowerCase();
+        const ten = Number(latestStats?.[player]?.ten) || 0;
+        const hundred = Number(latestStats?.[player]?.hundred) || 0;
+        const colours = Number(latestStats?.[player]?.colours) || 0;
+        const values = { ten, hundred, colours, total: ten + hundred + colours };
+        const name = playerProfiles[player]?.nickname || player;
+        const nameElement = document.getElementById(`number-guess-pause-${key}-name`);
+        if (nameElement) nameElement.innerText = name;
+        Object.entries(values).forEach(([mode, value]) => {
+            const element = document.getElementById(`number-guess-pause-${key}-${mode}`);
+            if (element) element.innerText = value;
+        });
+    });
 }
 
 function loadNumberGuessHistory() {
@@ -2247,7 +2507,6 @@ function renderNumberGuessHistory(records) {
     }
 
     list.innerHTML = records.map(round => {
-        const mode = gameModes[round.mode] || gameModes.ten;
         const setter = round.setter || 'Peter';
         const guesser = round.guesser || otherPlayer(setter);
         const setterName = playerProfiles[setter]?.nickname || setter;
@@ -2257,17 +2516,18 @@ function renderNumberGuessHistory(records) {
         const resultClass = round.correct ? 'correct' : 'missed';
         return `
             <article class="history-card ${resultClass}">
-                <h3>${escapeHtml(mode.title)}</h3>
                 <div class="history-match-row">
-                    <strong>${escapeHtml(setterName)}</strong>
-                    ${miniNumberGuessCard(round.mode, round.target)}
+                    <div class="history-player-heading">
+                        <span>Picked</span>
+                        <strong>${escapeHtml(setterName)}</strong>
+                    </div>
+                    ${miniNumberGuessCard(round.mode, round.target, setter)}
                     <span class="history-divider">:</span>
-                    ${miniNumberGuessCard(round.mode, round.guess)}
-                    <strong>${escapeHtml(guesserName)}</strong>
-                </div>
-                <div class="history-role-row">
-                    <span>Picked</span>
-                    <span>Guessed</span>
+                    ${miniNumberGuessCard(round.mode, round.guess, guesser)}
+                    <div class="history-player-heading guesser">
+                        <span>Guessed</span>
+                        <strong>${escapeHtml(guesserName)}</strong>
+                    </div>
                 </div>
                 <div class="history-score-row ${peterPoints ? 'scored peter' : ''}"><span>${escapeHtml(playerProfiles.Peter?.nickname || 'Peter')}</span><strong>+${peterPoints} pts</strong></div>
                 <div class="history-score-row ${jadeyPoints ? 'scored jadey' : ''}"><span>${escapeHtml(playerProfiles.Jadey?.nickname || 'Jadey')}</span><strong>+${jadeyPoints} pts</strong></div>
