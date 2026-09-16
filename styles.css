@@ -1666,7 +1666,8 @@ button:disabled {
     transition: width 0.35s ease;
 }
 
-.word-search-settings {
+.word-search-settings,
+.sudoku-settings {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1674,14 +1675,16 @@ button:disabled {
     padding: 20px;
 }
 
-.word-search-settings label {
+.word-search-settings label,
+.sudoku-settings label {
     color: #8B949E;
     font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
 }
 
-.word-search-settings select {
+.word-search-settings select,
+.sudoku-settings select {
     width: 100%;
     height: 50px;
     padding: 0 12px;
@@ -1693,7 +1696,8 @@ button:disabled {
     font-weight: 800;
 }
 
-.word-search-settings > button {
+.word-search-settings > button,
+.sudoku-settings > button {
     width: 100%;
     margin-top: 8px;
     border-radius: 8px;
@@ -2273,8 +2277,7 @@ button:disabled {
 }
 
 .sudoku-pad button,
-.sudoku-result button,
-.sudoku-settings button {
+.sudoku-result button {
     min-height: 38px;
     border-radius: 8px;
     background: var(--theme-color);
@@ -2311,29 +2314,6 @@ button:disabled {
 
 .sudoku-complete .sudoku-content {
     gap: 7px;
-}
-
-.sudoku-settings {
-    width: 100%;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.sudoku-settings label {
-    color: #FFFFFF;
-    font-weight: 800;
-}
-
-.sudoku-settings select {
-    min-height: 42px;
-    border-radius: 8px;
-    border: 1px solid #30363D;
-    background: #0D1117;
-    color: #FFFFFF;
-    padding: 0 10px;
-    font-weight: 800;
 }
 
 /* =========================================================================
