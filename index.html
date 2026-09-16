@@ -614,6 +614,8 @@
                     <div id="word-search-result" class="word-search-result hidden"></div>
                 </div>
 
+                <div id="word-search-complete-overlay" class="turn-cue-overlay word-search-complete-overlay hidden" role="status" aria-live="polite"><span>Grid complete</span></div>
+
                 <div id="word-search-nav-shell" class="bottom-nav-bar game-bottom-nav">
                     <button class="nav-tab-btn active-tab" onclick="exitWordSearch()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>
@@ -717,12 +719,22 @@
                         <div id="sudoku-top-initial" class="pfp-placeholder"></div>
                     </div>
                 </div>
+                <div id="sudoku-lobby" class="word-search-lobby hidden">
+                    <div class="word-search-lobby-panel">
+                        <span id="sudoku-lobby-mode" class="word-search-lobby-mode"></span>
+                        <h2 id="sudoku-lobby-title">Ready to play?</h2>
+                        <div id="sudoku-lobby-status" class="word-search-lobby-status" aria-live="polite"></div>
+                        <button id="sudoku-lobby-primary" class="word-search-lobby-primary" type="button">Play</button>
+                        <button class="word-search-lobby-settings" type="button" onclick="openSudokuSettings()">Game Settings</button>
+                    </div>
+                </div>
                 <div class="sudoku-content">
                     <div id="sudoku-status" class="sudoku-status" aria-live="polite">Loading puzzle...</div>
                     <div id="sudoku-board" class="sudoku-board" aria-label="Sudoku board"></div>
                     <div id="sudoku-pad" class="sudoku-pad"></div>
                     <div id="sudoku-result" class="sudoku-result hidden"></div>
                 </div>
+                <div id="sudoku-complete-overlay" class="turn-cue-overlay word-search-complete-overlay sudoku-complete-overlay hidden" role="status" aria-live="polite"><span>Puzzle complete</span></div>
                 <div id="sudoku-nav-shell" class="bottom-nav-bar game-bottom-nav">
                     <button class="nav-tab-btn active-tab" onclick="exitSudoku()"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg><span>Games</span></button>
                     <button class="nav-tab-btn" onclick="switchTab('stats')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg><span>Stats</span></button>

@@ -106,9 +106,72 @@ const root = path.resolve(__dirname, '..');
         await page.screenshot({ path: path.join(os.tmpdir(), 'word-search-lobby.png') });
         await page.evaluate(() => { openSharedGameMenu('word-search'); resumeSharedGame(); });
         assert.equal(await page.evaluate(() => activeAppView), 'word-search-lobby');
+        await page.locator('#word-search-lobby .word-search-lobby-settings').click();
+        await page.getByRole('button', { name: 'Back to lobby', exact: true }).click();
+        assert.equal(await page.locator('#word-search-lobby').isVisible(), true);
+        assert.equal(await page.locator('#word-search-screen .shared-game-menu').isVisible(), false);
+        assert.equal(await page.evaluate(() => activeAppView), 'word-search-lobby');
         await page.locator('#word-search-lobby-primary').click();
         assert.equal(await page.locator('#word-search-lobby').isVisible(), false);
         assert.equal(await page.locator('#word-search-content').isVisible(), true);
+        await page.evaluate(() => {
+            wordSearchPuzzle = wordSearchLobbyState.puzzle;
+            wordSearchStartedAt = wordSearchLobbyState.startedAt;
+            showWordSearchCompletionCue();
+        });
+        const cue = page.locator('#word-search-complete-overlay');
+        assert.equal(await cue.isVisible(), true);
+        assert.equal(await cue.textContent(), 'Grid complete');
+        assert.equal(await cue.evaluate(el => el.style.getPropertyValue('--turn-cue-colour')), await page.evaluate(() => themeColorFor(localPlayer)));
+        await page.waitForTimeout(1100);
+        await page.evaluate(() => showWordSearchCompletionCue());
+        assert.equal(await cue.isVisible(), false, 'Completion cue only plays once per grid');
+        await page.evaluate(() => {
+            switchTab('home');
+            sudokuSettings = { mode: 'versus-ai', difficulty: 'easy', aiDifficulty: 'medium' };
+            sudokuState = createAiSudokuState(createSudokuPuzzle('easy'));
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+            document.getElementById('sudoku-screen').classList.remove('hidden');
+            setActiveAppView('sudoku-lobby');
+            showSudokuLobby();
+            scheduleSudokuAi(sudokuState);
+        });
+        await page.locator('#sudoku-lobby .word-search-lobby-settings').click();
+        await page.getByRole('button', { name: 'Back to lobby', exact: true }).click();
+        assert.equal(await page.evaluate(() => activeAppView), 'sudoku-lobby');
+        await page.waitForTimeout(1100);
+        assert.equal(await page.evaluate(() => sudokuState.aiActiveMs), 0);
+        await page.locator('#sudoku-lobby-primary').click();
+        assert.equal(await page.locator('#sudoku-lobby-status').textContent(), 'Starting in 5...');
+        await page.waitForFunction(() => activeAppView === 'sudoku');
+        assert.equal(await page.locator('#sudoku-lobby').isVisible(), false);
+        await page.evaluate(() => { clearInterval(sudokuAiTimer); showSudokuCompletionCue(); });
+        assert.equal(await page.locator('#sudoku-complete-overlay').isVisible(), true);
+        assert.equal(await page.locator('#sudoku-complete-overlay').textContent(), 'Puzzle complete');
+        await page.waitForTimeout(1100);
+        await page.evaluate(() => showSudokuCompletionCue());
+        assert.equal(await page.locator('#sudoku-complete-overlay').isVisible(), false);
+        await page.evaluate(async () => {
+            const originalRef = database.ref;
+            sudokuSettings.mode = 'solo';
+            let stored = createSudokuState(createSudokuPuzzle('easy'));
+            stored.startedAt -= 60000;
+            database.ref = () => ({ transaction: async update => {
+                stored = update(structuredClone(stored));
+                return { committed: true, snapshot: { val: () => stored } };
+            } });
+            try {
+                sudokuState = structuredClone(stored);
+                sudokuLobbyEnteredAt = Date.now() - 60000;
+                activeAppView = 'sudoku-lobby';
+                await startPreparedSudoku();
+                if (!stored.playStarted || Date.now() - stored.startedAt > 1000) throw new Error('Fresh puzzle timer includes lobby wait');
+                sudokuLobbyEnteredAt = Date.now() - 60000;
+                activeAppView = 'sudoku-lobby';
+                await startPreparedSudoku();
+                if (stored.pausedMs < 60000) throw new Error('Resumed puzzle includes lobby wait');
+            } finally { database.ref = originalRef; }
+        });
         await page.evaluate(() => {
             sudokuSettings.mode = 'solo';
             sudokuState = { startedAt: Date.now() - 120000 };

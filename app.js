@@ -378,7 +378,7 @@ function refreshActiveMultiplayerSession() {
             }
             return current;
         });
-    } else if (activeAppView === 'sudoku' && typeof refreshSudokuPresence === 'function') {
+    } else if (['sudoku', 'sudoku-lobby'].includes(activeAppView) && typeof refreshSudokuPresence === 'function') {
         refreshSudokuPresence(now);
     }
 }

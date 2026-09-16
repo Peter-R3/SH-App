@@ -3232,6 +3232,20 @@ button:disabled {
     animation: turn-cue-sweep 0.55s ease 0.12s both;
 }
 
+.word-search-complete-overlay {
+    top: var(--pause-header-height, 58px);
+    bottom: var(--pause-nav-height, 58px);
+    padding: 16px;
+    -webkit-backdrop-filter: blur(4px);
+}
+.word-search-complete-overlay span { font-size: 28px; text-align: center; }
+.word-search-complete-overlay span::after { content: "Grid complete"; }
+.sudoku-complete-overlay span::after { content: "Puzzle complete"; }
+@media (prefers-reduced-motion: reduce) {
+    .word-search-complete-overlay.show-turn-cue { animation: none; opacity: 1; }
+    .word-search-complete-overlay span::after { animation: none; background: none; }
+}
+
 .round-summary-toast {
     position: absolute;
     left: 18px;

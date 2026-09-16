@@ -39,6 +39,7 @@ function initialiseGamePauseMenus() {
             playUiSound('tap');
             if (action === 'resume') resumeSharedGame();
             else if (action === 'settings') config.settingsAction();
+            else if (action === 'back' && sharedPauseSession?.directFromLobby) resumeSharedGame();
             else openSharedGameMenu(id, action === 'stats' ? 'stats' : 'pause');
         });
         screen.insertBefore(menu, nav);
@@ -67,7 +68,8 @@ function openSharedGameMenu(id, view = 'pause') {
     if (sharedPauseSession && sharedPauseSession.id !== id) closeSharedGameMenu();
     if (!sharedPauseSession) {
         sharedPauseSession = { id, openedAt: Date.now(), returnView: activeAppView, settings: JSON.stringify(config.settings?.()), mode: config.settings?.().mode };
-        if (id === 'sudoku' && sudokuSettings.mode === 'solo' && sudokuState) {
+        sharedPauseSession.directFromLobby = view !== 'pause' && activeAppView === `${id}-lobby`;
+        if (id === 'sudoku' && activeAppView !== 'sudoku-lobby' && sudokuSettings.mode === 'solo' && sudokuState) {
             sharedPauseSession.sudokuState = sudokuState;
             sharedPauseSession.sudokuPath = soloSudokuPath();
         }
@@ -82,6 +84,10 @@ function openSharedGameMenu(id, view = 'pause') {
     setActiveNavigationTab('games');
     screen.classList.add('shared-game-paused');
     const menu = screen.querySelector('.shared-game-menu');
+    const backButton = menu.querySelector('[data-pause-action="back"]');
+    const backLabel = sharedPauseSession.directFromLobby ? 'Back to lobby' : 'Back to pause menu';
+    backButton.setAttribute('aria-label', backLabel);
+    backButton.title = backLabel;
     menu.classList.remove('hidden');
     menu.classList.toggle('shared-menu-solid', view !== 'pause');
     menu.querySelector('.shared-pause-panel').classList.toggle('hidden', view !== 'pause');

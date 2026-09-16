@@ -97,6 +97,25 @@ let wordSearchCompletedLocally = false;
 let wordSearchAiTimer = null;
 let wordSearchLobbyState = null;
 let wordSearchLobbyCountdown = null;
+let wordSearchCompletionCueKey = null;
+let wordSearchCompletionCueTimer = null;
+
+function showWordSearchCompletionCue() {
+    if (!wordSearchPuzzle || activeAppView !== 'word-search' || document.hidden) return;
+    const screen = document.getElementById('word-search-screen');
+    if (!screen || screen.classList.contains('hidden')) return;
+    const key = `${wordSearchSettings.mode}:${wordSearchStartedAt}:${JSON.stringify(wordSearchPuzzle.grid)}`;
+    if (key === wordSearchCompletionCueKey) return;
+    wordSearchCompletionCueKey = key;
+    const overlay = document.getElementById('word-search-complete-overlay');
+    overlay.style.setProperty('--turn-cue-colour', themeColorFor(localPlayer));
+    clearTimeout(wordSearchCompletionCueTimer);
+    overlay.classList.remove('hidden', 'show-turn-cue');
+    void overlay.offsetWidth;
+    overlay.classList.add('show-turn-cue');
+    playUiSound('success');
+    wordSearchCompletionCueTimer = setTimeout(() => overlay.classList.add('hidden'), 1050);
+}
 
 function wordSearchSettingsKey() {
     return `word-search-settings-${localPlayer || 'unknown'}`;
@@ -121,6 +140,8 @@ function saveWordSearchSettings() {
 
 function launchWordSearch() {
     if (!localPlayer) return;
+    clearTimeout(wordSearchCompletionCueTimer);
+    document.getElementById('word-search-complete-overlay')?.classList.add('hidden');
     loadWordSearchSettings();
     setActiveAppView('word-search-lobby');
     concealWordSearchGrid(false);
@@ -593,6 +614,9 @@ function stopWordSearchRealtime() {
 
 function applyWordSearchState(state) {
     if (!state?.puzzle) return;
+    const justCompleted = wordSearchSettings.mode === 'coop' && state.completedAt &&
+        wordSearchStartedAt === state.startedAt &&
+        Object.keys(wordSearchFound).length < state.puzzle.words.length;
     concealWordSearchGrid(false);
     if (wordSearchSettings.mode === 'coop' && WORD_SEARCH_DIFFICULTIES.includes(Number(state.puzzle.size))) {
         wordSearchSettings.difficulty = Number(state.puzzle.size);
@@ -607,6 +631,7 @@ function applyWordSearchState(state) {
     setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${wordSearchPuzzle.size}x${wordSearchPuzzle.size}`);
     if (wordSearchSettings.mode === 'coop' && state.completedAt) {
         showCoopWordSearchComplete();
+        if (justCompleted) showWordSearchCompletionCue();
     } else {
         showWordSearchResult('', false);
         enableWordSearchGrid(true);
@@ -846,6 +871,7 @@ function wordSearchThemeShade(baseColour, index) {
 function completeWordSearch() {
     if (wordSearchCompletedLocally) return;
     wordSearchCompletedLocally = true;
+    showWordSearchCompletionCue();
     const mode = wordSearchSettings.mode;
     const difficulty = wordSearchSettings.difficulty;
     const elapsed = mode === 'versus'
