@@ -15,7 +15,9 @@
 .realm-hub .realm-primary, .realm-dialog .realm-primary { background: var(--theme-color); color: var(--theme-text-color); border-color: transparent; }
 .realm-hub .realm-danger, .realm-dialog .realm-danger { color: #FFB4B4; background: #342023; border-color: #694349; }
 .realm-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 20px 0 14px; }
-#realm-location-count { color: #B5A2C3; font-size: 13px; }
+.realm-section-heading h2 { display: flex; align-items: center; gap: 8px; }
+#realm-location-count { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; padding: 0 7px; border: 1px solid #76528C; border-radius: 6px; background: #30203F; color: #EDD8FF; font-size: 13px; font-variant-numeric: tabular-nums; }
+#realm-location-count:empty { visibility: hidden; }
 .realm-search-label, .realm-dialog label { display: block; font-size: 13px; color: #D1BEDD; margin: 12px 0 6px; }
 .realm-hub input, .realm-hub select, .realm-dialog input, .realm-dialog select, .realm-dialog textarea { display: block; width: 100%; min-width: 0; border: 1px solid #61466F; border-radius: 6px; background: #110C18; color: #FFF; padding: 10px; font: inherit; font-size: 16px; min-height: 44px; }
 .realm-dialog input, .realm-dialog select, .realm-dialog textarea { margin-top: 6px; }
@@ -25,7 +27,7 @@
 .realm-location h3 { font-size: 17px; overflow-wrap: anywhere; }
 .realm-dimension { font-size: 12px; color: #A7DBC0; }
 .realm-dimension.nether { color: #D5A3FF; }
-.realm-dimension.end { color: #D7BEFF; }
+.realm-dimension.end { color: #E5DE9A; }
 .realm-coordinates { display: flex; flex-wrap: wrap; gap: 8px 16px; font: 15px monospace; margin: 12px 0; overflow-wrap: anywhere; }
 .realm-axis-x { color: #FF949F; }
 .realm-axis-y { color: #9EDCB0; }
@@ -38,6 +40,7 @@
 .realm-dialog::backdrop { background: #000B; backdrop-filter: blur(5px); }
 .realm-dialog-actions { margin-top: 20px; justify-content: flex-end; }
 .realm-coordinate-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.realm-dialog .realm-coordinate-sign { width: 100%; min-height: 36px; margin-top: 6px; padding: 4px; font-size: 20px; }
 #realm-coordinate-helper { font-size: 12px; color: #BAA7C7; margin-top: 10px; }
 #app-confirm-body { margin-top: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .realm-hub button:focus-visible, .realm-dialog button:focus-visible { outline: 2px solid #FFF; outline-offset: 3px; }

@@ -1,4 +1,4 @@
-const REALM_DIMENSIONS = { overworld: 'Overworld', nether: 'Nether', end: 'The End' };
+const REALM_DIMENSIONS = { overworld: 'Overworld', nether: 'Nether', end: 'End' };
 let realmLocations = {};
 let realmCode = '';
 let realmCodeShown = false;
@@ -10,7 +10,7 @@ let realmEditingRevision = null;
 let realmBusy = false;
 let realmTransitioning = false;
 
-async function transitionRealmHub(changeScreen, entering) {
+async function transitionRealmHub(changeScreen) {
     if (realmTransitioning) return;
     realmTransitioning = true;
     closeRealmDropdowns();
@@ -20,11 +20,11 @@ async function transitionRealmHub(changeScreen, entering) {
     document.body.append(overlay);
     try {
         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            await overlay.animate([{ opacity: 0, transform: 'scaleX(.04)' }, { opacity: 1, transform: 'scaleX(1)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).finished;
+            await overlay.animate([{ opacity: 0, transform: 'scaleX(.04)' }, { opacity: 1, transform: 'scaleX(1)' }], { duration: 300, easing: 'ease-in-out', fill: 'forwards' }).finished;
         }
         changeScreen();
         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            await overlay.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: entering ? 'scale(1.35)' : 'scaleX(.04)' }], { duration: 230, easing: 'ease-out', fill: 'forwards' }).finished;
+            await overlay.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.35)' }], { duration: 380, easing: 'ease-out', fill: 'forwards' }).finished;
         }
     } finally { overlay.remove(); realmTransitioning = false; }
 }
@@ -140,7 +140,7 @@ function mountRealmHub() {
                 </section>
                 <section class="realm-locations-section"><div class="realm-section-heading"><h2>Locations <span id="realm-location-count"></span></h2><button id="realm-add" class="realm-primary" data-realm-action="add">Add location</button></div>
                     <label class="realm-search-label" for="realm-search">Search locations</label><input id="realm-search" type="search" placeholder="Search names, notes or coordinates">
-                    <label class="realm-search-label" for="realm-dimension-filter">Dimension</label><select id="realm-dimension-filter"><option value="all">All dimensions</option><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">The End</option></select>
+                    <label class="realm-search-label" for="realm-dimension-filter">Dimension</label><select id="realm-dimension-filter"><option value="all">All dimensions</option><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">End</option></select>
                     <p id="realm-status" role="status"></p><div id="realm-location-list"></div>
                 </section>
             </div>
@@ -148,8 +148,8 @@ function mountRealmHub() {
         <dialog id="realm-editor" class="realm-dialog" aria-labelledby="realm-editor-title"><form id="realm-location-form">
             <h2 id="realm-editor-title">Add location</h2>
             <label>Name<input id="realm-name" required maxlength="80" autocomplete="off"></label>
-            <label for="realm-dimension-trigger">Dimension</label><select id="realm-dimension"><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">The End</option></select>
-            <div class="realm-coordinate-inputs">${['x', 'y', 'z'].map(axis => `<label><span class="realm-axis-${axis}">${axis.toUpperCase()}</span><input id="realm-${axis}" type="number" required step="1" min="-30000000" max="30000000"></label>`).join('')}</div>
+            <label for="realm-dimension-trigger">Dimension</label><select id="realm-dimension"><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">End</option></select>
+            <div class="realm-coordinate-inputs">${['x', 'y', 'z'].map(axis => `<div><label for="realm-${axis}"><span class="realm-axis-${axis}">${axis.toUpperCase()}</span></label><input id="realm-${axis}" type="text" inputmode="numeric" pattern="-?[0-9]+" required maxlength="9" autocomplete="off" spellcheck="false"><button type="button" class="realm-coordinate-sign" data-realm-action="sign" data-axis="${axis}" aria-label="Toggle ${axis.toUpperCase()} coordinate sign" title="Toggle positive or negative">&#177;</button></div>`).join('')}</div>
             <p id="realm-coordinate-helper"></p>
             <label>Notes<textarea id="realm-note" maxlength="1000" rows="3"></textarea></label>
             <p id="realm-editor-status" role="status"></p>
@@ -174,7 +174,7 @@ function mountRealmHub() {
 
 function openRealmHub() {
     if (!localPlayer) return;
-    return transitionRealmHub(showRealmHub, true);
+    return transitionRealmHub(showRealmHub);
 }
 
 function showRealmHub() {
@@ -206,7 +206,7 @@ function showRealmHub() {
 }
 
 function closeRealmHub(fromHistory = false) {
-    return transitionRealmHub(() => leaveRealmHub(fromHistory), false);
+    return transitionRealmHub(() => leaveRealmHub(fromHistory));
 }
 
 function leaveRealmHub(fromHistory = false) {
@@ -228,6 +228,16 @@ function renderRealmCode() {
     document.getElementById('realm-code-edit').disabled = !realmCodeReady;
 }
 
+function formatRealmUpdatedAt(timestamp) {
+    const date = new Date(timestamp);
+    if (!Number.isFinite(date.getTime())) return 'Date unavailable';
+    const day = date.getDate();
+    const suffix = day % 100 >= 11 && day % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[day % 10] || 'th');
+    const month = date.toLocaleString('en-GB', { month: 'long' });
+    const hour = date.getHours();
+    return `${day}${suffix} of ${month}, ${date.getFullYear()} at ${hour % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')}${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
 function renderRealmLocations() {
     const query = document.getElementById('realm-search').value.trim().toLowerCase();
     const dimension = document.getElementById('realm-dimension-filter').value;
@@ -236,12 +246,12 @@ function renderRealmLocations() {
         `${value.name} ${value.note || ''} ${value.x} ${value.y} ${value.z}`.toLowerCase().includes(query)
     ).sort((a, b) => a[1].name.localeCompare(b[1].name));
     document.getElementById('realm-add').disabled = !realmReady;
-    document.getElementById('realm-location-count').textContent = realmReady ? `(${locations.length})` : '';
+    document.getElementById('realm-location-count').textContent = realmReady ? String(locations.length) : '';
     document.getElementById('realm-location-list').innerHTML = locations.length ? locations.map(([id, value]) => `
         <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3><span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span></div>
             <p class="realm-coordinates">${['x', 'y', 'z'].map(axis => `<span><b class="realm-axis-${axis}">${axis.toUpperCase()}</b> ${escapeHtml(value[axis])}</span>`).join('')}</p>
             ${value.note ? `<p class="realm-note">${escapeHtml(value.note)}</p>` : ''}
-            <p class="realm-metadata">Added by ${escapeHtml(playerProfiles[value.createdBy]?.nickname || value.createdBy || 'Unknown')}<br>Updated ${escapeHtml(new Date(value.updatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))} by ${escapeHtml(playerProfiles[value.updatedBy]?.nickname || value.updatedBy || 'Unknown')}</p>
+            <p class="realm-metadata">Added by ${escapeHtml(playerProfiles[value.createdBy]?.nickname || value.createdBy || 'Unknown')}<br>Updated by ${escapeHtml(playerProfiles[value.updatedBy]?.nickname || value.updatedBy || 'Unknown')}:<br>${escapeHtml(formatRealmUpdatedAt(value.updatedAt))}</p>
             <div class="realm-actions"><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
         </article>`).join('') : `<p class="realm-empty">${realmReady ? (query || dimension !== 'all' ? 'No matching locations.' : 'No locations yet.') : 'Loading...'}</p>`;
 }
@@ -268,7 +278,7 @@ function renderRealmCoordinateHelper() {
     const xInput = document.getElementById('realm-x').value;
     const zInput = document.getElementById('realm-z').value;
     const factor = dimension === 'nether' ? 8 : 1 / 8;
-    document.getElementById('realm-coordinate-helper').textContent = dimension === 'end' || !xInput || !zInput ? '' :
+    document.getElementById('realm-coordinate-helper').textContent = dimension === 'end' || !/^-?\d+$/.test(xInput) || !/^-?\d+$/.test(zInput) ? '' :
         `${dimension === 'nether' ? 'Overworld' : 'Nether'} equivalent: X ${Math.floor(Number(xInput) * factor)}, Z ${Math.floor(Number(zInput) * factor)}`;
 }
 
@@ -346,6 +356,13 @@ async function handleRealmAction(event) {
     if (!button || button.disabled) return;
     playUiSound('tap');
     switch (button.dataset.realmAction) {
+        case 'sign': {
+            const input = document.getElementById(`realm-${button.dataset.axis}`);
+            input.value = input.value.startsWith('-') ? input.value.slice(1) : `-${input.value}`;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.focus();
+            break;
+        }
         case 'exit': closeRealmHub(); break;
         case 'add': openRealmLocationEditor(); break;
         case 'edit': openRealmLocationEditor(button.dataset.id); break;

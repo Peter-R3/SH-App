@@ -111,6 +111,20 @@ const fixture = () => {
         await page.locator('#realm-note').fill('Shared notes from Jadey');
         await page.locator('#realm-location-form button[type=submit]').click();
         assert.match(await page.locator('.realm-note').textContent(), /Shared notes from Jadey/);
+        await page.locator('[data-realm-action=edit]').click();
+        await page.locator('#realm-x').fill('-120');
+        await page.locator('#realm-y').fill('64');
+        await page.locator('[data-realm-action=sign][data-axis=y]').click();
+        await page.locator('#realm-z').fill('');
+        await page.locator('[data-realm-action=sign][data-axis=z]').click();
+        await page.locator('#realm-z').pressSequentially('32');
+        assert.equal(await page.locator('#realm-z').inputValue(), '-32');
+        await page.locator('#realm-location-form button[type=submit]').click();
+        assert.match(await page.locator('.realm-coordinates').textContent(), /X -120.*Y -64.*Z -32/);
+        await page.locator('[data-realm-action=edit]').click();
+        assert.equal(await page.locator('#realm-x').inputValue(), '-120');
+        assert.equal(await page.locator('#realm-y').inputValue(), '-64');
+        await page.locator('[data-realm-action=cancel-edit]').click();
 
         const checks = await page.evaluate(() => {
             const a = { name: 'Base', dimension: 'overworld', x: 5, y: 5, z: 5, note: '', revision: 'v1' };

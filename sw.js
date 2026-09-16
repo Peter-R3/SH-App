@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sweethearts-app-v27';
+const CACHE_NAME = 'sweethearts-app-v28';
 const APP_SHELL = [
   './',
   './index.html',
