@@ -65,9 +65,13 @@ const fixture = () => {
         await page.locator('#realm-code-form button[type=submit]').click();
         assert.equal(await page.evaluate(() => testStore.realmHub.code), 'NEW-CODE');
 
+        async function selectDimension(id, value) {
+            await page.locator(`#${id}-trigger`).click();
+            await page.locator(`#${id}-options [data-value="${value}"]`).click();
+        }
         async function fillLocation(name, dimension = 'overworld') {
             await page.locator('#realm-name').fill(name);
-            await page.locator('#realm-dimension').selectOption(dimension);
+            await selectDimension('realm-dimension', dimension);
             for (const axis of ['x', 'y', 'z']) await page.locator(`#realm-${axis}`).fill('5');
         }
         await page.locator('#realm-add').click();
@@ -78,13 +82,13 @@ const fixture = () => {
         await fillLocation('Duplicate');
         await page.locator('#realm-location-form button[type=submit]').click();
         assert.match(await page.locator('#realm-editor-status').textContent(), /already exist/);
-        await page.locator('#realm-dimension').selectOption('nether');
+        await selectDimension('realm-dimension', 'nether');
         await page.locator('#realm-location-form button[type=submit]').click();
         assert.equal(await page.locator('.realm-location').count(), 2);
         await page.locator('#realm-search').fill('Our base');
         assert.equal(await page.locator('.realm-location').count(), 1);
         await page.locator('#realm-search').fill('');
-        await page.locator('#realm-dimension-filter').selectOption('nether');
+        await selectDimension('realm-dimension-filter', 'nether');
         assert.equal(await page.locator('.realm-location').count(), 1);
         await page.locator('[data-realm-action=edit]').click();
         assert.match(await page.locator('#realm-coordinate-helper').textContent(), /X 40, Z 40/);
@@ -99,9 +103,9 @@ const fixture = () => {
         await page.waitForFunction(() => document.querySelectorAll('.realm-location').length === 0);
         assert.equal(await page.locator('.realm-location').count(), 0);
 
-        await page.evaluate(() => { localPlayer = 'Jadey'; openRealmHub(); });
+        await page.evaluate(() => { localPlayer = 'Jadey'; return openRealmHub(); });
         assert.equal(await page.locator('#realm-code-edit').isVisible(), false);
-        await page.locator('#realm-dimension-filter').selectOption('all');
+        await selectDimension('realm-dimension-filter', 'all');
         assert.equal(await page.locator('.realm-location').count(), 1);
         await page.locator('[data-realm-action=edit]').click();
         await page.locator('#realm-note').fill('Shared notes from Jadey');
@@ -122,6 +126,18 @@ const fixture = () => {
             ];
         });
         assert.ok(checks.every(Boolean), 'Duplicate, edit conflict and validation checks');
+        await page.locator('#realm-dimension-filter-trigger').focus();
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('End');
+        await page.keyboard.press('Enter');
+        assert.equal(await page.locator('#realm-dimension-filter').inputValue(), 'end');
+        await selectDimension('realm-dimension-filter', 'all');
+        await page.locator('#realm-dimension-filter-trigger').click();
+        await page.keyboard.press('Escape');
+        assert.equal(await page.locator('#realm-dimension-filter-trigger').getAttribute('aria-expanded'), 'false');
+        await page.locator('#realm-dimension-filter-trigger').click();
+        await page.locator('#realm-search').click();
+        assert.equal(await page.locator('#realm-dimension-filter-trigger').getAttribute('aria-expanded'), 'false');
         for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 800 }]) {
             await page.setViewportSize(viewport);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No horizontal overflow');
@@ -132,7 +148,13 @@ const fixture = () => {
             await page.locator('[data-realm-action=cancel-edit]').click();
         }
         await page.goBack();
+        await page.waitForFunction(() => !document.getElementById('home-screen').classList.contains('hidden'));
         assert.equal(await page.locator('#home-screen').isVisible(), true);
+        await page.waitForFunction(() => !document.querySelector('.realm-portal-transition'));
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.evaluate(() => openRealmHub());
+        await page.locator('[data-realm-action=exit]').click();
+        await page.waitForFunction(() => !document.getElementById('home-screen').classList.contains('hidden'));
         assert.deepEqual(errors, []);
         console.log('PASS: code reveal/edit, Peter-only UI, both profiles editing, duplicate validation, dimension separation, search/filter, delete/cancel, stale writes, browser Back and 3 viewport checks.');
     } finally { await browser.close(); }

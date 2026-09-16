@@ -8,6 +8,102 @@ let realmReady = false;
 let realmEditingId = null;
 let realmEditingRevision = null;
 let realmBusy = false;
+let realmTransitioning = false;
+
+async function transitionRealmHub(changeScreen, entering) {
+    if (realmTransitioning) return;
+    realmTransitioning = true;
+    closeRealmDropdowns();
+    const overlay = document.createElement('div');
+    overlay.className = 'realm-portal-transition';
+    overlay.setAttribute('aria-hidden', 'true');
+    document.body.append(overlay);
+    try {
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            await overlay.animate([{ opacity: 0, transform: 'scaleX(.04)' }, { opacity: 1, transform: 'scaleX(1)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).finished;
+        }
+        changeScreen();
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            await overlay.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: entering ? 'scale(1.35)' : 'scaleX(.04)' }], { duration: 230, easing: 'ease-out', fill: 'forwards' }).finished;
+        }
+    } finally { overlay.remove(); realmTransitioning = false; }
+}
+
+function closeRealmDropdowns() {
+    document.querySelectorAll('.realm-select-options').forEach(list => { list.hidden = true; });
+    document.querySelectorAll('.realm-select-trigger').forEach(button => button.setAttribute('aria-expanded', 'false'));
+}
+
+function syncRealmDropdown(select) {
+    const wrapper = select.closest('.realm-select');
+    wrapper.querySelector('.realm-select-value').textContent = select.selectedOptions[0].textContent;
+    wrapper.querySelectorAll('[role=option]').forEach(option => option.setAttribute('aria-selected', String(option.dataset.value === select.value)));
+}
+
+function enhanceRealmDropdown(select) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'realm-select';
+    select.before(wrapper);
+    wrapper.append(select);
+    select.hidden = true;
+    select.tabIndex = -1;
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.id = `${select.id}-trigger`;
+    trigger.className = 'realm-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', select.id === 'realm-dimension-filter' ? 'Filter by dimension' : 'Location dimension');
+    trigger.setAttribute('aria-controls', `${select.id}-options`);
+    trigger.innerHTML = '<span class="realm-select-value"></span><span aria-hidden="true">&#8964;</span>';
+    const list = document.createElement('div');
+    list.id = `${select.id}-options`;
+    list.className = 'realm-select-options';
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', trigger.getAttribute('aria-label'));
+    list.hidden = true;
+    for (const item of select.options) {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.setAttribute('role', 'option');
+        option.dataset.value = item.value;
+        option.textContent = item.textContent;
+        option.tabIndex = -1;
+        option.addEventListener('click', () => {
+            select.value = item.value;
+            syncRealmDropdown(select);
+            closeRealmDropdowns();
+            trigger.focus();
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            playUiSound('tap');
+        });
+        list.append(option);
+    }
+    const open = () => {
+        closeRealmDropdowns();
+        list.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        list.querySelector('[aria-selected=true]').focus();
+    };
+    trigger.addEventListener('click', () => { if (list.hidden) open(); else closeRealmDropdowns(); playUiSound('tap'); });
+    trigger.addEventListener('keydown', event => {
+        if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); open(); }
+    });
+    wrapper.addEventListener('keydown', event => {
+        const options = [...list.children];
+        const index = options.indexOf(document.activeElement);
+        if (event.key === 'Escape' && !list.hidden) { event.preventDefault(); event.stopPropagation(); closeRealmDropdowns(); trigger.focus(); }
+        else if (event.key === 'Tab') closeRealmDropdowns();
+        else if (index >= 0 && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+            options[next].focus();
+        }
+    });
+    wrapper.append(trigger, list);
+    syncRealmDropdown(select);
+}
 
 function realmCoordinateKey(location) {
     return `${location.dimension}:${Number(location.x)}:${Number(location.y)}:${Number(location.z)}`;
@@ -36,7 +132,7 @@ function mountRealmHub() {
     document.getElementById('main-content').insertAdjacentHTML('beforeend', `
         <section id="realm-hub-screen" class="screen hidden realm-hub">
             <div class="realm-header"><div><span class="realm-eyebrow">OUR SHARED WORLD</span><h1>Realm Hub</h1></div>
-                <button data-realm-action="exit" title="Return to Home" aria-label="Return to Home">&#8592;</button></div>
+                <button class="realm-back" data-realm-action="exit" title="Return to Home" aria-label="Return to Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button></div>
             <div class="realm-body">
                 <section class="realm-code-section"><h2>Realm code</h2>
                     <p id="realm-code-value" class="realm-code-value">Loading...</p>
@@ -52,8 +148,8 @@ function mountRealmHub() {
         <dialog id="realm-editor" class="realm-dialog" aria-labelledby="realm-editor-title"><form id="realm-location-form">
             <h2 id="realm-editor-title">Add location</h2>
             <label>Name<input id="realm-name" required maxlength="80" autocomplete="off"></label>
-            <label>Dimension<select id="realm-dimension"><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">The End</option></select></label>
-            <div class="realm-coordinate-inputs">${['x', 'y', 'z'].map(axis => `<label>${axis.toUpperCase()}<input id="realm-${axis}" type="number" required step="1" min="-30000000" max="30000000"></label>`).join('')}</div>
+            <label for="realm-dimension-trigger">Dimension</label><select id="realm-dimension"><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="end">The End</option></select>
+            <div class="realm-coordinate-inputs">${['x', 'y', 'z'].map(axis => `<label><span class="realm-axis-${axis}">${axis.toUpperCase()}</span><input id="realm-${axis}" type="number" required step="1" min="-30000000" max="30000000"></label>`).join('')}</div>
             <p id="realm-coordinate-helper"></p>
             <label>Notes<textarea id="realm-note" maxlength="1000" rows="3"></textarea></label>
             <p id="realm-editor-status" role="status"></p>
@@ -62,6 +158,9 @@ function mountRealmHub() {
         <dialog id="realm-code-dialog" class="realm-dialog" aria-labelledby="realm-code-title"><form id="realm-code-form"><h2 id="realm-code-title">Realm code</h2><label>Code<input id="realm-code-input" required maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false"></label><p id="realm-code-status" role="status"></p><div class="realm-dialog-actions"><button type="button" data-realm-action="cancel-code">Cancel</button><button class="realm-primary" type="submit">Save</button></div></form></dialog>
         <dialog id="app-confirm-dialog" class="realm-dialog" aria-labelledby="app-confirm-title"><h2 id="app-confirm-title"></h2><p id="app-confirm-body"></p><form method="dialog" class="realm-dialog-actions"><button value="cancel" autofocus>Cancel</button><button value="confirm" class="realm-danger">Delete</button></form></dialog>
     `);
+    document.querySelector('label[for="realm-dimension-filter"]').htmlFor = 'realm-dimension-filter-trigger';
+    document.querySelectorAll('#realm-dimension, #realm-dimension-filter').forEach(enhanceRealmDropdown);
+    document.addEventListener('pointerdown', event => { if (!event.target.closest('.realm-select')) closeRealmDropdowns(); });
     document.getElementById('realm-search').addEventListener('input', renderRealmLocations);
     document.getElementById('realm-dimension-filter').addEventListener('change', renderRealmLocations);
     document.getElementById('realm-location-form').addEventListener('submit', saveRealmLocation);
@@ -74,6 +173,11 @@ function mountRealmHub() {
 }
 
 function openRealmHub() {
+    if (!localPlayer) return;
+    return transitionRealmHub(showRealmHub, true);
+}
+
+function showRealmHub() {
     if (!localPlayer) return;
     mountRealmHub();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
@@ -102,12 +206,16 @@ function openRealmHub() {
 }
 
 function closeRealmHub(fromHistory = false) {
+    return transitionRealmHub(() => leaveRealmHub(fromHistory), false);
+}
+
+function leaveRealmHub(fromHistory = false) {
     realmUnsubscribe.forEach(unsubscribe => unsubscribe());
     realmUnsubscribe = [];
     document.querySelectorAll('.realm-dialog[open]').forEach(dialog => dialog.close());
     realmCodeShown = false;
-    if (!fromHistory && history.state?.realmHub) history.back();
     switchTab('home');
+    if (!fromHistory && history.state?.realmHub) history.back();
 }
 
 function setRealmStatus(message) { document.getElementById('realm-status').textContent = message; }
@@ -131,7 +239,7 @@ function renderRealmLocations() {
     document.getElementById('realm-location-count').textContent = realmReady ? `(${locations.length})` : '';
     document.getElementById('realm-location-list').innerHTML = locations.length ? locations.map(([id, value]) => `
         <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3><span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span></div>
-            <p class="realm-coordinates">X ${escapeHtml(value.x)} &nbsp; Y ${escapeHtml(value.y)} &nbsp; Z ${escapeHtml(value.z)}</p>
+            <p class="realm-coordinates">${['x', 'y', 'z'].map(axis => `<span><b class="realm-axis-${axis}">${axis.toUpperCase()}</b> ${escapeHtml(value[axis])}</span>`).join('')}</p>
             ${value.note ? `<p class="realm-note">${escapeHtml(value.note)}</p>` : ''}
             <p class="realm-metadata">Added by ${escapeHtml(playerProfiles[value.createdBy]?.nickname || value.createdBy || 'Unknown')}<br>Updated ${escapeHtml(new Date(value.updatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }))} by ${escapeHtml(playerProfiles[value.updatedBy]?.nickname || value.updatedBy || 'Unknown')}</p>
             <div class="realm-actions"><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
@@ -149,6 +257,8 @@ function openRealmLocationEditor(id = null) {
         document.getElementById(`realm-${key}`).value = location?.[key] ?? (key === 'dimension' ? 'overworld' : '');
     }
     document.getElementById('realm-editor-status').textContent = '';
+    syncRealmDropdown(document.getElementById('realm-dimension'));
+    closeRealmDropdowns();
     renderRealmCoordinateHelper();
     document.getElementById('realm-editor').showModal();
 }
