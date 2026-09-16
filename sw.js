@@ -1,9 +1,11 @@
-const CACHE_NAME = 'sweethearts-app-v25';
+const CACHE_NAME = 'sweethearts-app-v26';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './realm-hub.js',
+  './realm-hub.css',
   './wordsearch.js',
   './battleship.js',
   './connect-four.js',

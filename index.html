@@ -10,6 +10,7 @@
     <meta name="format-detection" content="telephone=no">
     <title>Sweetheart's App</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="realm-hub.css">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
@@ -55,6 +56,10 @@
                 <div class="home-content">
                     <h2 class="menu-prompt">Quick access</h2>
                     <div class="home-shortcut-grid">
+                        <button class="home-shortcut-card realm" onclick="openRealmHub()">
+                            <span aria-hidden="true" class="realm-symbol">&#9638;</span>
+                            <span>Realm Hub</span>
+                        </button>
                         <button class="home-shortcut-card games" onclick="switchTab('games')">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
                             <span>Games</span>
@@ -985,5 +990,6 @@
     <script src="sudoku.js"></script>
     <script src="tic-tac-toe.js"></script>
     <script src="rps.js"></script>
+    <script src="realm-hub.js"></script>
 </body>
 </html>

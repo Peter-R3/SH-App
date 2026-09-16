@@ -221,45 +221,61 @@ document.addEventListener('click', event => {
 }, true);
 
 function getSoundContext() {
-    if (soundContext) return soundContext;
+    if (soundContext && soundContext.state !== 'closed') return soundContext;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return null;
-    soundContext = new AudioContext();
+    soundContext = new AudioContext({ latencyHint: 'interactive' });
     return soundContext;
 }
 
 function playUiTone(context, frequency, startOffset, duration, volume, type = 'sine', endFrequency = frequency) {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    const start = context.currentTime + startOffset;
+    const start = context.currentTime + 0.01 + startOffset;
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, start);
     oscillator.frequency.exponentialRampToValueAtTime(Math.max(1, endFrequency), start + duration);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + Math.min(0.012, duration * 0.3));
+    gain.gain.linearRampToValueAtTime(volume, start + Math.min(0.008, duration * 0.2));
+    gain.gain.setValueAtTime(volume, start + duration * 0.35);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     oscillator.connect(gain).connect(context.destination);
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
+    oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+    };
 }
 
-function playUiSound(kind) {
-    if (!soundEffectsEnabled) return;
-    const context = getSoundContext();
-    if (!context) return;
-    if (context.state === 'suspended') context.resume().catch(() => {});
+async function playUiSound(kind) {
+    if (!soundEffectsEnabled || document.hidden) return;
+    const requestedAt = performance.now();
+    try {
+        const context = getSoundContext();
+        if (!context) return;
+        // Resume inside the tap gesture, then schedule against the running clock.
+        if (context.state !== 'running') await context.resume();
+        if (!soundEffectsEnabled || document.hidden || context.state !== 'running') return;
+        if (performance.now() - requestedAt > 500) return;
+        scheduleUiSound(context, kind);
+    } catch (error) {
+        console.warn('Could not play sound effect:', error);
+    }
+}
 
+function scheduleUiSound(context, kind) {
     if (kind === 'tap') {
-        playUiTone(context, 520, 0, 0.045, 0.026, 'sine', 610);
+        playUiTone(context, 660, 0, 0.075, 0.12, 'sine', 780);
     } else if (kind === 'confirm') {
-        playUiTone(context, 392, 0, 0.07, 0.032, 'sine', 430);
-        playUiTone(context, 554, 0.055, 0.085, 0.03, 'sine', 610);
+        playUiTone(context, 392, 0, 0.09, 0.12, 'sine', 430);
+        playUiTone(context, 554, 0.075, 0.11, 0.12, 'sine', 610);
     } else if (kind === 'success') {
-        playUiTone(context, 523, 0, 0.09, 0.03, 'sine', 555);
-        playUiTone(context, 659, 0.075, 0.1, 0.032, 'sine', 700);
-        playUiTone(context, 784, 0.15, 0.13, 0.028, 'sine', 880);
+        playUiTone(context, 523, 0, 0.09, 0.12, 'sine', 555);
+        playUiTone(context, 659, 0.075, 0.1, 0.12, 'sine', 700);
+        playUiTone(context, 784, 0.15, 0.13, 0.10, 'sine', 880);
     } else if (kind === 'error') {
-        playUiTone(context, 230, 0, 0.14, 0.028, 'triangle', 170);
+        playUiTone(context, 330, 0, 0.16, 0.10, 'triangle', 240);
     }
 }
 

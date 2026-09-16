@@ -1,0 +1,39 @@
+.realm-symbol { font-size: 38px; color: #8BDCAB; }
+.realm-hub { justify-content: flex-start; background: #090E0C; animation: realm-enter 260ms ease-out; }
+.realm-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; border-bottom: 1px solid #385347; flex-shrink: 0; background: #182C24; }
+.realm-header h1 { color: #F1FFF5; letter-spacing: 0; font-size: 23px; }
+.realm-eyebrow { font-size: 10px; color: #A9CDB8; }
+.realm-header button { width: 42px; height: 42px; padding: 0; font-size: 24px; }
+.realm-body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 18px 24px; }
+.realm-hub h2, .realm-dialog h2 { font-size: 19px; }
+.realm-code-section { padding: 20px 0; border-bottom: 1px solid #385347; }
+.realm-code-value { margin: 12px 0; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; font-family: monospace; font-size: 18px; }
+.realm-actions, .realm-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.realm-hub button, .realm-dialog button { border: 1px solid #3C5046; border-radius: 8px; background: #23392E; color: #F4FFF7; padding: 10px 14px; font-size: 14px; }
+.realm-hub .realm-primary, .realm-dialog .realm-primary { background: var(--theme-color); color: var(--theme-text-color); border-color: transparent; }
+.realm-hub .realm-danger, .realm-dialog .realm-danger { color: #FFB4B4; background: #342023; border-color: #694349; }
+.realm-section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 20px 0 14px; }
+#realm-location-count { color: #9EB1A7; font-size: 13px; }
+.realm-search-label, .realm-dialog label { display: block; font-size: 13px; color: #B9CCC0; margin: 12px 0 6px; }
+.realm-hub input, .realm-hub select, .realm-dialog input, .realm-dialog select, .realm-dialog textarea { display: block; width: 100%; min-width: 0; border: 1px solid #43584C; border-radius: 6px; background: #0C1710; color: #FFF; padding: 10px; font: inherit; font-size: 16px; min-height: 44px; }
+.realm-dialog input, .realm-dialog select, .realm-dialog textarea { margin-top: 6px; }
+.realm-location { padding: 16px 0; border-bottom: 1px solid #2B4034; }
+.realm-location-heading { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.realm-location h3 { font-size: 17px; overflow-wrap: anywhere; }
+.realm-dimension { font-size: 12px; color: #A7DBC0; }
+.realm-dimension.nether { color: #FFB7A6; }
+.realm-dimension.end { color: #D7BEFF; }
+.realm-coordinates { font: 15px monospace; margin: 10px 0; overflow-wrap: anywhere; }
+.realm-note { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; font-size: 14px; }
+.realm-metadata { font-size: 11px; line-height: 1.6; color: #A4B9AC; margin: 12px 0; }
+#realm-status, #realm-editor-status, #realm-code-status { font-size: 13px; color: #E8CC9F; margin: 12px 0; overflow-wrap: anywhere; }
+.realm-empty { padding: 24px 0; color: #A4B9AC; }
+.realm-dialog { position: fixed; margin: auto; padding: 22px; width: min(440px, calc(100% - 28px)); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid #4E6858; border-radius: 8px; background: #132019; color: #FFF; }
+.realm-dialog::backdrop { background: #000B; backdrop-filter: blur(5px); }
+.realm-dialog-actions { margin-top: 20px; justify-content: flex-end; }
+.realm-coordinate-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#realm-coordinate-helper { font-size: 12px; color: #A4B9AC; margin-top: 10px; }
+#app-confirm-body { margin-top: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.realm-hub button:focus-visible, .realm-dialog button:focus-visible { outline: 2px solid #FFF; outline-offset: 3px; }
+@keyframes realm-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .realm-hub { animation: none; } }
