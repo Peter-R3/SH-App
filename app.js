@@ -192,7 +192,7 @@ function loadSoundEffectsPreference(player) {
 function updateSoundEffectControls() {
     const speakerPath = soundEffectsEnabled
         ? '<path d="M4 10v4h4l5 4V6L8 10H4zm12.5 2a4.5 4.5 0 0 0-2.1-3.8v7.6a4.5 4.5 0 0 0 2.1-3.8zm0-8.3v2.1a7 7 0 0 1 0 12.4v2.1a9 9 0 0 0 0-16.6z"/>'
-        : '<path d="M4 10v4h4l5 4v-4.2l-2.9-2.9L8 10H4zm15.2 2 2.1-2.1-1.4-1.4L17.8 10.6l-2.2-2.2-1.4 1.4 2.2 2.2-2.2 2.2 1.4 1.4 2.2-2.2 2.1 2.1 1.4-1.4L19.2 12z"/>';
+        : '<path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="m16 9 6 6m0-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
     document.querySelectorAll('.sound-effects-toggle').forEach(button => {
         const label = soundEffectsEnabled ? 'Mute sound effects' : 'Enable sound effects';
         button.setAttribute('aria-label', label);
@@ -212,6 +212,13 @@ function toggleSoundEffects() {
     updateSoundEffectControls();
     if (soundEffectsEnabled) playUiSound('confirm');
 }
+
+// Play once per navigation gesture, including dynamically rendered menu controls.
+document.addEventListener('click', event => {
+    const control = event.target.closest('.nav-tab-btn, .home-shortcut-card, .stats-category-card, .stats-back-btn, .stats-content-back-btn, .pause-option-btn, .mode-option-btn, .mode-select-btn, .grid-game-btn, .header-profile-badge, .dashboard-header[onclick]');
+    if (!control || control.disabled || control.classList.contains('locked')) return;
+    playUiSound('tap');
+}, true);
 
 function getSoundContext() {
     if (soundContext) return soundContext;
