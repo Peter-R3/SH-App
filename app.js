@@ -567,11 +567,18 @@ function initialiseMainDashboard() {
     refreshSharedHeader('dashboard');
 }
 
+let previousHomeGreeting = '';
+
 function initialiseHomeScreen() {
     setActiveAppView('home');
     setActiveNavigationTab('home');
     applyThemeToScreen('home-screen', 'home-header-shell', 'home-nav-shell');
     refreshSharedHeader('home');
+    const greetings = ['Hello,', 'Hey there,', 'Welcome back,', 'Lovely to see you,', 'Hi there,', 'Good to see you,'];
+    const choices = greetings.filter(greeting => greeting !== previousHomeGreeting);
+    previousHomeGreeting = choices[Math.floor(Math.random() * choices.length)];
+    document.getElementById('home-greeting-text').textContent = previousHomeGreeting;
+    document.getElementById('home-greeting-name').textContent = playerProfiles[localPlayer]?.nickname || localPlayer || '';
 }
 
 function homeNavigationMarkup() {

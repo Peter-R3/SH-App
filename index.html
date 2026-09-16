@@ -55,12 +55,17 @@
                 </div>
 
                 <div class="home-content">
-                    <h2 class="menu-prompt">Quick access</h2>
-                    <div class="home-shortcut-grid">
+                    <div class="home-greeting">
+                        <p id="home-greeting-text">Hello,</p>
+                        <h2 id="home-greeting-name"></h2>
+                    </div>
                         <button class="home-shortcut-card realm" onclick="openRealmHub()">
                             <svg class="realm-symbol" viewBox="0 0 32 36" aria-hidden="true"><path fill="#41344F" d="M4 1h24v34H4z"/><path fill="#AF72EE" d="M9 6h14v24H9z"/><path fill="none" stroke="#E3BBFF" stroke-width="2" d="M13 10h6v16h-6V15h3v7"/><path fill="#736083" d="M4 7h5v3H4zm19 13h5v3h-5zM11 1h5v5h-5zm6 29h5v6h-5z"/></svg>
                             <span>Realm Hub</span>
                         </button>
+                    <section class="home-games-section" aria-labelledby="home-games-title">
+                    <h2 id="home-games-title" class="menu-prompt">Games &amp; Stats</h2>
+                    <div class="home-shortcut-grid">
                         <button class="home-shortcut-card games" onclick="switchTab('games')">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
                             <span>Games</span>
@@ -70,6 +75,7 @@
                             <span>Game Stats</span>
                         </button>
                     </div>
+                    </section>
                 </div>
 
                 <div id="home-nav-shell" class="bottom-nav-bar">
@@ -589,6 +595,17 @@
                     </div>
                 </div>
 
+                <div id="word-search-lobby" class="word-search-lobby hidden">
+                    <div class="word-search-lobby-panel">
+                        <span id="word-search-lobby-mode" class="word-search-lobby-mode"></span>
+                        <h2 id="word-search-lobby-title">Ready to play?</h2>
+                        <p id="word-search-lobby-detail"></p>
+                        <div id="word-search-lobby-status" class="word-search-lobby-status" aria-live="polite"></div>
+                        <button id="word-search-lobby-primary" class="word-search-lobby-primary" type="button"></button>
+                        <button class="word-search-lobby-settings" type="button" onclick="openWordSearchSettings()">Game Settings</button>
+                    </div>
+                </div>
+
                 <div id="word-search-content" class="word-search-content">
                     <div id="word-search-status" class="word-search-status" aria-live="polite"></div>
                     <div id="word-search-words" class="word-search-words"></div>
@@ -608,7 +625,7 @@
 
             <section id="word-search-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="word-search-settings-header" class="dashboard-header">
-                    <span class="header-title">Word Search Modes</span>
+                    <span class="header-title">Word Search Settings</span>
                     <button onclick="launchWordSearch()" class="mode-select-btn" aria-label="Back to Word Search"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="word-search-settings">
@@ -717,7 +734,7 @@
 
             <section id="sudoku-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="sudoku-settings-header" class="dashboard-header">
-                    <span class="header-title">Sudoku Modes</span>
+                    <span class="header-title">Sudoku Settings</span>
                     <button onclick="launchSudoku()" class="mode-select-btn" aria-label="Back to Sudoku"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="sudoku-settings">
@@ -772,7 +789,7 @@
 
             <section id="tic-tac-toe-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="tic-tac-toe-settings-header" class="dashboard-header">
-                    <span class="header-title">Tic-Tac-Toe Modes</span>
+                    <span class="header-title">Tic-Tac-Toe Settings</span>
                     <button onclick="launchTicTacToe()" class="mode-select-btn" aria-label="Back to Tic-Tac-Toe"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="duel-settings">
@@ -810,7 +827,7 @@
 
             <section id="rps-settings-screen" class="screen hidden app-tab-screen" style="justify-content: flex-start; padding: 0;">
                 <div id="rps-settings-header" class="dashboard-header">
-                    <span class="header-title">RPS Modes</span>
+                    <span class="header-title">RPS Settings</span>
                     <button onclick="launchRps()" class="mode-select-btn" aria-label="Back to RPS"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button>
                 </div>
                 <div class="duel-settings">

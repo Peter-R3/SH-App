@@ -41,6 +41,7 @@ function launchRps() {
 function openRpsSettings() {
     openSharedGameMenu('rps', 'modes');
     document.getElementById('rps-mode').value = rpsSettings.mode;
+    syncGameSettingsSelects();
 }
 
 function updateRpsSetting(key, value) {

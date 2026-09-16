@@ -519,6 +519,14 @@ button:disabled {
 .theme-peter .home-shortcut-card { border-color: var(--peter-theme); }
 .theme-jadey .home-shortcut-card { border-color: var(--jadey-theme); }
 
+.home-greeting { padding: 12px 0 24px; }
+.home-greeting p { font-size: 15px; line-height: 1.5; color: #B9B4C3; }
+.home-greeting h2 { margin-top: 3px; font-size: 27px; line-height: 1.25; overflow-wrap: anywhere; }
+.home-content .home-shortcut-card.realm { width: 100%; min-height: 76px; padding: 14px 18px; flex-direction: row; justify-content: flex-start; gap: 16px; background: #23132F; border-color: #81509F; color: #F2DFFF; }
+.home-content .home-shortcut-card.realm span { text-align: left; }
+.home-games-section { margin-top: 26px; }
+.home-games-section .menu-prompt { font-size: 18px; margin-bottom: 12px; }
+
 .games-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1479,6 +1487,51 @@ button:disabled {
     gap: 10px;
     padding: 12px 14px;
     overflow-y: auto;
+}
+
+.word-search-lobby {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 20px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+}
+
+.word-search-lobby-panel {
+    width: 100%;
+    max-width: 380px;
+    padding: 24px 18px;
+    border: 1px solid #30363D;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #0E151C 0%, #080D12 100%);
+    box-shadow: 0 18px 48px #0008, inset 0 1px 0 rgba(255,255,255,.04);
+    text-align: center;
+}
+
+.word-search-lobby-mode {
+    display: inline-block;
+    margin-bottom: 12px;
+    padding: 5px 9px;
+    border: 1px solid color-mix(in srgb, var(--theme-color) 55%, #30363D);
+    border-radius: 999px;
+    color: var(--theme-color);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.word-search-lobby-panel h2 { margin: 0 0 8px; font-size: 25px; }
+.word-search-lobby-panel p { margin: 0 auto; max-width: 290px; color: #9BA6B2; font-size: 13px; font-weight: 700; line-height: 1.45; }
+.word-search-lobby-status { min-height: 38px; margin: 18px 0 10px; color: #C9D1D9; font-size: 13px; font-weight: 800; }
+.word-search-lobby-primary, .word-search-lobby-settings { width: 100%; min-height: 52px; border-radius: 8px; font: inherit; font-weight: 900; }
+.word-search-lobby-primary { background: var(--theme-color); color: var(--theme-text-color); }
+.word-search-lobby-primary:disabled { background: #30363D; color: #8B949E; }
+.word-search-lobby-settings { margin-top: 10px; border: 1px solid #30363D; background: #0A0F14; color: #FFF; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .word-search-lobby:not(.hidden) .word-search-lobby-panel { animation: submenu-rise 200ms ease-out both; }
 }
 
 .word-search-status {

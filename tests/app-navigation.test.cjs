@@ -80,8 +80,10 @@ const root = path.resolve(__dirname, '..');
                 if (game === 'rps' && width === 390) await page.screenshot({ path: path.join(os.tmpdir(), 'shared-pause-stats.png') });
                 await screen.locator('[data-pause-action=back]').click();
                 if (['word-search', 'sudoku', 'tic-tac-toe', 'rps'].includes(game)) {
-                    await screen.locator('[data-pause-action=modes]').click();
-                    assert.equal(await screen.locator('.shared-submenu h2').textContent(), 'Modes');
+                    await screen.locator('[data-pause-action=settings]').click();
+                    assert.equal(await screen.locator('.shared-submenu h2').textContent(), 'Game Settings');
+                    assert.equal(await screen.locator('.game-custom-select').count() > 0, true);
+                    if (game === 'word-search' && width === 390) await page.screenshot({ path: path.join(os.tmpdir(), 'word-search-settings.png') });
                 }
                 await tab.click();
                 assert.equal(await tab.textContent(), 'Pause');
@@ -91,6 +93,22 @@ const root = path.resolve(__dirname, '..');
                 assert.deepEqual(await visible(), ['home-screen']);
             }
         }
+        await page.evaluate(() => {
+            wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium' };
+            wordSearchLobbyState = createWordSearchState(createWordSearchPuzzle(7));
+            setActiveAppView('word-search-lobby');
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
+            document.getElementById('word-search-screen').classList.remove('hidden');
+            showWordSearchLobby({ status: `${wordSearchLobbyState.puzzle.words.length} words to find` });
+        });
+        assert.equal(await page.locator('#word-search-lobby').isVisible(), true);
+        assert.equal(await page.locator('#word-search-content').isVisible(), false);
+        await page.screenshot({ path: path.join(os.tmpdir(), 'word-search-lobby.png') });
+        await page.evaluate(() => { openSharedGameMenu('word-search'); resumeSharedGame(); });
+        assert.equal(await page.evaluate(() => activeAppView), 'word-search-lobby');
+        await page.locator('#word-search-lobby-primary').click();
+        assert.equal(await page.locator('#word-search-lobby').isVisible(), false);
+        assert.equal(await page.locator('#word-search-content').isVisible(), true);
         await page.evaluate(() => {
             sudokuSettings.mode = 'solo';
             sudokuState = { startedAt: Date.now() - 120000 };

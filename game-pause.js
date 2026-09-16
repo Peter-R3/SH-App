@@ -1,10 +1,10 @@
 const sharedPauseGames = {
-    'word-search': { launch: launchWordSearch, modes: openWordSearchSettings, settings: () => wordSearchSettings, stats: 'word-search-stats-content', render: renderWordSearchStats },
-    sudoku: { launch: launchSudoku, modes: openSudokuSettings, settings: () => sudokuSettings, stats: 'sudoku-stats-content', render: renderSudokuStats },
+    'word-search': { launch: launchWordSearch, settingsAction: openWordSearchSettings, settingsLabel: 'Game Settings', settings: () => wordSearchSettings, stats: 'word-search-stats-content', render: renderWordSearchStats },
+    sudoku: { launch: launchSudoku, settingsAction: openSudokuSettings, settingsLabel: 'Game Settings', settings: () => sudokuSettings, stats: 'sudoku-stats-content', render: renderSudokuStats },
     battleship: { launch: launchBattleship, stats: 'battleship-stats-content', render: renderBattleshipStats },
     'connect-four': { launch: launchConnectFour, stats: 'connect-four-stats-content', render: renderConnectFourStats },
-    'tic-tac-toe': { launch: launchTicTacToe, modes: openTicTacToeSettings, settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
-    rps: { launch: launchRps, modes: openRpsSettings, settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
+    'tic-tac-toe': { launch: launchTicTacToe, settingsAction: openTicTacToeSettings, settingsLabel: 'Game Settings', settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
+    rps: { launch: launchRps, settingsAction: openRpsSettings, settingsLabel: 'Game Settings', settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
 };
 let sharedPauseSession = null;
 
@@ -21,7 +21,7 @@ function initialiseGamePauseMenus() {
         screen.classList.add('shared-pause-game');
         const nav = screen.querySelector('.bottom-nav-bar');
         nav.classList.add('game-bottom-nav');
-        let tab = [...nav.children].find(button => button.textContent.trim() === 'Modes');
+        let tab = [...nav.children].find(button => ['Modes', 'Pause'].includes(button.textContent.trim()));
         if (!tab) { tab = document.createElement('button'); tab.className = 'nav-tab-btn'; nav.append(tab); }
         tab.removeAttribute('onclick');
         tab.dataset.pauseGame = id;
@@ -29,13 +29,16 @@ function initialiseGamePauseMenus() {
         setGamePauseTab(tab, false);
         const menu = document.createElement('div');
         menu.className = 'shared-game-menu hidden';
-        menu.innerHTML = `<div class="shared-pause-panel"><button class="sound-effects-toggle" onclick="toggleSoundEffects()"></button><h2>Paused</h2><p class="shared-pause-note"></p><button class="pause-option-btn primary" data-pause-action="resume">Resume</button>${config.modes ? '<button class="pause-option-btn" data-pause-action="modes">Modes</button>' : ''}<button class="pause-option-btn" data-pause-action="stats">Statistics</button></div><div class="shared-submenu hidden"><div class="number-guess-submenu-heading"><h2></h2><button class="mode-select-btn" data-pause-action="back" aria-label="Back to pause menu" title="Back to pause menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button></div><div class="shared-submenu-content"></div></div>`;
+        const settingsButton = config.settingsAction
+            ? `<button class="pause-option-btn" data-pause-action="settings"><span>${config.settingsLabel}</span><small>Change how this game is played</small></button>`
+            : '';
+        menu.innerHTML = `<div class="shared-pause-panel"><button class="sound-effects-toggle" onclick="toggleSoundEffects()"></button><h2>Paused</h2><p class="shared-pause-note"></p><button class="pause-option-btn primary" data-pause-action="resume"><span>Resume</span><small>Return to the game</small></button>${settingsButton}<button class="pause-option-btn" data-pause-action="stats"><span>Statistics</span><small>View this game's results</small></button></div><div class="shared-submenu hidden"><div class="number-guess-submenu-heading"><h2></h2><button class="mode-select-btn" data-pause-action="back" aria-label="Back to pause menu" title="Back to pause menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button></div><div class="shared-submenu-content"></div></div>`;
         menu.addEventListener('click', event => {
             const action = event.target.closest('[data-pause-action]')?.dataset.pauseAction;
             if (!action) return;
             playUiSound('tap');
             if (action === 'resume') resumeSharedGame();
-            else if (action === 'modes') config.modes();
+            else if (action === 'settings') config.settingsAction();
             else openSharedGameMenu(id, action === 'stats' ? 'stats' : 'pause');
         });
         screen.insertBefore(menu, nav);
@@ -63,7 +66,7 @@ function openSharedGameMenu(id, view = 'pause') {
     if (!config || !localPlayer) return;
     if (sharedPauseSession && sharedPauseSession.id !== id) closeSharedGameMenu();
     if (!sharedPauseSession) {
-        sharedPauseSession = { id, openedAt: Date.now(), settings: JSON.stringify(config.settings?.()), mode: config.settings?.().mode };
+        sharedPauseSession = { id, openedAt: Date.now(), returnView: activeAppView, settings: JSON.stringify(config.settings?.()), mode: config.settings?.().mode };
         if (id === 'sudoku' && sudokuSettings.mode === 'solo' && sudokuState) {
             sharedPauseSession.sudokuState = sudokuState;
             sharedPauseSession.sudokuPath = soloSudokuPath();
@@ -89,7 +92,7 @@ function openSharedGameMenu(id, view = 'pause') {
         if (!child.matches('.dashboard-header, .bottom-nav-bar, .shared-game-menu')) child.inert = true;
     }
     if (view !== 'pause') {
-        menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : 'Modes';
+        menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : config.settingsLabel;
         const content = view === 'stats' ? document.getElementById(config.stats) : document.getElementById(`${id}-settings-screen`)?.children[1];
         if (content) {
             const placeholder = document.createComment('Game menu content');
@@ -99,11 +102,124 @@ function openSharedGameMenu(id, view = 'pause') {
             menu.querySelector('.shared-submenu-content').append(content);
         }
         if (view === 'stats') config.render();
+        else enhanceGameSettingsSelects(menu.querySelector('.shared-submenu-content'));
     }
     setGamePauseTab(screen.querySelector('[data-pause-game]'), true);
     updateSoundEffectControls();
     config.resize();
 }
+
+function enhanceGameSettingsSelects(root = document) {
+    root.querySelectorAll('select:not([data-custom-select])').forEach(select => {
+        select.dataset.customSelect = 'true';
+        select.tabIndex = -1;
+        select.setAttribute('aria-hidden', 'true');
+        const component = document.createElement('div');
+        component.className = 'game-custom-select';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'game-custom-select-button';
+        button.id = `${select.id}-custom-button`;
+        button.setAttribute('aria-haspopup', 'listbox');
+        button.setAttribute('aria-expanded', 'false');
+        const label = document.querySelector(`label[for="${select.id}"]`);
+        if (label) {
+            label.id = label.id || `${select.id}-custom-label`;
+            button.setAttribute('aria-labelledby', label.id);
+            label.addEventListener('click', event => {
+                event.preventDefault();
+                button.click();
+                button.focus();
+            });
+        }
+        const list = document.createElement('div');
+        list.className = 'game-custom-select-options hidden';
+        list.setAttribute('role', 'listbox');
+        list.id = `${select.id}-custom-options`;
+        button.setAttribute('aria-controls', list.id);
+        [...select.options].forEach(option => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'game-custom-select-option';
+            item.dataset.value = option.value;
+            item.textContent = option.textContent;
+            item.setAttribute('role', 'option');
+            item.addEventListener('click', () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                syncGameSettingsDependencies(select);
+                syncGameSettingsSelects();
+                closeGameCustomSelect(component);
+                playUiSound('tap');
+            });
+            list.append(item);
+        });
+        button.addEventListener('click', () => {
+            const opening = list.classList.contains('hidden');
+            document.querySelectorAll('.game-custom-select.open').forEach(closeGameCustomSelect);
+            component.classList.toggle('open', opening);
+            list.classList.toggle('hidden', !opening);
+            button.setAttribute('aria-expanded', String(opening));
+        });
+        button.addEventListener('keydown', event => handleGameCustomSelectKeys(event, select, component));
+        select.after(component);
+        component.append(button, list);
+        syncGameSettingsSelect(select);
+    });
+}
+
+function syncGameSettingsSelect(select) {
+    if (!select) return;
+    const component = select.nextElementSibling;
+    if (!component?.classList.contains('game-custom-select')) return;
+    const selected = select.options[select.selectedIndex];
+    component.querySelector('.game-custom-select-button').innerHTML = `<span>${selected?.textContent || ''}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>`;
+    component.querySelectorAll('.game-custom-select-option').forEach(option => {
+        const active = option.dataset.value === select.value;
+        option.classList.toggle('selected', active);
+        option.setAttribute('aria-selected', String(active));
+    });
+    component.classList.toggle('hidden', select.classList.contains('hidden'));
+}
+
+function syncGameSettingsSelects(root = document) {
+    root.querySelectorAll('select[data-custom-select]').forEach(syncGameSettingsSelect);
+}
+
+function closeGameCustomSelect(component) {
+    component.classList.remove('open');
+    component.querySelector('.game-custom-select-options')?.classList.add('hidden');
+    component.querySelector('.game-custom-select-button')?.setAttribute('aria-expanded', 'false');
+}
+
+function handleGameCustomSelectKeys(event, select, component) {
+    const options = [...select.options];
+    let index = select.selectedIndex;
+    if (event.key === 'Escape') {
+        closeGameCustomSelect(component);
+        return;
+    }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === 'Home') index = 0;
+    else if (event.key === 'End') index = options.length - 1;
+    else index = (index + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+    select.value = options[index].value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    syncGameSettingsDependencies(select);
+    syncGameSettingsSelects();
+}
+
+function syncGameSettingsDependencies(select) {
+    if (select.id === 'word-search-mode') syncWordSearchModeControls();
+    if (select.id === 'sudoku-mode') syncSudokuModeControls();
+}
+
+document.addEventListener('pointerdown', event => {
+    document.querySelectorAll('.game-custom-select.open').forEach(component => {
+        if (!component.contains(event.target)) closeGameCustomSelect(component);
+    });
+});
 
 function closeSharedGameMenu() {
     const session = sharedPauseSession;
@@ -133,12 +249,12 @@ function closeSharedGameMenu() {
 
 function resumeSharedGame() {
     if (!sharedPauseSession) return;
-    const { id, settings } = sharedPauseSession;
+    const { id, settings, returnView } = sharedPauseSession;
     const config = sharedPauseGames[id];
     const changed = settings !== JSON.stringify(config.settings?.());
     closeSharedGameMenu();
     if (changed) config.launch();
-    else setActiveAppView(id);
+    else setActiveAppView(returnView || id);
 }
 
 function toggleNumberGuessPause() {

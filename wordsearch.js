@@ -95,6 +95,8 @@ let wordSearchDisconnectHandle = null;
 let wordSearchVersusCountdown = null;
 let wordSearchCompletedLocally = false;
 let wordSearchAiTimer = null;
+let wordSearchLobbyState = null;
+let wordSearchLobbyCountdown = null;
 
 function wordSearchSettingsKey() {
     return `word-search-settings-${localPlayer || 'unknown'}`;
@@ -119,8 +121,8 @@ function saveWordSearchSettings() {
 
 function launchWordSearch() {
     if (!localPlayer) return;
-    setActiveAppView('word-search');
     loadWordSearchSettings();
+    setActiveAppView('word-search-lobby');
     concealWordSearchGrid(false);
     refreshWordSearchPresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
@@ -130,8 +132,10 @@ function launchWordSearch() {
     refreshSharedHeader('word-search');
     stopWordSearchRealtime();
     wordSearchCompletedLocally = false;
-    wordSearchSessionStartedAt = Date.now();
-    setWordSearchStatus('Loading puzzle...');
+    wordSearchSessionStartedAt = null;
+    wordSearchLobbyState = null;
+    window.clearInterval(wordSearchLobbyCountdown);
+    showWordSearchLobby({ loading: true });
 
     if (wordSearchSettings.mode === 'solo') loadSoloWordSearch();
     if (wordSearchSettings.mode === 'coop') loadCoopWordSearch();
@@ -146,6 +150,7 @@ function openWordSearchSettings() {
     document.getElementById('word-search-ai-difficulty').value = wordSearchSettings.aiDifficulty;
     syncWordSearchModeControls();
     updateWordSearchSettingsNote();
+    syncGameSettingsSelects();
 }
 
 function updateWordSearchSetting(key, value) {
@@ -165,6 +170,63 @@ function syncWordSearchModeControls() {
     const showAi = wordSearchSettings.mode === 'versus-ai';
     document.querySelector('label[for="word-search-ai-difficulty"]')?.classList.toggle('hidden', !showAi);
     document.getElementById('word-search-ai-difficulty')?.classList.toggle('hidden', !showAi);
+    syncGameSettingsSelects();
+}
+
+function showWordSearchLobby(options = {}) {
+    const lobby = document.getElementById('word-search-lobby');
+    const content = document.getElementById('word-search-content');
+    if (!lobby || !content) return;
+    lobby.classList.remove('hidden');
+    content.classList.add('hidden');
+    const mode = wordSearchSettings.mode;
+    const title = document.getElementById('word-search-lobby-title');
+    const detail = document.getElementById('word-search-lobby-detail');
+    const status = document.getElementById('word-search-lobby-status');
+    const primary = document.getElementById('word-search-lobby-primary');
+    document.getElementById('word-search-lobby-mode').textContent = `${modeTitle(mode)} - ${wordSearchSettings.difficulty}x${wordSearchSettings.difficulty}`;
+    title.textContent = options.title || (mode === 'coop' ? 'Play together' : mode === 'versus' ? 'Ready room' : mode === 'versus-ai' ? `Race ${WORD_SEARCH_AI_NAME}` : 'Ready to play?');
+    detail.textContent = options.detail || (mode === 'coop'
+        ? 'Work together on one shared grid.'
+        : mode === 'versus' ? 'Both players must be ready before the five-second countdown.'
+        : mode === 'versus-ai' ? `${WORD_SEARCH_AI_NAME} starts when the countdown ends.`
+        : 'Your progress and active time are saved for this grid.');
+    status.textContent = options.status || (options.loading ? 'Preparing your grid...' : '');
+    primary.textContent = options.button || (options.resume ? 'Resume' : 'Play');
+    primary.disabled = Boolean(options.loading || options.disabled);
+    primary.onclick = options.action || startPreparedWordSearch;
+}
+
+function showWordSearchPlayArea() {
+    document.getElementById('word-search-lobby')?.classList.add('hidden');
+    document.getElementById('word-search-content')?.classList.remove('hidden');
+    setActiveAppView('word-search');
+    wordSearchSessionStartedAt = Date.now();
+}
+
+function startPreparedWordSearch() {
+    if (!wordSearchLobbyState) return;
+    playUiSound('confirm');
+    if (wordSearchSettings.mode !== 'versus-ai') {
+        showWordSearchPlayArea();
+        enableWordSearchGrid(true);
+        return;
+    }
+    concealWordSearchGrid(true);
+    const primary = document.getElementById('word-search-lobby-primary');
+    primary.disabled = true;
+    let remaining = 5;
+    const tick = () => {
+        document.getElementById('word-search-lobby-status').textContent = `Starting in ${remaining}...`;
+        if (remaining-- > 0) return;
+        window.clearInterval(wordSearchLobbyCountdown);
+        concealWordSearchGrid(false);
+        showWordSearchPlayArea();
+        enableWordSearchGrid(true);
+        scheduleWordSearchAi(wordSearchLobbyState);
+    };
+    tick();
+    wordSearchLobbyCountdown = window.setInterval(tick, 1000);
 }
 
 function updateWordSearchSettingsNote(message) {
@@ -262,10 +324,14 @@ function loadSoloWordSearch() {
         const state = snapshot.val();
         if (state?.puzzle && !state.completedAt) {
             applyWordSearchState(state);
+            wordSearchLobbyState = state;
+            showWordSearchLobby({ resume: Boolean(Object.keys(state.found || {}).length || state.activeMs), status: `${Object.keys(state.found || {}).length} of ${state.puzzle.words.length} words found` });
         } else {
             const fresh = createWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty));
             ref.set(fresh);
             applyWordSearchState(fresh);
+            wordSearchLobbyState = fresh;
+            showWordSearchLobby({ status: `${fresh.puzzle.words.length} words to find` });
         }
     });
 }
@@ -273,17 +339,31 @@ function loadSoloWordSearch() {
 function loadCoopWordSearch() {
     const path = coopWordSearchPath();
     const ref = database.ref(path);
-    ref.transaction(current => current?.puzzle
-        ? current
-        : createWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty))
-    );
-    subscribeWordSearch(path, state => {
-        applyWordSearchState(state);
-        if (state.completedAt) {
-            showCoopWordSearchComplete();
-            return;
-        }
-        if (!state.completedAt && Object.keys(state.found || {}).length >= state.puzzle.words.length) completeWordSearch();
+    let hadActiveGrid = false;
+    ref.once('value').then(snapshot => {
+        const current = snapshot.val();
+        hadActiveGrid = Boolean(current?.puzzle && !current.completedAt);
+        return ref.transaction(value => value?.puzzle
+            ? value
+            : createWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty))
+        );
+    }).then(() => {
+        let initialStateHandled = false;
+        subscribeWordSearch(path, state => {
+            applyWordSearchState(state);
+            wordSearchLobbyState = state;
+            if (state.completedAt) {
+                showWordSearchPlayArea();
+                showCoopWordSearchComplete();
+                return;
+            }
+            if (!initialStateHandled) {
+                initialStateHandled = true;
+                if (hadActiveGrid) showWordSearchPlayArea();
+                else showWordSearchLobby({ status: `${state.puzzle.words.length} words to find together` });
+            }
+            if (Object.keys(state.found || {}).length >= state.puzzle.words.length) completeWordSearch();
+        });
     });
 }
 
@@ -293,12 +373,14 @@ function loadAiWordSearch() {
         const state = snapshot.val();
         if (state?.puzzle && !state.completedAt && !state.aiResolved) {
             applyWordSearchState(state);
-            scheduleWordSearchAi(state);
+            wordSearchLobbyState = state;
+            showWordSearchLobby({ resume: Boolean(Object.keys(state.found || {}).length || state.activeMs || state.aiActiveMs), status: `${Object.keys(state.found || {}).length} of ${state.puzzle.words.length} words found` });
         } else {
             const fresh = createAiWordSearchState(createWordSearchPuzzle(wordSearchSettings.difficulty));
             ref.set(fresh);
             applyWordSearchState(fresh);
-            scheduleWordSearchAi(fresh);
+            wordSearchLobbyState = fresh;
+            showWordSearchLobby({ status: `${fresh.puzzle.words.length} words to find` });
         }
     });
 }
@@ -383,6 +465,7 @@ function renderVersusState(state) {
     wordSearchPuzzle = state.puzzle;
     wordSearchFound = state.foundBy?.[localPlayer] || {};
     wordSearchStartedAt = state.startsAt || null;
+    wordSearchLobbyState = state;
     renderWordSearchBoard();
 
     if (state.status === 'waiting') {
@@ -390,25 +473,25 @@ function renderVersusState(state) {
         enableWordSearchGrid(false);
         const bothPresent = playerRecentlyPresent(state.present?.Peter) && playerRecentlyPresent(state.present?.Jadey);
         const ready = state.readyBy?.[localPlayer];
-        showWordSearchResult(
-            bothPresent
-                ? `<strong>${ready ? 'Ready. Waiting for the other player...' : 'Both players are here.'}</strong><button onclick="readyForVersus()">Ready</button>`
-                : '<strong>Waiting for the other player to join...</strong>',
-            true
-        );
-        setWordSearchStatus('Versus • Ready room');
+        showWordSearchLobby({
+            status: bothPresent ? (ready ? 'Ready. Waiting for the other player...' : 'Both players are here.') : 'Waiting for the other player to join...',
+            button: ready ? 'Ready' : 'Ready up',
+            disabled: !bothPresent || ready,
+            action: readyForVersus
+        });
         return;
     }
 
     if (state.status === 'countdown') {
         concealWordSearchGrid(true);
         enableWordSearchGrid(false);
-        showWordSearchResult('', false);
+        showWordSearchLobby({ title: 'Get ready', status: 'Starting in 5...', button: 'Ready', disabled: true });
         startVersusCountdown(state.startsAt);
         return;
     }
 
     if (state.status === 'active') {
+        showWordSearchPlayArea();
         concealWordSearchGrid(false);
         showWordSearchResult('', false);
         setWordSearchStatus(`Versus • ${state.difficulty}×${state.difficulty}`);
@@ -418,6 +501,7 @@ function renderVersusState(state) {
     }
 
     if (state.status === 'finished') {
+        showWordSearchPlayArea();
         concealWordSearchGrid(false);
         wordSearchDisconnectHandle?.cancel?.();
         wordSearchDisconnectHandle = null;
@@ -448,7 +532,10 @@ function startVersusCountdown(startsAt) {
     enableWordSearchGrid(false);
     const tick = () => {
         const remaining = Math.max(0, Math.ceil((startsAt - Date.now()) / 1000));
-        setWordSearchStatus(remaining ? `Starting in ${remaining}...` : 'Go!');
+        const message = remaining ? `Starting in ${remaining}...` : 'Go!';
+        setWordSearchStatus(message);
+        const lobbyStatus = document.getElementById('word-search-lobby-status');
+        if (lobbyStatus) lobbyStatus.textContent = message;
         if (!remaining) {
             window.clearInterval(wordSearchVersusCountdown);
             database.ref('wordSearch/versus/current').transaction(current => {
@@ -500,6 +587,7 @@ function stopWordSearchRealtime() {
     wordSearchRealtimeHandler = null;
     window.clearInterval(wordSearchVersusCountdown);
     window.clearInterval(wordSearchAiTimer);
+    window.clearInterval(wordSearchLobbyCountdown);
     wordSearchAiTimer = null;
 }
 

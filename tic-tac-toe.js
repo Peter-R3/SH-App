@@ -43,6 +43,7 @@ function launchTicTacToe() {
 function openTicTacToeSettings() {
     openSharedGameMenu('tic-tac-toe', 'modes');
     document.getElementById('tic-tac-toe-mode').value = ticTacToeSettings.mode;
+    syncGameSettingsSelects();
 }
 
 function updateTicTacToeSetting(key, value) {

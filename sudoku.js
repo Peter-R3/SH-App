@@ -66,6 +66,7 @@ function openSudokuSettings() {
     document.getElementById('sudoku-ai-difficulty').value = sudokuSettings.aiDifficulty;
     syncSudokuModeControls();
     updateSudokuSettingsNote();
+    syncGameSettingsSelects();
 }
 
 function updateSudokuSetting(key, value) {
@@ -84,6 +85,7 @@ function syncSudokuModeControls() {
     const showAi = sudokuSettings.mode === 'versus-ai';
     document.querySelector('label[for="sudoku-ai-difficulty"]')?.classList.toggle('hidden', !showAi);
     document.getElementById('sudoku-ai-difficulty')?.classList.toggle('hidden', !showAi);
+    syncGameSettingsSelects();
 }
 
 function updateSudokuSettingsNote(message) {
