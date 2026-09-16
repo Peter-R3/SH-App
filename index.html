@@ -210,6 +210,11 @@
                         <div id="profile-theme-block" style="width: 32px; height: 32px; border-radius: 8px;"></div>
                     </button>
 
+                    <label class="profile-sound-setting" for="profile-sound-enabled">
+                        <span>Sound effects <small id="profile-sound-status">On</small></span>
+                        <input id="profile-sound-enabled" type="checkbox" role="switch" checked onchange="toggleSoundEffects()">
+                    </label>
+
                     <section class="profile-account-summary">
                         <div>
                             <span>Account email</span>

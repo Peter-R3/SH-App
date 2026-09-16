@@ -159,6 +159,8 @@ let lastNumberGuessTurnCueKey = null;
 let numberGuessSummaryTimer = null;
 let soundEffectsEnabled = true;
 let soundContext = null;
+const activeSoundNodes = new Set();
+let soundPreferenceRevision = 0;
 let latestMessages = [];
 let latestNotifications = [];
 let latestStats = {};
@@ -181,15 +183,54 @@ function setActiveAppView(view) {
 }
 
 function loadSoundEffectsPreference(player) {
+    soundPreferenceRevision++;
+    stopUiSounds();
     try {
         soundEffectsEnabled = window.localStorage.getItem(`sweethearts-app:sound-effects:${player}`) !== 'false';
     } catch {
         soundEffectsEnabled = true;
     }
+    initialiseSoundEffectControls();
     updateSoundEffectControls();
 }
 
+function initialiseSoundEffectControls() {
+    for (const game of ['word-search', 'sudoku', 'tic-tac-toe', 'rps']) {
+        const screen = document.getElementById(`${game}-settings-screen`);
+        const content = screen?.children[1];
+        if (!content || content.querySelector('.sound-settings-row')) continue;
+        const row = document.createElement('div');
+        row.className = 'sound-settings-row';
+        const label = document.createElement('span');
+        label.textContent = 'Sound effects';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'sound-effects-toggle';
+        button.addEventListener('click', toggleSoundEffects);
+        row.append(label, button);
+        content.prepend(row);
+    }
+}
+
+function stopUiSounds() {
+    activeSoundNodes.forEach(({ oscillator, gain }) => {
+        gain.disconnect();
+        try { oscillator.stop(); } catch { /* The oscillator may have already ended. */ }
+    });
+    activeSoundNodes.clear();
+}
+
+window.addEventListener('storage', event => {
+    if (!localPlayer || (event.key !== null && event.key !== `sweethearts-app:sound-effects:${localPlayer}`)) return;
+    loadSoundEffectsPreference(localPlayer);
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopUiSounds(); });
+
 function updateSoundEffectControls() {
+    const profileSwitch = document.getElementById('profile-sound-enabled');
+    if (profileSwitch) profileSwitch.checked = soundEffectsEnabled;
+    const profileStatus = document.getElementById('profile-sound-status');
+    if (profileStatus) profileStatus.textContent = soundEffectsEnabled ? 'On' : 'Muted';
     const speakerPath = soundEffectsEnabled
         ? '<path d="M4 10v4h4l5 4V6L8 10H4zm12.5 2a4.5 4.5 0 0 0-2.1-3.8v7.6a4.5 4.5 0 0 0 2.1-3.8zm0-8.3v2.1a7 7 0 0 1 0 12.4v2.1a9 9 0 0 0 0-16.6z"/>'
         : '<path d="M4 10v4h4l5 4V6L8 10H4z"/><path d="m16 9 6 6m0-6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
@@ -204,6 +245,8 @@ function updateSoundEffectControls() {
 
 function toggleSoundEffects() {
     soundEffectsEnabled = !soundEffectsEnabled;
+    soundPreferenceRevision++;
+    if (!soundEffectsEnabled) stopUiSounds();
     try {
         window.localStorage.setItem(`sweethearts-app:sound-effects:${localPlayer}`, String(soundEffectsEnabled));
     } catch {
@@ -215,10 +258,14 @@ function toggleSoundEffects() {
 
 // Play once per navigation gesture, including dynamically rendered menu controls.
 document.addEventListener('click', event => {
-    const control = event.target.closest('.nav-tab-btn, .home-shortcut-card, .stats-category-card, .stats-back-btn, .stats-content-back-btn, .pause-option-btn, .mode-option-btn, .mode-select-btn, .grid-game-btn, .header-profile-badge, .dashboard-header[onclick]');
+    const control = event.target.closest('.nav-tab-btn, .home-shortcut-card, .stats-category-card, .stats-back-btn, .stats-content-back-btn, .pause-option-btn, .mode-option-btn, .mode-select-btn, .grid-game-btn, .header-profile-badge, .dashboard-header[onclick], .profile-theme-entry, .theme-preset-option, .profile-main-avatar, .profile-account-summary button, .management-entry, .profile-photo-actions button, .message-action-menu button, .notification-card button, svg[onclick="promptNicknameChange()"]');
     if (!control || control.disabled || control.classList.contains('locked')) return;
     playUiSound('tap');
 }, true);
+
+document.addEventListener('change', event => {
+    if (event.target.matches('.word-search-settings select, .sudoku-settings select, .duel-settings select')) playUiSound('tap');
+});
 
 function getSoundContext() {
     if (soundContext && soundContext.state !== 'closed') return soundContext;
@@ -242,7 +289,10 @@ function playUiTone(context, frequency, startOffset, duration, volume, type = 's
     oscillator.connect(gain).connect(context.destination);
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
+    const node = { oscillator, gain };
+    activeSoundNodes.add(node);
     oscillator.onended = () => {
+        activeSoundNodes.delete(node);
         oscillator.disconnect();
         gain.disconnect();
     };
@@ -251,12 +301,13 @@ function playUiTone(context, frequency, startOffset, duration, volume, type = 's
 async function playUiSound(kind) {
     if (!soundEffectsEnabled || document.hidden) return;
     const requestedAt = performance.now();
+    const preferenceRevision = soundPreferenceRevision;
     try {
         const context = getSoundContext();
         if (!context) return;
         // Resume inside the tap gesture, then schedule against the running clock.
         if (context.state !== 'running') await context.resume();
-        if (!soundEffectsEnabled || document.hidden || context.state !== 'running') return;
+        if (!soundEffectsEnabled || document.hidden || context.state !== 'running' || preferenceRevision !== soundPreferenceRevision) return;
         if (performance.now() - requestedAt > 500) return;
         scheduleUiSound(context, kind);
     } catch (error) {
@@ -486,6 +537,7 @@ function signOut() {
 // =========================================================================
 function initialiseMainDashboard() {
     setActiveAppView('games');
+    setActiveNavigationTab('games');
     applyThemeVariables();
     const mainDashboard = document.getElementById('main-dashboard');
     const headerShell = document.getElementById('dashboard-header-shell');
@@ -515,6 +567,7 @@ function initialiseMainDashboard() {
 
 function initialiseHomeScreen() {
     setActiveAppView('home');
+    setActiveNavigationTab('home');
     applyThemeToScreen('home-screen', 'home-header-shell', 'home-nav-shell');
     refreshSharedHeader('home');
 }
@@ -532,8 +585,10 @@ function normaliseBottomNavigation() {
 }
 
 function setActiveNavigationTab(tabName) {
-    document.querySelectorAll('.nav-tab-btn').forEach(button => button.classList.remove('active-tab'));
-    document.querySelectorAll(`.nav-tab-btn[onclick*="${tabName}"]`).forEach(button => button.classList.add('active-tab'));
+    document.querySelectorAll('.nav-tab-btn').forEach(button => {
+        const label = button.querySelector('span:not(.notification-badge)')?.textContent.trim().toLowerCase();
+        button.classList.toggle('active-tab', label === (tabName === 'stats' ? 'home' : tabName));
+    });
 }
 
 function applyThemeVariables() {
@@ -888,8 +943,9 @@ function updateThemePickerFromRgb() {
 function saveThemeColour() {
     if (!localPlayer || !pendingThemeColour) return;
     database.ref(`themes/${localPlayer}`).set(pendingThemeColour)
-        .then(closeThemePicker)
+        .then(() => { closeThemePicker(); playUiSound('confirm'); })
         .catch(error => {
+            playUiSound('error');
             setThemePickerStatus(`Could not save: ${error.message}`, true);
         });
 }
@@ -898,7 +954,8 @@ function resetThemeColour() {
     if (!localPlayer) return;
     const defaultColour = DEFAULT_THEME_COLOURS[localPlayer];
     syncThemePicker(defaultColour);
-    database.ref(`themes/${localPlayer}`).set(defaultColour).then(closeThemePicker);
+    database.ref(`themes/${localPlayer}`).set(defaultColour).then(() => { closeThemePicker(); playUiSound('confirm'); })
+        .catch(error => { setThemePickerStatus(`Could not save: ${error.message}`, true); playUiSound('error'); });
 }
 
 function closeProfileSettings() {
@@ -1290,7 +1347,8 @@ function sendInteraction(type) {
         body: `${senderNickname} sent you a ${noun}!`,
         createdAt: Date.now(),
         readBy: {}
-    });
+    }).then(() => { if (['profile', 'alerts'].includes(activeAppView)) playUiSound('confirm'); })
+        .catch(() => playUiSound('error'));
 }
 
 function sendInteractionBack(notificationId, type) {
@@ -1395,7 +1453,8 @@ function sendMessage(event) {
         recipient,
         text,
         createdAt: Date.now()
-    });
+    }).then(() => { if (activeAppView === 'messages') playUiSound('confirm'); })
+        .catch(() => playUiSound('error'));
     sendAppNotification({
         type: `Message from ${senderNickname}`,
         action: 'reply',

@@ -9,9 +9,10 @@ let realmEditingId = null;
 let realmEditingRevision = null;
 let realmBusy = false;
 let realmTransitioning = false;
+let realmPendingTransition = null;
 
 async function transitionRealmHub(changeScreen) {
-    if (realmTransitioning) return;
+    if (realmTransitioning) { realmPendingTransition = changeScreen; return; }
     realmTransitioning = true;
     closeRealmDropdowns();
     const overlay = document.createElement('div');
@@ -26,7 +27,15 @@ async function transitionRealmHub(changeScreen) {
         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             await overlay.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.35)' }], { duration: 380, easing: 'ease-out', fill: 'forwards' }).finished;
         }
-    } finally { overlay.remove(); realmTransitioning = false; }
+    } finally {
+        overlay.remove();
+        realmTransitioning = false;
+        if (realmPendingTransition) {
+            const pending = realmPendingTransition;
+            realmPendingTransition = null;
+            await transitionRealmHub(pending);
+        }
+    }
 }
 
 function closeRealmDropdowns() {
