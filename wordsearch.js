@@ -114,7 +114,7 @@ function showWordSearchCompletionCue() {
     overlay.classList.remove('hidden', 'show-turn-cue');
     void overlay.offsetWidth;
     overlay.classList.add('show-turn-cue');
-    playUiSound('success');
+    playUiSound('complete');
     wordSearchCompletionCueTimer = setTimeout(() => overlay.classList.add('hidden'), 1050);
 }
 
@@ -236,7 +236,7 @@ function showWordSearchPlayArea() {
 
 function startPreparedWordSearch() {
     if (!wordSearchLobbyState) return;
-    playUiSound('confirm');
+    playUiSound('ready');
     if (wordSearchSettings.mode !== 'versus-ai') {
         showWordSearchPlayArea();
         enableWordSearchGrid(true);
@@ -484,6 +484,7 @@ function joinWordSearchVersus(difficulty) {
 }
 
 function renderVersusState(state) {
+    soundForGameResult('word-search', state);
     if (!state?.puzzle) {
         wordSearchDisconnectHandle?.cancel?.();
         wordSearchDisconnectHandle = null;
@@ -540,6 +541,7 @@ function renderVersusState(state) {
 }
 
 function readyForVersus() {
+    playUiSound('ready');
     const ref = database.ref('wordSearch/versus/current');
     ref.transaction(current => {
         if (!current || current.status !== 'waiting') return current;

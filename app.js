@@ -3,14 +3,16 @@ let lastViewportWidth = window.innerWidth;
 let stableViewportHeight = window.innerHeight;
 
 function calculateRealVh(forceReset = false) {
+  const viewport = window.visualViewport;
+  // Resize and scroll events pass an Event, not a reset flag.
   const widthChanged = Math.abs(window.innerWidth - lastViewportWidth) > 80;
-  if (forceReset || widthChanged) {
-    lastViewportWidth = window.innerWidth;
-    stableViewportHeight = window.innerHeight;
-  } else if (!document.activeElement?.matches?.('input, textarea, select')) {
-    stableViewportHeight = Math.max(stableViewportHeight, window.innerHeight);
-  }
-  document.documentElement.style.setProperty('--vh', `${stableViewportHeight * 0.01}px`);
+  if (forceReset === true || widthChanged) lastViewportWidth = window.innerWidth;
+  if (viewport && Math.abs(viewport.scale - 1) > 0.05) return;
+  const height = Math.max(1, viewport?.height || window.innerHeight);
+  stableViewportHeight = height;
+  document.documentElement.style.setProperty('--vh', `${height * 0.01}px`);
+  document.documentElement.style.setProperty('--viewport-top', `${Math.max(0, viewport?.offsetTop || 0)}px`);
+  document.documentElement.classList.toggle('keyboard-open', window.innerHeight - height > 100);
 }
 
 // Run calculations on load and when orientation changes
@@ -18,6 +20,9 @@ window.addEventListener('resize', calculateRealVh);
 window.addEventListener('orientationchange', () => window.setTimeout(() => calculateRealVh(true), 150));
 window.addEventListener('pageshow', () => restoreViewportAfterKeyboard());
 window.visualViewport?.addEventListener('resize', calculateRealVh);
+window.visualViewport?.addEventListener('scroll', calculateRealVh);
+document.addEventListener('focusin', () => requestAnimationFrame(() => calculateRealVh()));
+document.addEventListener('focusout', () => setTimeout(() => calculateRealVh(true), 100));
 calculateRealVh();
 
 function restoreViewportAfterKeyboard() {
@@ -61,7 +66,9 @@ const database = firebase.database();
 // =========================================================================
 // LOCAL STATE & PROFILE DICTIONARY CONFIGURATION
 // =========================================================================
-let localPlayer = null; 
+let localPlayer = null;
+let nicknameRecords = {};
+let nicknameProposalBusy = false;
 
 const playerProfiles = {
     Peter: {
@@ -200,6 +207,8 @@ function initialiseSoundEffectControls() {
 }
 
 function stopUiSounds() {
+    uiSoundUntil = 0;
+    uiSoundPriority = -1;
     activeSoundNodes.forEach(({ oscillator, gain }) => {
         gain.disconnect();
         try { oscillator.stop(); } catch { /* The oscillator may have already ended. */ }
@@ -302,7 +311,54 @@ async function playUiSound(kind) {
     }
 }
 
+let uiSoundUntil = 0;
+let uiSoundPriority = -1;
+const gameSoundStates = new Map();
+let notificationSoundBaseline = null;
+let notificationSoundConnected = false;
+let notificationSoundConnectedAt = Infinity;
+
+function updateNotificationSoundConnection(connected) {
+    if (connected === notificationSoundConnected) return;
+    notificationSoundConnected = connected;
+    notificationSoundBaseline = null;
+    notificationSoundConnectedAt = connected ? Date.now() : Infinity;
+}
+
+function soundForIncomingNotifications(notifications) {
+    const previous = notificationSoundBaseline;
+    const newestAt = Math.max(previous?.newestAt || 0, ...notifications.map(item => Number(item.createdAt) || 0));
+    notificationSoundBaseline = { player: localPlayer, ids: new Set(notifications.map(item => item.id)), newestAt };
+    if (!notificationSoundConnected || !previous || previous.player !== localPlayer) return;
+    const fresh = notifications.some(item => !previous.ids.has(item.id) &&
+        item.recipient === localPlayer && item.sender !== localPlayer && !item.readBy?.[localPlayer] &&
+        item.createdAt >= Math.max(notificationSoundConnectedAt, previous.newestAt) &&
+        Math.abs(Date.now() - item.createdAt) < 15000);
+    if (fresh) playUiSound('notification');
+}
+
+function soundForGameResult(game, state) {
+    if (!state) return;
+    const key = `${localPlayer}:${game}`;
+    const id = state.roundId || state.createdAt || state.startsAt;
+    const previous = gameSoundStates.get(key);
+    gameSoundStates.set(key, { id, status: state.status });
+    if (previous && previous.id === id && previous.status !== 'finished' && state.status === 'finished' &&
+        state.winner === localPlayer && !state.abandonedBy && activeAppView === game) playUiSound('complete');
+}
+
 function scheduleUiSound(context, kind) {
+    const settings = {
+        tap: [0, 90], confirm: [1, 210], success: [2, 320], error: [1, 190],
+        ready: [2, 300], complete: [3, 650], 'realm-enter': [2, 620],
+        'realm-exit': [2, 450], sent: [1, 140], notification: [1, 380]
+    }[kind];
+    if (!settings) return;
+    const now = performance.now();
+    if (now < uiSoundUntil && settings[0] <= uiSoundPriority) return;
+    stopUiSounds();
+    uiSoundPriority = settings[0];
+    uiSoundUntil = now + settings[1];
     if (kind === 'tap') {
         playUiTone(context, 660, 0, 0.075, 0.12, 'sine', 780);
     } else if (kind === 'confirm') {
@@ -314,6 +370,25 @@ function scheduleUiSound(context, kind) {
         playUiTone(context, 784, 0.15, 0.13, 0.10, 'sine', 880);
     } else if (kind === 'error') {
         playUiTone(context, 330, 0, 0.16, 0.10, 'triangle', 240);
+    } else if (kind === 'ready') {
+        playUiTone(context, 440, 0, 0.11, 0.10);
+        playUiTone(context, 660, 0.10, 0.16, 0.10);
+    } else if (kind === 'complete') {
+        playUiTone(context, 523.25, 0, 0.28, 0.09);
+        playUiTone(context, 659.25, 0.12, 0.30, 0.09);
+        playUiTone(context, 783.99, 0.24, 0.36, 0.08);
+    } else if (kind === 'realm-enter') {
+        playUiTone(context, 220, 0, 0.36, 0.06, 'sine', 440);
+        playUiTone(context, 440, 0.10, 0.34, 0.045, 'sine', 880);
+        playUiTone(context, 880, 0.30, 0.28, 0.025);
+    } else if (kind === 'realm-exit') {
+        playUiTone(context, 660, 0, 0.28, 0.06, 'sine', 330);
+        playUiTone(context, 440, 0.10, 0.30, 0.035, 'sine', 220);
+    } else if (kind === 'sent') {
+        playUiTone(context, 480, 0, 0.11, 0.10, 'sine', 760);
+    } else if (kind === 'notification') {
+        playUiTone(context, 784, 0, 0.18, 0.07);
+        playUiTone(context, 1046.5, 0.12, 0.22, 0.055);
     }
 }
 
@@ -1082,16 +1157,106 @@ function showMenu() {
     switchTab('games');
 }
 
-function promptNicknameChange() {
+async function promptNicknameChange() {
     const currentProfile = playerProfiles[localPlayer];
     if (!currentProfile) return;
 
     const nextNickname = window.prompt('Enter nickname', currentProfile.nickname);
     if (!nextNickname || !nextNickname.trim()) return;
 
-    currentProfile.nickname = nextNickname.trim().slice(0, 24);
-    initialiseMainDashboard();
-    openProfileSettings();
+    await database.ref(`nicknames/${localPlayer}/value`).set(nextNickname.trim().slice(0, 24));
+}
+
+function applyNicknameRecords(records) {
+    nicknameRecords = records || {};
+    for (const player of ['Peter', 'Jadey']) {
+        const value = nicknameRecords[player]?.value;
+        playerProfiles[player].nickname = typeof value === 'string' && value.trim()
+            ? value.trim().slice(0, 24) : player === 'Peter' ? 'Peter' : 'Sweetheart';
+    }
+    if (!localPlayer) return;
+    document.querySelectorAll('.header-nickname, #header-nickname, #profile-label-nickname, #home-greeting-name').forEach(element => {
+        element.textContent = playerProfiles[localPlayer].nickname;
+    });
+    renderMessages();
+    renderNotifications();
+}
+
+function openNicknameProposal() {
+    if (!localPlayer) return;
+    let dialog = document.getElementById('nickname-proposal-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'nickname-proposal-dialog';
+        dialog.className = 'game-confirm-dialog nickname-proposal-dialog';
+        dialog.setAttribute('aria-labelledby', 'nickname-proposal-title');
+        dialog.innerHTML = '<h2 id="nickname-proposal-title">Suggest a nickname</h2><p id="nickname-proposal-recipient"></p><form><label for="nickname-proposal-input">Nickname</label><input id="nickname-proposal-input" maxlength="24" required autocomplete="off"><p id="nickname-proposal-status" role="status"></p><div class="nickname-proposal-actions"><button type="button">Cancel</button><button type="submit" class="primary">Send proposal</button></div></form>';
+        dialog.querySelector('button[type=button]').onclick = () => dialog.close();
+        dialog.querySelector('form').onsubmit = submitNicknameProposal;
+        document.body.append(dialog);
+    }
+    dialog.dataset.recipient = otherPlayer(localPlayer);
+    dialog.querySelector('#nickname-proposal-recipient').textContent = `For ${playerProfiles[otherPlayer(localPlayer)].nickname}. They can accept or decline.`;
+    dialog.querySelector('input').value = '';
+    dialog.querySelector('[role=status]').textContent = '';
+    dialog.style.setProperty('--theme-color', themeColorFor(localPlayer));
+    dialog.style.setProperty('--theme-text-color', textColorFor(themeColorFor(localPlayer)));
+    dialog.showModal();
+}
+
+async function submitNicknameProposal(event) {
+    event.preventDefault();
+    if (!localPlayer || nicknameProposalBusy) return;
+    const dialog = document.getElementById('nickname-proposal-dialog');
+    const value = dialog.querySelector('input').value.trim();
+    const recipient = dialog.dataset.recipient;
+    const status = dialog.querySelector('[role=status]');
+    if (!value || value.length > 24 || recipient !== otherPlayer(localPlayer)) {
+        status.textContent = 'Enter a nickname between 1 and 24 characters.';
+        return;
+    }
+    nicknameProposalBusy = true;
+    const submit = dialog.querySelector('[type=submit]');
+    submit.disabled = true;
+    const notification = database.ref('notifications').push();
+    const proposal = { id: notification.key, sender: localPlayer, recipient, value, createdAt: Date.now() };
+    try {
+        await database.ref().update({
+            [`nicknames/${recipient}/proposal`]: proposal,
+            [`notifications/${proposal.id}`]: {
+                type: 'Nickname proposal', action: 'nickname-proposal', sender: localPlayer, recipient,
+                proposedNickname: value, body: `${playerProfiles[localPlayer].nickname} suggests calling you "${value}"`,
+                createdAt: proposal.createdAt, readBy: {}
+            }
+        });
+        playUiSound('confirm');
+        dialog.close();
+    } catch { status.textContent = 'Could not send the proposal. Please try again.'; }
+    finally { nicknameProposalBusy = false; submit.disabled = false; }
+}
+
+async function respondToNicknameProposal(id, accepted) {
+    const notification = latestNotifications.find(item => item.id === id);
+    if (!localPlayer || notification?.recipient !== localPlayer || notification.action !== 'nickname-proposal') return;
+    const recipient = localPlayer;
+    const ref = database.ref(`nicknames/${recipient}`);
+    const result = await ref.transaction(current => {
+        if (!current?.proposal || current.proposal.id !== id || current.proposal.recipient !== recipient || current.proposal.sender !== otherPlayer(recipient)) return;
+        const name = current.proposal.value;
+        if (typeof name !== 'string' || !name.trim() || name.length > 24) return;
+        if (accepted) current.value = name;
+        current.lastResponse = { id, accepted, at: Date.now() };
+        current.proposal = null;
+        return current;
+    }, undefined, false).catch(() => null);
+    if (!result?.committed) {
+        const card = document.querySelector(`[data-notification-id="${id}"] .notification-body`);
+        if (card) card.textContent = 'This proposal changed or could not be saved. Reopen Alerts to retry.';
+        return;
+    }
+    applyNicknameRecords({ ...nicknameRecords, [recipient]: result.snapshot.val() });
+    playUiSound('confirm');
+    await database.ref(`notifications/${id}`).update({ respondedBy: { [recipient]: true }, proposalAccepted: accepted }).catch(() => {});
 }
 
 function openProfilePhotoPicker() {
@@ -1197,6 +1362,8 @@ function resetProfilePhoto() {
 function initialiseRealtimeFeeds() {
     if (realtimeFeedsStarted || !localPlayer || !auth.currentUser) return;
     realtimeFeedsStarted = true;
+    database.ref('.info/connected').on('value', snapshot => updateNotificationSoundConnection(snapshot.val() === true));
+    database.ref('nicknames').on('value', snapshot => applyNicknameRecords(snapshot.val()));
 
     database.ref('messages').limitToLast(RETENTION_LIMIT).on('value', (snapshot) => {
         const data = snapshot.val() || {};
@@ -1212,6 +1379,7 @@ function initialiseRealtimeFeeds() {
         latestNotifications = Object.entries(data)
             .map(([id, value]) => ({ id, ...value }))
             .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        soundForIncomingNotifications(latestNotifications);
         renderNotifications();
         updateNotificationBadges();
         runRetentionCleanup();
@@ -1448,7 +1616,7 @@ function sendMessage(event) {
         recipient,
         text,
         createdAt: Date.now()
-    }).then(() => { if (activeAppView === 'messages') playUiSound('confirm'); })
+    }).then(() => { if (activeAppView === 'messages') playUiSound('sent'); })
         .catch(() => playUiSound('error'));
     sendAppNotification({
         type: `Message from ${senderNickname}`,
@@ -1486,8 +1654,8 @@ function renderMessages() {
         const photo = profilePhotoFor(message.sender);
         const avatar = `<div class="message-avatar ${photo ? 'has-photo' : ''}"${photo ? ` style="background-image:url('${photo}')"` : ''}>${photo ? '' : senderProfile.initial}</div>`;
         const meta = mine
-            ? `<time>${timeLabel}</time><span>${senderProfile.nickname}</span>`
-            : `<span>${senderProfile.nickname}</span><time>${timeLabel}</time>`;
+            ? `<time>${timeLabel}</time><span>${escapeHtml(senderProfile.nickname)}</span>`
+            : `<span>${escapeHtml(senderProfile.nickname)}</span><time>${timeLabel}</time>`;
         const bubbleActions = mine
             ? `onpointerdown="startMessageHold(event, '${message.id}')" onpointerup="cancelMessageHold()" onpointercancel="cancelMessageHold()" onpointerleave="cancelMessageHold()"`
             : '';
@@ -1525,7 +1693,14 @@ function renderNotifications() {
             ? `<button disabled>${label}</button>`
             : `<button onclick="handleNotificationAction('${notification.id}', '${actionName}', '${value}')">${label}</button>`;
 
-        if (notification.action === 'send-back' && isRecipient) {
+        if (notification.action === 'nickname-proposal' && isRecipient) {
+            const record = nicknameRecords[localPlayer];
+            const pending = record?.proposal?.id === notification.id;
+            const answer = record?.lastResponse?.id === notification.id ? record.lastResponse.accepted : notification.proposalAccepted;
+            action = !responded && pending
+                ? `<div class="notification-actions"><button onclick="respondToNicknameProposal('${notification.id}', true)">Accept</button><button class="secondary-action" onclick="respondToNicknameProposal('${notification.id}', false)">Decline</button></div>`
+                : `<button disabled>${answer === true ? 'Accepted' : answer === false ? 'Declined' : 'Replaced'}</button>`;
+        } else if (notification.action === 'send-back' && isRecipient) {
             action = `<button ${responded ? 'disabled' : ''} onclick="sendInteractionBack('${notification.id}', '${notification.interactionType}')">${responded ? 'Sent' : 'Send back'}</button>`;
         } else if (notification.action === 'reply' && isRecipient) {
             action = navigationButton('Reply', 'messages');
@@ -1560,7 +1735,7 @@ function renderNotifications() {
         }
 
         return `
-            <div class="notification-card" onpointerdown="startNotificationSwipe(event, '${notification.id}')" onpointermove="moveNotificationSwipe(event)" onpointerup="finishNotificationSwipe(event)" onpointercancel="cancelNotificationSwipe()">
+            <div class="notification-card" data-notification-id="${notification.id}" onpointerdown="startNotificationSwipe(event, '${notification.id}')" onpointermove="moveNotificationSwipe(event)" onpointerup="finishNotificationSwipe(event)" onpointercancel="cancelNotificationSwipe()">
                 <div>
                     <div class="notification-meta"><span class="notification-type">${escapeHtml(notification.type || 'Update')}</span><time>${timeLabel}</time></div>
                     <div class="notification-body">${escapeHtml(notification.body || '')}</div>

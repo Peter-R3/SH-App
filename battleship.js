@@ -153,6 +153,7 @@ function sendBattleshipInvite() {
 }
 
 function renderBattleship() {
+    soundForGameResult('battleship', battleshipState);
     const board = document.getElementById('battleship-board');
     const controls = document.getElementById('battleship-controls');
     const toggle = document.getElementById('battleship-view-toggle');
@@ -532,6 +533,7 @@ function rotateBattleshipShip(shipId) {
 }
 
 function readyBattleshipFleet() {
+    playUiSound('ready');
     selectedBattleshipShipId = null;
     removeBattleshipDragGhost();
     database.ref('games/battleship/current').transaction(current => {

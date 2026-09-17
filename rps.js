@@ -144,6 +144,7 @@ function sendRpsInvite() {
 }
 
 function renderRps() {
+    soundForGameResult('rps', rpsState);
     if (typeof updateQuickGameLobby === 'function') updateQuickGameLobby('rps', rpsState);
     const choices = document.getElementById('rps-choices');
     const reveal = document.getElementById('rps-reveal');

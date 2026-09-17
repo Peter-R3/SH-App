@@ -91,6 +91,7 @@ function sendConnectFourInvite() {
 }
 
 function renderConnectFour() {
+    soundForGameResult('connect-four', connectFourState);
     updateQuickGameLobby('connect-four', connectFourState);
     const board = document.getElementById('connect-four-board');
     const controls = document.getElementById('connect-four-controls');

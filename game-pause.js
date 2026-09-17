@@ -104,7 +104,7 @@ function openQuickGameLobby(id, mode, path, begin) {
     }).catch(() => { status.textContent = 'Could not check the match. Tap to retry.'; button.textContent = 'Retry'; button.disabled = false; });
     button.onclick = async () => {
         button.disabled = true;
-        playUiSound('confirm');
+        playUiSound('ready');
         try {
             await begin();
         } catch {

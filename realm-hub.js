@@ -14,6 +14,7 @@ let realmPendingTransition = null;
 async function transitionRealmHub(changeScreen) {
     if (realmTransitioning) { realmPendingTransition = changeScreen; return; }
     realmTransitioning = true;
+    playUiSound(activeAppView === 'realm-hub' ? 'realm-exit' : 'realm-enter');
     closeRealmDropdowns();
     const overlay = document.createElement('div');
     overlay.className = 'realm-portal-transition';

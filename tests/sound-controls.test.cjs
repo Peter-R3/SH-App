@@ -18,7 +18,7 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
             await page.addStyleTag({ content: fs.readFileSync(path.join(root, 'styles.css'), 'utf8') });
             // Fake audio nodes never send sound to the machine's output device.
             await page.addScriptTag({ content: `
-                let localPlayer = 'Peter', soundEffectsEnabled = true, soundContext = null, soundPreferenceRevision = 0;
+                let localPlayer = 'Peter', activeAppView = 'home', soundEffectsEnabled = true, soundContext = null, soundPreferenceRevision = 0;
                 const activeSoundNodes = new Set();
                 window.startedTones = 0;
                 window.stoppedTones = 0;
@@ -55,6 +55,7 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
         assert.equal(await page.locator('#profile-sound-enabled').isChecked(), false, 'Mute persists after reload');
         await page.locator('#profile-sound-enabled').check();
         assert.equal(await page.evaluate(() => startedTones), 2, 'One confirmation when enabling');
+        await page.waitForTimeout(220);
         await page.locator('.profile-theme-entry').click();
         assert.equal(await page.evaluate(() => startedTones), 3, 'One menu tap');
         await page.evaluate(() => {
@@ -82,6 +83,54 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
             await pending;
         });
         assert.equal(await page.evaluate(() => activeSoundNodes.size), 0, 'Muted pending resume does not play');
+        for (const [kind, tones] of [['ready', 2], ['complete', 3], ['realm-enter', 3], ['realm-exit', 2], ['sent', 1], ['notification', 2]]) {
+            const played = await page.evaluate(async kind => {
+                stopUiSounds(); soundEffectsEnabled = true;
+                const before = startedTones;
+                await playUiSound(kind);
+                const played = startedTones - before;
+                soundEffectsEnabled = false;
+                stopUiSounds();
+                await playUiSound(kind);
+                if (startedTones - before !== played) throw new Error('Muted cue played');
+                return played;
+            }, kind);
+            assert.equal(played, tones, kind + ' has its own tone sequence');
+        }
+        assert.equal(await page.evaluate(async () => {
+            soundEffectsEnabled = true; stopUiSounds();
+            const before = startedTones;
+            await playUiSound('complete');
+            await playUiSound('tap'); await playUiSound('notification'); await playUiSound('complete');
+            return startedTones - before;
+        }), 3, 'Completion suppresses overlapping and repeated cues');
+        const notificationChecks = await page.evaluate(() => {
+            const original = playUiSound;
+            const calls = [];
+            playUiSound = kind => calls.push(kind);
+            updateNotificationSoundConnection(true);
+            const item = { id: 'old', sender: 'Jadey', recipient: 'Peter', createdAt: Date.now() };
+            soundForIncomingNotifications([item]);
+            const baseline = calls.length;
+            soundForIncomingNotifications([item, { ...item, id: 'fresh' }]);
+            const fresh = calls.length;
+            soundForIncomingNotifications([item, { ...item, id: 'fresh', readBy: { Peter: true } }]);
+            soundForIncomingNotifications([item, { ...item, id: 'outgoing', sender: 'Peter', recipient: 'Jadey' }]);
+            const updates = calls.length;
+            updateNotificationSoundConnection(false);
+            soundForIncomingNotifications([{ ...item, id: 'offline' }]);
+            updateNotificationSoundConnection(true);
+            soundForIncomingNotifications([{ ...item, id: 'reconnected' }]);
+            const reconnect = calls.length;
+            activeAppView = 'rps';
+            soundForGameResult('rps', { roundId: 'old', status: 'finished', winner: 'Peter' });
+            soundForGameResult('rps', { roundId: 'new', status: 'active' });
+            soundForGameResult('rps', { roundId: 'new', status: 'finished', winner: 'Peter' });
+            soundForGameResult('rps', { roundId: 'new', status: 'finished', winner: 'Peter' });
+            playUiSound = original;
+            return { baseline, fresh, updates, reconnect, calls };
+        });
+        assert.deepEqual(notificationChecks, { baseline: 0, fresh: 1, updates: 1, reconnect: 1, calls: ['notification', 'complete'] });
         for (const id of ['profile-screen', 'word-search-settings-screen', 'sudoku-settings-screen', 'tic-tac-toe-settings-screen', 'rps-settings-screen']) {
             await page.evaluate(id => showTestScreen(id), id);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${id} fits narrow screen`);

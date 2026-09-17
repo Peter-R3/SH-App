@@ -140,6 +140,7 @@ function sendTicTacToeInvite() {
 }
 
 function renderTicTacToe() {
+    soundForGameResult('tic-tac-toe', ticTacToeState);
     updateQuickGameLobby('tic-tac-toe', ticTacToeState);
     const board = document.getElementById('tic-tac-toe-board');
     const controls = document.getElementById('tic-tac-toe-controls');

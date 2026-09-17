@@ -51,7 +51,7 @@ function showSudokuPlayArea() {
 
 async function startPreparedSudoku(skipCountdown = false) {
     if (!sudokuState?.puzzle) return;
-    playUiSound('confirm');
+    playUiSound('ready');
     document.getElementById('sudoku-lobby-primary').disabled = true;
     if (sudokuSettings.mode === 'versus-ai') {
         if (skipCountdown === true) {
@@ -73,19 +73,23 @@ async function startPreparedSudoku(skipCountdown = false) {
         return;
     }
     const state = sudokuState;
+    const expectedStartedAt = state.startedAt;
+    const startedAt = Date.now();
     const path = sudokuSettings.mode === 'coop' ? coopSudokuPath() : soloSudokuPath();
     const pause = Math.max(0, Date.now() - (sudokuLobbyEnteredAt || Date.now()));
     try {
         const result = await database.ref(path).transaction(current => {
-            if (!current || current.startedAt !== state.startedAt || current.completedAt) return;
+            // Firebase may invoke this before its local transaction cache is populated.
+            current = current || JSON.parse(JSON.stringify(state));
+            if (current.startedAt !== expectedStartedAt || current.completedAt) return;
             if (current.playStarted === false) {
-                current.startedAt = Date.now();
+                current.startedAt = startedAt;
                 current.playStarted = true;
             } else if (sudokuSettings.mode === 'solo') {
                 current.pausedMs = (Number(current.pausedMs) || 0) + pause;
             }
             return current;
-        });
+        }, undefined, false);
         if (!result.committed) {
             showSudokuLobby({ status: 'The puzzle changed. Reopen the game to continue.' });
             return;
@@ -109,7 +113,7 @@ function showSudokuCompletionCue() {
     overlay.classList.remove('hidden', 'show-turn-cue');
     void overlay.offsetWidth;
     overlay.classList.add('show-turn-cue');
-    playUiSound('success');
+    playUiSound('complete');
     sudokuCompletionCueTimer = setTimeout(() => overlay.classList.add('hidden'), 1050);
 }
 
@@ -390,6 +394,7 @@ function applySudokuState(state) {
 }
 
 function renderSudokuVersusState(state) {
+    soundForGameResult('sudoku', state);
     sudokuState = state;
     if (!state?.puzzle) {
         setSudokuStatus('Creating match...');
@@ -692,6 +697,7 @@ function sudokuCountLabel(value, singular, plural) {
 }
 
 function readyForSudokuVersus() {
+    playUiSound('ready');
     database.ref('sudoku/versus/current').transaction(current => {
         if (!current || current.status !== 'waiting') return current;
         current.readyBy = current.readyBy || {};

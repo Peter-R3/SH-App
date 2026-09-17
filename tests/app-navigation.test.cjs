@@ -259,6 +259,69 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => { setActiveAppView('sudoku'); requestNewSudokuPuzzle(); });
         await page.locator('#game-confirm-dialog button[value=confirm]').click();
         await page.waitForFunction(() => window.puzzleWrites > 1 && activeAppView === 'sudoku' && document.getElementById('sudoku-lobby').classList.contains('hidden'));
+        await page.evaluate(async () => {
+            const original = database.ref;
+            sudokuSettings.mode = 'solo';
+            sudokuState.playStarted = false;
+            const saved = JSON.parse(JSON.stringify(sudokuState));
+            database.ref = path => ({ ...original(path), transaction: async update => {
+                if (!update(null)) throw new Error('Cold-cache Sudoku start aborted');
+                const value = update(JSON.parse(JSON.stringify(saved)));
+                return { committed: Boolean(value), snapshot: { val: () => value } };
+            } });
+            setActiveAppView('sudoku-lobby');
+            showSudokuLobby();
+            await startPreparedSudoku();
+            database.ref = window.originalPuzzleRef;
+        });
+        assert.equal(await page.evaluate(() => activeAppView), 'sudoku');
+        assert.equal(await page.locator('#sudoku-lobby').isVisible(), false);
+        await page.evaluate(() => {
+            switchTab('messages');
+            window.realViewport = window.visualViewport;
+            Object.defineProperty(window, 'visualViewport', { configurable: true, value: { height: 420, offsetTop: 25, scale: 1 } });
+            calculateRealVh();
+        });
+        const keyboardBounds = await page.locator('.app-container').boundingBox();
+        assert.equal(Math.round(keyboardBounds.height), 420);
+        assert.equal(Math.round(keyboardBounds.y), 25);
+        await page.evaluate(() => {
+            Object.defineProperty(window, 'visualViewport', { configurable: true, value: window.realViewport });
+            calculateRealVh(true);
+            switchTab('profile');
+            window.nicknameWrites = {};
+            window.nicknameData = {};
+            database.ref = path => ({
+                ...window.originalPuzzleRef(path),
+                push: () => ({ key: 'proposal-test' }),
+                update: async values => { Object.assign(window.nicknameWrites, values); },
+                transaction: async update => {
+                    const value = update(JSON.parse(JSON.stringify(window.nicknameData)));
+                    if (value) window.nicknameData = value;
+                    return { committed: Boolean(value), snapshot: { val: () => value } };
+                }
+            });
+            openNicknameProposal();
+        });
+        await page.locator('#nickname-proposal-input').fill('Lovely <3');
+        await page.locator('#nickname-proposal-dialog button[type=submit]').click();
+        await page.waitForFunction(() => !document.getElementById('nickname-proposal-dialog').open);
+        assert.equal(await page.evaluate(() => window.nicknameWrites['notifications/proposal-test'].recipient), 'Jadey');
+        await page.evaluate(async () => {
+            window.nicknameData = { value: 'Sweetheart', proposal: window.nicknameWrites['nicknames/Jadey/proposal'] };
+            latestNotifications = [{ id: 'proposal-test', ...window.nicknameWrites['notifications/proposal-test'] }];
+            await respondToNicknameProposal('proposal-test', true);
+        });
+        assert.equal(await page.evaluate(() => window.nicknameData.value), 'Sweetheart', 'Sender cannot accept');
+        await page.evaluate(async () => { localPlayer = 'Jadey'; await respondToNicknameProposal('proposal-test', true); });
+        assert.equal(await page.evaluate(() => playerProfiles.Jadey.nickname), 'Lovely <3');
+        await page.evaluate(async () => {
+            window.nicknameData.proposal = { ...window.nicknameWrites['nicknames/Jadey/proposal'], value: 'Declined name' };
+            await respondToNicknameProposal('proposal-test', false);
+        });
+        assert.equal(await page.evaluate(() => window.nicknameData.value), 'Lovely <3', 'Declining preserves nickname');
+        await page.evaluate(async () => { await respondToNicknameProposal('proposal-test', true); });
+        assert.equal(await page.evaluate(() => window.nicknameData.value), 'Lovely <3', 'Resolved proposal cannot replay');
         await page.evaluate(() => { database.ref = window.originalPuzzleRef; });
         assert.deepEqual(errors, []);
         console.log('PASS: full script loading, navigation, six pause menus at three widths, Play toggles, scoped stats, solo/Jaylin pause checks and portal Back.');
