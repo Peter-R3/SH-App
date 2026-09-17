@@ -480,16 +480,18 @@ function clearGameNotifications(actions, players = ['Peter', 'Jadey']) {
 
 function removeNotificationsForMessage(message) {
     if (!message) return Promise.resolve();
-    return removeMatchingNotifications(notification =>
-        notification.action === 'reply' &&
+    return removeMatchingNotifications(notification => notificationMatchesMessage(notification, message));
+}
+
+function notificationMatchesMessage(notification, message) {
+    return notification.action === 'reply' &&
         (
             notification.messageId === message.id ||
             (!notification.messageId &&
                 notification.sender === message.sender &&
                 notification.recipient === message.recipient &&
                 notification.body === message.text)
-        )
-    );
+        );
 }
 
 // =========================================================================
@@ -1793,32 +1795,102 @@ document.addEventListener('pointerdown', event => {
 });
 
 function editSelectedMessage() {
-    const message = latestMessages.find(item => item.id === selectedMessageActionId);
-    if (!message || message.sender !== localPlayer) {
-        closeMessageActionMenu();
-        return;
-    }
-    const updated = window.prompt('Edit message', message.text || '');
-    if (updated !== null) {
-        const text = updated.trim();
-        if (text) database.ref(`messages/${message.id}/text`).set(text);
-    }
-    closeMessageActionMenu();
+    openMessageDialog('edit');
 }
 
 function deleteSelectedMessage() {
+    openMessageDialog('delete');
+}
+
+function openMessageDialog(action) {
     const message = latestMessages.find(item => item.id === selectedMessageActionId);
-    if (!message || message.sender !== localPlayer) {
-        closeMessageActionMenu();
+    closeMessageActionMenu();
+    if (!message || message.sender !== localPlayer) return;
+    let dialog = document.getElementById('message-edit-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'message-edit-dialog';
+        dialog.className = 'game-confirm-dialog message-edit-dialog';
+        dialog.setAttribute('aria-labelledby', 'message-edit-title');
+        dialog.innerHTML = '<h2 id="message-edit-title"></h2><form><label for="message-edit-text">Message</label><textarea id="message-edit-text" maxlength="180" rows="4"></textarea><p class="message-delete-note">This removes the message for both of you.</p><blockquote class="message-delete-preview"></blockquote><p class="message-edit-status" role="status"></p><div class="message-edit-actions"><button type="button">Cancel</button><button type="submit" class="primary"></button></div></form>';
+        dialog.querySelector('[type=button]').onclick = () => { if (!dialog.busy) dialog.close(); };
+        dialog.addEventListener('cancel', event => { if (dialog.busy) event.preventDefault(); });
+        dialog.addEventListener('click', event => {
+            const bounds = dialog.getBoundingClientRect();
+            if (!dialog.busy && event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+        });
+        dialog.querySelector('form').onsubmit = submitMessageDialog;
+        document.body.append(dialog);
+    }
+    if (dialog.open) return;
+    dialog.message = { ...message };
+    dialog.action = action;
+    dialog.busy = false;
+    const editing = action === 'edit';
+    dialog.querySelector('h2').textContent = editing ? 'Edit message' : 'Delete message?';
+    dialog.querySelector('textarea').value = message.text || '';
+    dialog.querySelector('textarea').required = editing;
+    dialog.querySelector('textarea').hidden = !editing;
+    dialog.querySelector('label').hidden = !editing;
+    dialog.querySelector('.message-delete-note').hidden = editing;
+    dialog.querySelector('.message-delete-preview').hidden = editing;
+    dialog.querySelector('.message-delete-preview').textContent = message.text || '';
+    dialog.querySelector('[role=status]').textContent = '';
+    const submit = dialog.querySelector('[type=submit]');
+    submit.textContent = editing ? 'Save' : 'Delete';
+    submit.classList.toggle('message-delete-confirm', !editing);
+    dialog.style.setProperty('--theme-color', themeColorFor(localPlayer));
+    dialog.style.setProperty('--theme-text-color', textColorFor(themeColorFor(localPlayer)));
+    dialog.showModal();
+    dialog.querySelector(editing ? 'textarea' : '[type=button]').focus();
+}
+
+async function submitMessageDialog(event) {
+    event.preventDefault();
+    const dialog = document.getElementById('message-edit-dialog');
+    if (!dialog?.open || dialog.busy) return;
+    const message = dialog.message;
+    const actor = localPlayer;
+    const editing = dialog.action === 'edit';
+    const text = dialog.querySelector('textarea').value.trim();
+    const status = dialog.querySelector('[role=status]');
+    if (!actor || message.sender !== actor) return;
+    if (editing && (!text || text.length > 180)) {
+        status.textContent = 'Enter a message between 1 and 180 characters.';
         return;
     }
-    if (window.confirm('Delete this message?')) {
-        Promise.all([
-            database.ref(`messages/${message.id}`).remove(),
-            removeNotificationsForMessage(message)
-        ]);
+    dialog.busy = true;
+    dialog.querySelectorAll('button, textarea').forEach(control => { control.disabled = true; });
+    status.textContent = editing ? 'Saving...' : 'Deleting...';
+    try {
+        const ref = database.ref(`messages/${message.id}`);
+        const current = (await ref.once('value')).val();
+        if (!current || current.sender !== actor || localPlayer !== actor) throw new Error('This message is no longer available.');
+        if (editing) {
+            const result = await ref.transaction(value => {
+                if (!value) return value;
+                if (value.sender !== actor || localPlayer !== actor || value.text !== message.text) return;
+                return { ...value, text };
+            }, undefined, false);
+            if (!result.committed || !result.snapshot.val()) throw new Error('The message changed. Close this dialog and reopen it to edit the latest version.');
+        } else {
+            const notifications = await database.ref('notifications').once('value');
+            const updates = { [`messages/${message.id}`]: null };
+            notifications.forEach(child => {
+                if (notificationMatchesMessage(child.val(), { ...current, id: message.id })) updates[`notifications/${child.key}`] = null;
+            });
+            if (localPlayer !== actor) throw new Error('Your account changed. Please reopen the message.');
+            await database.ref().update(updates);
+        }
+        playUiSound('confirm');
+        dialog.close();
+    } catch (error) {
+        status.textContent = error.code ? 'Could not save the change. Please try again.' : error.message;
+        playUiSound('error');
+    } finally {
+        dialog.busy = false;
+        dialog.querySelectorAll('button, textarea').forEach(control => { control.disabled = false; });
     }
-    closeMessageActionMenu();
 }
 
 function startNotificationSwipe(event, notificationId) {
@@ -1936,6 +2008,8 @@ function openManagementScreen() {
         header.classList.add('header-peter');
     }
     syncManagedScoreControls();
+    enhanceGameSettingsSelects(document.getElementById('management-screen'));
+    syncGameSettingsSelects(document.getElementById('management-screen'));
     setManagementStatus('');
 }
 
@@ -1963,11 +2037,12 @@ function removeMatchingChildren(path, predicate) {
     });
 }
 
-function clearManagedCommunication(kind) {
+async function clearManagedCommunication(kind) {
     if (localPlayer !== 'Peter') return;
     const profiles = selectedProfiles('management-profile');
     const targetLabel = profiles.length === 2 ? 'both profiles' : profiles[0];
-    if (!window.confirm(`Delete ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}?`)) return;
+    if (!await confirmNewPuzzle('Delete communication data?', `Delete ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}? This cannot be undone.`, 'Delete')) return;
+    if (localPlayer !== 'Peter') return;
 
     const tasks = [];
     if (kind === 'notifications' || kind === 'both') {
@@ -1995,7 +2070,7 @@ function adjustCounter(path, operation) {
     });
 }
 
-function adjustManagedScores(operation) {
+async function adjustManagedScores(operation) {
     if (localPlayer !== 'Peter') return;
     const profiles = selectedProfiles('score-profile');
     const game = document.getElementById('score-game')?.value || 'number-guess';
@@ -2008,7 +2083,6 @@ function adjustManagedScores(operation) {
             ? ['versus', 'versusAi']
             : ['ten', 'hundred', 'colours'];
     const modes = selectedMode === 'all' ? availableModes : [selectedMode];
-    if (operation === 'reset' && !window.confirm('Reset the selected game scores to zero?')) return;
 
     let scoreTargets;
     if (game === 'word-search') {
@@ -2098,6 +2172,8 @@ function adjustManagedScores(operation) {
         })));
     }
 
+    if (operation === 'reset' && !await confirmNewPuzzle('Reset game scores?', `Reset the selected statistics for ${profiles.length === 2 ? 'both profiles' : profiles[0]} to zero? This cannot be undone.`, 'Reset')) return;
+    if (localPlayer !== 'Peter') return;
     Promise.all(scoreTargets.map(target => {
         const targetOperation = target.isTime
             ? (operation === 'increment' ? 'increment-time' : operation === 'decrement' ? 'decrement-time' : 'reset')
@@ -2156,14 +2232,16 @@ function syncManagedScoreControls() {
     }
     modeSelect.classList.toggle('hidden', isBattleship || isConnectFour);
     document.querySelector('label[for="score-mode"]')?.classList.toggle('hidden', isBattleship || isConnectFour);
+    syncGameSettingsSelects(document.getElementById('management-screen'));
 }
 
-function adjustManagedInteractions(operation) {
+async function adjustManagedInteractions(operation) {
     if (localPlayer !== 'Peter') return;
     const profiles = selectedProfiles('interaction-profile');
     const selectedType = document.getElementById('interaction-type')?.value || 'all';
     const types = selectedType === 'all' ? ['hearts', 'hugs', 'kisses'] : [selectedType];
-    if (operation === 'reset' && !window.confirm('Reset the selected interaction scores to zero?')) return;
+    if (operation === 'reset' && !await confirmNewPuzzle('Reset interaction scores?', `Reset the selected interactions for ${profiles.length === 2 ? 'both profiles' : profiles[0]} to zero? This cannot be undone.`, 'Reset')) return;
+    if (localPlayer !== 'Peter') return;
 
     Promise.all(profiles.flatMap(profile =>
         types.map(type => adjustCounter(`interactions/${profile}/${type}`, operation))
@@ -2346,7 +2424,8 @@ function recordNumberGuessHistory(round, wasCorrect) {
 
     const historyRef = database.ref('history/numberGuess');
     const recordRef = round.roundId ? historyRef.child(round.roundId) : historyRef.push();
-    return recordRef.set(record).then(() =>
+    // Retried submissions must never rewrite a completed round or its timestamp.
+    return recordRef.transaction(current => current || record, undefined, false).then(() =>
         historyRef.orderByChild('completedAt').once('value').then(snapshot => {
             const removals = [];
             snapshot.forEach(child => removals.push(child.key));
@@ -2507,32 +2586,35 @@ function selectGameValue(value) {
     }
 }
 
-function processPadSubmission() {
-    if (currentSelectedGuess === null || !gameState1To10.isActive || isRevealingRound) return;
+let numberGuessSubmissionPending = false;
 
-    if (gameState1To10.phase === 'SETTING_TARGET') {
-        if (localPlayer !== gameState1To10.targetSetter) return;
-
-        playUiSound('confirm');
-        gameState1To10.chosenTargetValue = currentSelectedGuess;
-        gameState1To10.phase = 'GUESSING';
+async function processPadSubmission() {
+    if (numberGuessSubmissionPending || currentSelectedGuess === null || !gameState1To10.isActive || isRevealingRound) return;
+    const expected = { ...gameState1To10 };
+    const actor = localPlayer;
+    if (!actor || getNumberGuessActingPlayer(expected) !== actor) return;
+    const choice = currentSelectedGuess;
+    const picking = expected.phase === 'SETTING_TARGET';
+    const roundId = picking || !expected.roundId ? database.ref('history/numberGuess').push().key : expected.roundId;
+    numberGuessSubmissionPending = true;
+    try {
+        const result = await database.ref('games/1-to-10').transaction(current => {
+            // Return null for an empty cache so Firebase can retry with server data.
+            if (!current) return current;
+            if (localPlayer !== actor || current.isActive === false || current.phase !== expected.phase ||
+                (current.roundId || null) !== (expected.roundId || null) || (current.mode || 'ten') !== expected.mode ||
+                current.targetSetter !== expected.targetSetter || current.guesser !== expected.guesser ||
+                (current.chosenTargetValue ?? null) !== expected.chosenTargetValue) return;
+            return { ...current, roundId, phase: picking ? 'GUESSING' : 'REVEAL',
+                ...(picking ? { chosenTargetValue: choice, currentGuessValue: null } : { currentGuessValue: choice }) };
+        }, undefined, false);
+        const completedRound = result.snapshot.val();
+        if (!result.committed || !completedRound || completedRound.roundId !== roundId) return;
         currentSelectedGuess = null;
-        
-        database.ref('games/1-to-10').set(gameState1To10);
-
-    } else if (gameState1To10.phase === 'GUESSING') {
-        if (localPlayer !== gameState1To10.guesser) return;
-
         playUiSound('confirm');
-        gameState1To10.currentGuessValue = currentSelectedGuess;
-        gameState1To10.phase = 'REVEAL';
-        const completedRound = { ...gameState1To10 };
+        if (picking) return;
         const wasCorrect = completedRound.currentGuessValue === completedRound.chosenTargetValue;
-        currentSelectedGuess = null;
-
-        database.ref('games/1-to-10').set(gameState1To10)
-            .then(() => recordNumberGuessHistory(completedRound, wasCorrect))
-            .catch(error => console.log('Round submission or history save failed:', error));
+        await recordNumberGuessHistory(completedRound, wasCorrect);
         sendAppNotification({
             type: 'Game Update',
             action: 'check-game',
@@ -2542,6 +2624,11 @@ function processPadSubmission() {
             createdAt: Date.now(),
             readBy: {}
         }, 'number-guess');
+    } catch (error) {
+        console.log('Round submission or history save failed:', error);
+        playUiSound('error');
+    } finally {
+        numberGuessSubmissionPending = false;
     }
 }
 
@@ -2551,6 +2638,8 @@ function advanceRoundAfterReveal(revealRound) {
         if (!current || current.phase !== 'REVEAL') return;
 
         const isSameRevealRound =
+            (current.roundId || null) === (revealRound.roundId || null) &&
+            current.mode === revealRound.mode &&
             current.targetSetter === revealRound.targetSetter &&
             current.guesser === revealRound.guesser &&
             current.chosenTargetValue === revealRound.chosenTargetValue &&

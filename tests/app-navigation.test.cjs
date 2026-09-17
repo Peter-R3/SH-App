@@ -322,6 +322,127 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.evaluate(() => window.nicknameData.value), 'Lovely <3', 'Declining preserves nickname');
         await page.evaluate(async () => { await respondToNicknameProposal('proposal-test', true); });
         assert.equal(await page.evaluate(() => window.nicknameData.value), 'Lovely <3', 'Resolved proposal cannot replay');
+        await page.evaluate(() => {
+            localPlayer = 'Peter';
+            switchTab('messages');
+            window.messageFixture = { sender: 'Peter', recipient: 'Jadey', text: 'Original message', createdAt: 1 };
+            latestMessages = [{ id: 'message-test', ...window.messageFixture }];
+            window.messageWrites = [];
+            window.messageWriteFailure = false;
+            database.ref = path => ({
+                ...window.originalPuzzleRef(path),
+                once: async () => ({ val: () => window.messageFixture, forEach: callback => {
+                    callback({ key: 'linked', val: () => ({ action: 'reply', messageId: 'message-test' }) });
+                    callback({ key: 'unrelated', val: () => ({ action: 'reply', messageId: 'other' }) });
+                } }),
+                transaction: async update => {
+                    if (window.messageWriteFailure) throw Object.assign(new Error('Denied'), { code: 'PERMISSION_DENIED' });
+                    const value = update(window.messageFixture);
+                    if (value) { window.messageFixture = value; window.messageWrites.push(value); }
+                    return { committed: Boolean(value), snapshot: { val: () => value } };
+                },
+                update: async values => {
+                    if (window.messageWriteFailure) throw Object.assign(new Error('Denied'), { code: 'PERMISSION_DENIED' });
+                    window.messageWrites.push(values);
+                }
+            });
+            selectedMessageActionId = 'message-test';
+            editSelectedMessage();
+        });
+        const messageDialog = page.locator('#message-edit-dialog');
+        assert.equal(await messageDialog.locator('textarea').inputValue(), 'Original message');
+        await messageDialog.locator('textarea').fill('   ');
+        await messageDialog.locator('[type=submit]').click();
+        assert.match(await messageDialog.locator('[role=status]').textContent(), /Enter a message/);
+        assert.equal(await page.evaluate(() => window.messageWrites.length), 0);
+        await messageDialog.locator('textarea').fill('Edited <3');
+        await page.evaluate(() => { window.messageWriteFailure = true; });
+        await messageDialog.locator('[type=submit]').click();
+        await page.waitForFunction(() => document.querySelector('#message-edit-dialog [role=status]').textContent.includes('Could not save'));
+        assert.equal(await messageDialog.locator('textarea').inputValue(), 'Edited <3');
+        await page.evaluate(() => { window.messageWriteFailure = false; });
+        for (const width of [320, 390]) {
+            await page.setViewportSize({ width, height: 640 });
+            await page.evaluate(() => calculateRealVh());
+            const bounds = await messageDialog.boundingBox();
+            assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width && bounds.y >= 0);
+        }
+        await page.screenshot({ path: path.join(os.tmpdir(), 'message-edit-dialog.png') });
+        await messageDialog.locator('[type=submit]').click();
+        await page.waitForFunction(() => !document.getElementById('message-edit-dialog').open);
+        assert.equal(await page.evaluate(() => window.messageFixture.text), 'Edited <3');
+        await page.evaluate(() => {
+            latestMessages = [{ id: 'message-test', ...window.messageFixture }];
+            selectedMessageActionId = 'message-test'; deleteSelectedMessage();
+        });
+        assert.equal(await messageDialog.locator('.message-delete-preview').textContent(), 'Edited <3');
+        await page.screenshot({ path: path.join(os.tmpdir(), 'message-delete-dialog.png') });
+        await messageDialog.locator('[type=button]').click();
+        assert.equal(await page.evaluate(() => window.messageWrites.length), 1, 'Cancel does not delete');
+        await page.evaluate(() => { selectedMessageActionId = 'message-test'; editSelectedMessage(); });
+        await page.mouse.click(2, 2);
+        assert.equal(await messageDialog.evaluate(el => el.open), false, 'Backdrop dismisses dialog');
+        await page.evaluate(() => { selectedMessageActionId = 'message-test'; deleteSelectedMessage(); });
+        await messageDialog.locator('[type=submit]').click();
+        await page.waitForFunction(() => !document.getElementById('message-edit-dialog').open);
+        assert.deepEqual(await page.evaluate(() => window.messageWrites[1]), { 'messages/message-test': null, 'notifications/linked': null });
+        await page.evaluate(() => {
+            latestMessages = [{ id: 'other', sender: 'Jadey', text: 'Not mine' }];
+            selectedMessageActionId = 'other'; editSelectedMessage();
+            selectedMessageActionId = 'other'; deleteSelectedMessage();
+        });
+        assert.equal(await messageDialog.evaluate(el => el.open), false, 'Other player messages cannot be edited or deleted');
+        await page.evaluate(() => {
+            window.managementWrites = [];
+            database.ref = path => ({
+                ...window.originalPuzzleRef(path),
+                once: async () => ({ forEach: callback => callback({ key: 'test', val: () => ({ recipient: 'Peter' }) }) }),
+                update: async values => { window.managementWrites.push(values); },
+                transaction: async update => { window.managementWrites.push({ path, value: update(5) }); return { committed: true }; }
+            });
+            openManagementScreen();
+        });
+        const selectManagement = async (id, value) => {
+            await page.locator(`#${id}-custom-button`).click();
+            await page.locator(`#${id}-custom-options [data-value="${value}"]`).click();
+        };
+        await selectManagement('score-game', 'sudoku');
+        await selectManagement('score-mode', 'versusAi');
+        await selectManagement('score-difficulty', 'hard');
+        await selectManagement('score-ai-difficulty', 'medium');
+        await selectManagement('sudoku-score-metric', 'bestTime');
+        assert.equal(await page.locator('#score-metric-custom-button').isVisible(), false);
+        await page.evaluate(() => { adjustManagedScores('reset'); });
+        await page.locator('#game-confirm-dialog button[value=cancel]').click();
+        await page.waitForFunction(() => !document.getElementById('game-confirm-dialog').confirmationPending);
+        assert.equal(await page.evaluate(() => window.managementWrites.length), 0);
+        await page.evaluate(() => { adjustManagedScores('reset'); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(() => window.managementWrites.length === 1);
+        assert.deepEqual(await page.evaluate(() => window.managementWrites[0]), { path: 'stats/sudoku/Peter/versusAi/hard/medium/bestTime', value: 0 });
+        await selectManagement('score-game', 'battleship');
+        assert.equal(await page.locator('#score-mode-custom-button').isVisible(), false);
+        await selectManagement('score-game', 'rps');
+        await selectManagement('duel-score-metric', 'roundsPlayed');
+        assert.equal(await page.locator('#score-mode-custom-button').isVisible(), true);
+        await page.evaluate(() => { clearManagedCommunication('notifications'); });
+        await page.locator('#game-confirm-dialog button[value=cancel]').click();
+        await page.waitForFunction(() => !document.getElementById('game-confirm-dialog').confirmationPending);
+        assert.equal(await page.evaluate(() => window.managementWrites.length), 1);
+        await page.evaluate(() => { clearManagedCommunication('notifications'); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(() => window.managementWrites.length === 2);
+        assert.deepEqual(await page.evaluate(() => window.managementWrites[1]), { 'notifications/test': null });
+        await page.evaluate(() => { adjustManagedInteractions('reset'); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(() => window.managementWrites.length === 5);
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.locator('#management-profile-custom-button').click();
+        await page.screenshot({ path: path.join(os.tmpdir(), 'management-dropdown.png') });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await page.keyboard.press('Escape');
+        await page.evaluate(() => { localPlayer = 'Jadey'; clearManagedCommunication('both'); adjustManagedScores('reset'); adjustManagedInteractions('reset'); });
+        assert.equal(await page.locator('#game-confirm-dialog').evaluate(el => el.open), false);
         await page.evaluate(() => { database.ref = window.originalPuzzleRef; });
         assert.deepEqual(errors, []);
         console.log('PASS: full script loading, navigation, six pause menus at three widths, Play toggles, scoped stats, solo/Jaylin pause checks and portal Back.');

@@ -267,6 +267,30 @@ function enhanceGameSettingsSelects(root = document) {
         list.setAttribute('role', 'listbox');
         list.id = `${select.id}-custom-options`;
         button.setAttribute('aria-controls', list.id);
+        button.addEventListener('click', () => {
+            const opening = list.classList.contains('hidden');
+            document.querySelectorAll('.game-custom-select.open').forEach(closeGameCustomSelect);
+            component.classList.toggle('open', opening);
+            list.classList.toggle('hidden', !opening);
+            button.setAttribute('aria-expanded', String(opening));
+            playUiSound('tap');
+        });
+        button.addEventListener('keydown', event => handleGameCustomSelectKeys(event, select, component));
+        select.after(component);
+        component.append(button, list);
+        syncGameSettingsSelect(select);
+    });
+}
+
+function syncGameSettingsSelect(select) {
+    if (!select) return;
+    const component = select.nextElementSibling;
+    if (!component?.classList.contains('game-custom-select')) return;
+    const signature = JSON.stringify([...select.options].map(option => [option.value, option.textContent]));
+    if (component.optionsSignature !== signature) {
+        component.optionsSignature = signature;
+        const list = component.querySelector('.game-custom-select-options');
+        list.replaceChildren();
         [...select.options].forEach(option => {
             const item = document.createElement('button');
             item.type = 'button';
@@ -284,24 +308,7 @@ function enhanceGameSettingsSelects(root = document) {
             });
             list.append(item);
         });
-        button.addEventListener('click', () => {
-            const opening = list.classList.contains('hidden');
-            document.querySelectorAll('.game-custom-select.open').forEach(closeGameCustomSelect);
-            component.classList.toggle('open', opening);
-            list.classList.toggle('hidden', !opening);
-            button.setAttribute('aria-expanded', String(opening));
-        });
-        button.addEventListener('keydown', event => handleGameCustomSelectKeys(event, select, component));
-        select.after(component);
-        component.append(button, list);
-        syncGameSettingsSelect(select);
-    });
-}
-
-function syncGameSettingsSelect(select) {
-    if (!select) return;
-    const component = select.nextElementSibling;
-    if (!component?.classList.contains('game-custom-select')) return;
+    }
     const selected = select.options[select.selectedIndex];
     component.querySelector('.game-custom-select-button').innerHTML = `<span>${selected?.textContent || ''}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5z"/></svg>`;
     component.querySelectorAll('.game-custom-select-option').forEach(option => {

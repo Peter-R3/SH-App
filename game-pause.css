@@ -13,6 +13,16 @@
 .nickname-proposal-dialog input { width: 100%; min-height: 44px; padding: 10px; border: 1px solid #30363D; border-radius: 8px; background: #161B22; color: #FFF; font-size: 16px; }
 .nickname-proposal-actions { display: flex; gap: 10px; }
 .nickname-proposal-button { width: 100%; background: #0A0F14; color: var(--theme-color); border: 1px solid #30363D; border-radius: 8px; }
+.message-edit-dialog { position: fixed; inset: auto; left: 50%; top: calc(var(--viewport-top, 0px) + var(--vh, 1vh) * 50); transform: translate(-50%, -50%); margin: 0; max-height: calc(var(--vh, 1vh) * 100 - 32px); overflow-y: auto; }
+.message-edit-dialog form { flex-direction: column; gap: 12px; }
+.message-edit-dialog textarea { width: 100%; min-height: 96px; padding: 12px; border: 1px solid #48515C; border-radius: 8px; background: #161B22; color: #FFF; font: inherit; font-size: 16px; resize: vertical; }
+.message-edit-actions { display: flex; gap: 10px; }
+.message-edit-dialog p { margin: 0; font-size: 14px; }
+.message-edit-status:empty { display: none; }
+.message-delete-preview { max-height: 140px; overflow-y: auto; overflow-wrap: anywhere; white-space: pre-wrap; border-left: 3px solid var(--theme-color); padding: 8px 12px; color: #C9D1D9; }
+.message-edit-dialog .message-delete-confirm { background: #A9293D; color: #FFF; }
+.message-edit-dialog button:disabled { opacity: .55; cursor: wait; }
+.message-edit-dialog textarea:focus-visible { outline: 2px solid var(--theme-color); outline-offset: 2px; }
 .shared-game-menu { position: absolute; top: var(--pause-header-height, 58px); bottom: var(--pause-nav-height, 58px); left: 0; right: 0; z-index: 8; overflow-y: auto; padding: 20px 18px; background: #0008; backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
 .shared-game-paused > :not(.dashboard-header):not(.bottom-nav-bar):not(.shared-game-menu) { filter: blur(5px); pointer-events: none; }
 .shared-game-menu.shared-menu-solid { background: #000; }
@@ -23,7 +33,10 @@
 .shared-submenu { width: 100%; max-width: 680px; margin: auto; }
 .shared-submenu-content > .word-search-settings, .shared-submenu-content > .sudoku-settings, .shared-submenu-content > .duel-settings { padding: 0; overflow: visible; }
 .shared-pause-game .game-bottom-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.shared-submenu-content select[data-custom-select] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.shared-submenu-content select[data-custom-select], .management-content select[data-custom-select] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+.management-content .game-custom-select-option { background: transparent; color: #C9D1D9; }
+.management-content .game-custom-select-option.selected { background: color-mix(in srgb, var(--theme-color) 20%, #0A0F14); color: var(--theme-color); }
+.management-content .game-custom-select-option:hover, .management-content .game-custom-select-option:focus-visible { background: #161D24; color: #FFF; }
 .game-custom-select { position: relative; width: 100%; }
 .game-custom-select-button { width: 100%; height: 50px; padding: 0 12px 0 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #30363D; border-radius: 8px; background: #0A0F14; color: #FFF; font: inherit; font-weight: 800; text-align: left; }
 .game-custom-select-button svg { width: 22px; height: 22px; flex: 0 0 22px; fill: currentColor; transition: transform 140ms ease; }
