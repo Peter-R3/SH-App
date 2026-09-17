@@ -5,16 +5,21 @@ let connectFourState = null;
 let connectFourRef = null;
 let connectFourHandler = null;
 
-function launchConnectFour() {
+function launchConnectFour(ready = false) {
     if (!localPlayer) return;
-    setActiveAppView('connect-four');
+    setActiveAppView(ready === true ? 'connect-four' : 'connect-four-lobby');
+    stopConnectFourSubscription();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('connect-four-screen')?.classList.remove('hidden');
     applyThemeToScreen('connect-four-screen', 'connect-four-header-shell', 'connect-four-nav-shell');
     refreshSharedHeader('connect-four');
+    if (ready !== true) {
+        openQuickGameLobby('connect-four', 'versus', 'games/connectFour/current', () => launchConnectFour(true));
+        return;
+    }
     subscribeConnectFour();
 
-    database.ref('games/connectFour/current').transaction(current => {
+    return database.ref('games/connectFour/current').transaction(current => {
         if (!current) return createConnectFourMatch();
         if (current.status === 'finished') return current;
         current.players = current.players || {};
@@ -86,6 +91,7 @@ function sendConnectFourInvite() {
 }
 
 function renderConnectFour() {
+    updateQuickGameLobby('connect-four', connectFourState);
     const board = document.getElementById('connect-four-board');
     const controls = document.getElementById('connect-four-controls');
     const turns = document.getElementById('connect-four-turns');

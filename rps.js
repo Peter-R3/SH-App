@@ -24,9 +24,9 @@ function saveRpsSettings() {
     localStorage.setItem(rpsSettingsKey(), JSON.stringify(rpsSettings));
 }
 
-function launchRps() {
+function launchRps(ready = false) {
     if (!localPlayer) return;
-    setActiveAppView('rps');
+    setActiveAppView(ready === true ? 'rps' : 'rps-lobby');
     loadRpsSettings();
     stopRpsSubscription();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
@@ -34,13 +34,19 @@ function launchRps() {
     applyThemeToScreen('rps-screen', 'rps-header-shell', 'rps-nav-shell');
     refreshSharedHeader('rps');
     setRpsStatus('Loading round...');
-    if (rpsSettings.mode === 'versus-ai') loadRpsAi();
-    else loadRpsVersus();
+    if (ready !== true) {
+        openQuickGameLobby('rps', rpsSettings.mode, rpsSettings.mode === 'versus-ai' ? rpsAiPath() : 'games/rps/current', () => launchRps(true));
+        return;
+    }
+    if (rpsSettings.mode === 'versus-ai') return loadRpsAi();
+    return loadRpsVersus();
 }
 
 function openRpsSettings() {
+    renderDuelModes('rps');
     openSharedGameMenu('rps', 'modes');
     document.getElementById('rps-mode').value = rpsSettings.mode;
+    renderDuelModes('rps');
     syncGameSettingsSelects();
 }
 
@@ -67,7 +73,7 @@ function rpsAiPath() {
 }
 
 function loadRpsAi() {
-    database.ref(rpsAiPath()).once('value').then(snapshot => {
+    return database.ref(rpsAiPath()).once('value').then(snapshot => {
         const state = snapshot.val();
         rpsState = state && state.status !== 'finished' ? state : createRpsRound('versus-ai');
         database.ref(rpsAiPath()).set(rpsState);
@@ -77,7 +83,7 @@ function loadRpsAi() {
 
 function loadRpsVersus() {
     subscribeRps();
-    database.ref('games/rps/current').transaction(current => {
+    return database.ref('games/rps/current').transaction(current => {
         if (!current) return createRpsRound('versus');
         if (current.status === 'finished') return;
         current.players = current.players || {};
@@ -138,6 +144,7 @@ function sendRpsInvite() {
 }
 
 function renderRps() {
+    if (typeof updateQuickGameLobby === 'function') updateQuickGameLobby('rps', rpsState);
     const choices = document.getElementById('rps-choices');
     const reveal = document.getElementById('rps-reveal');
     const controls = document.getElementById('rps-controls');
@@ -245,7 +252,7 @@ function recordRpsResult(winner, mode, player, opponent) {
 
 function startNewRpsRound() {
     if (!window.confirm('Start a new RPS round?')) return;
-    if (rpsSettings.mode === 'versus-ai') database.ref(rpsAiPath()).set(createRpsRound('versus-ai')).then(launchRps);
+    if (rpsSettings.mode === 'versus-ai') database.ref(rpsAiPath()).set(createRpsRound('versus-ai')).then(() => launchRps(true));
     else {
         const previousId = rpsState?.roundId || rpsState?.createdAt;
         const next = createRpsRound('versus');

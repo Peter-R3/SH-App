@@ -21,10 +21,16 @@ let sudokuVersusCountdown = null;
 let sudokuAiTimer = null;
 let sudokuLobbyEnteredAt = null;
 let sudokuLobbyCountdown = null;
+let sudokuStartNextImmediately = false;
 let sudokuCompletionCueKey = null;
 let sudokuCompletionCueTimer = null;
 
 function showSudokuLobby(options = {}) {
+    if (sudokuStartNextImmediately && sudokuState?.puzzle && !options.disabled && sudokuSettings.mode !== 'versus') {
+        sudokuStartNextImmediately = false;
+        startPreparedSudoku(true);
+        return;
+    }
     document.getElementById('sudoku-lobby').classList.remove('hidden');
     document.querySelector('#sudoku-screen .sudoku-content').classList.add('hidden');
     document.getElementById('sudoku-lobby-mode').textContent = `${modeLabel(sudokuSettings.mode)} - ${SUDOKU_DIFFICULTIES[sudokuSettings.difficulty].label}`;
@@ -43,11 +49,16 @@ function showSudokuPlayArea() {
     if (sharedPauseSession?.id === 'sudoku') sharedPauseSession.returnView = 'sudoku';
 }
 
-async function startPreparedSudoku() {
+async function startPreparedSudoku(skipCountdown = false) {
     if (!sudokuState?.puzzle) return;
     playUiSound('confirm');
     document.getElementById('sudoku-lobby-primary').disabled = true;
     if (sudokuSettings.mode === 'versus-ai') {
+        if (skipCountdown === true) {
+            showSudokuPlayArea();
+            scheduleSudokuAi(sudokuState);
+            return;
+        }
         let remaining = 5;
         const tick = () => {
             if (activeAppView !== 'sudoku-lobby' || document.hidden) return;
@@ -123,8 +134,9 @@ function saveSudokuSettings() {
     localStorage.setItem(sudokuSettingsKey(), JSON.stringify(sudokuSettings));
 }
 
-function launchSudoku() {
+function launchSudoku(startImmediately = false) {
     if (!localPlayer) return;
+    sudokuStartNextImmediately = startImmediately === true;
     setActiveAppView('sudoku-lobby');
     loadSudokuSettings();
     stopSudokuSubscription();
@@ -185,15 +197,17 @@ function updateSudokuSettingsNote(message) {
     );
 }
 
-function requestNewSudokuPuzzle() {
-    if (!window.confirm('Replace the current Sudoku puzzle?')) return;
+async function requestNewSudokuPuzzle() {
+    if (!await confirmNewPuzzle('New puzzle?', 'Replace the current Sudoku puzzle and start a new one?', 'New puzzle')) return;
+    const continuePlaying = activeAppView === 'sudoku';
+    const reopen = () => launchSudoku(continuePlaying);
     const state = createSudokuState(createSudokuPuzzle(sudokuSettings.difficulty));
     if (sudokuSettings.mode === 'solo') {
-        database.ref(soloSudokuPath()).set(state).then(launchSudoku);
+        database.ref(soloSudokuPath()).set(state).then(reopen);
     } else if (sudokuSettings.mode === 'coop') {
-        database.ref(coopSudokuPath()).set(state).then(launchSudoku);
+        database.ref(coopSudokuPath()).set(state).then(reopen);
     } else if (sudokuSettings.mode === 'versus-ai') {
-        database.ref(aiSudokuPath()).set(createAiSudokuState(createSudokuPuzzle(sudokuSettings.difficulty))).then(launchSudoku);
+        database.ref(aiSudokuPath()).set(createAiSudokuState(createSudokuPuzzle(sudokuSettings.difficulty))).then(reopen);
     } else {
         abandonSudokuVersus(false).then(() => loadVersusSudoku(true)).then(launchSudoku);
     }
@@ -253,14 +267,16 @@ function loadSoloSudoku() {
 
 function loadCoopSudoku() {
     const ref = database.ref(coopSudokuPath());
+    let initialSnapshot = true;
     ref.transaction(current => current?.puzzle
         ? current
         : createSudokuState(createSudokuPuzzle(sudokuSettings.difficulty))
     ).then(() => subscribeSudoku(coopSudokuPath(), state => {
         if (!state?.puzzle) return;
         applySudokuState(state);
-        if (state.playStarted === false && !state.completedAt) showSudokuLobby({ status: 'One shared puzzle to solve together.' });
+        if ((initialSnapshot || state.playStarted === false) && !state.completedAt) showSudokuLobby({ status: 'One shared puzzle to solve together.' });
         else showSudokuPlayArea();
+        initialSnapshot = false;
     }));
 }
 

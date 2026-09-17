@@ -1,4 +1,14 @@
 .shared-pause-game { position: relative; }
+.duel-mode-cards { display: flex; flex-direction: column; gap: 12px; }
+.duel-mode-cards .mode-option-btn { width: 100%; }
+.duel-mode-cards .active-mode { color: var(--theme-color); }
+.game-confirm-dialog { margin: auto; width: min(360px, calc(100% - 32px)); padding: 22px; border: 1px solid #30363D; border-radius: 8px; background: #0A0F14; color: #FFF; }
+.game-confirm-dialog::backdrop { background: #000A; backdrop-filter: blur(4px); }
+.game-confirm-dialog h2 { font-size: 22px; margin-bottom: 12px; }
+.game-confirm-dialog p { color: #C9D1D9; line-height: 1.5; margin-bottom: 20px; }
+.game-confirm-dialog form { display: flex; gap: 10px; }
+.game-confirm-dialog button { flex: 1; min-height: 44px; border-radius: 8px; background: #21262D; color: #FFF; font-size: 14px; }
+.game-confirm-dialog .primary { background: var(--theme-color); color: var(--theme-text-color); }
 .shared-game-menu { position: absolute; top: var(--pause-header-height, 58px); bottom: var(--pause-nav-height, 58px); left: 0; right: 0; z-index: 8; overflow-y: auto; padding: 20px 18px; background: #0008; backdrop-filter: blur(9px); -webkit-backdrop-filter: blur(9px); }
 .shared-game-paused > :not(.dashboard-header):not(.bottom-nav-bar):not(.shared-game-menu) { filter: blur(5px); pointer-events: none; }
 .shared-game-menu.shared-menu-solid { background: #000; }

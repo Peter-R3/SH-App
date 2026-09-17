@@ -26,9 +26,9 @@ function saveTicTacToeSettings() {
     localStorage.setItem(ticTacToeSettingsKey(), JSON.stringify(ticTacToeSettings));
 }
 
-function launchTicTacToe() {
+function launchTicTacToe(ready = false) {
     if (!localPlayer) return;
-    setActiveAppView('tic-tac-toe');
+    setActiveAppView(ready === true ? 'tic-tac-toe' : 'tic-tac-toe-lobby');
     loadTicTacToeSettings();
     stopTicTacToeSubscription();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
@@ -36,13 +36,19 @@ function launchTicTacToe() {
     applyThemeToScreen('tic-tac-toe-screen', 'tic-tac-toe-header-shell', 'tic-tac-toe-nav-shell');
     refreshSharedHeader('tic-tac-toe');
     setTicTacToeStatus('Loading match...');
-    if (ticTacToeSettings.mode === 'versus-ai') loadTicTacToeAi();
-    else loadTicTacToeVersus();
+    if (ready !== true) {
+        openQuickGameLobby('tic-tac-toe', ticTacToeSettings.mode, ticTacToeSettings.mode === 'versus-ai' ? ticTacToeAiPath() : 'games/ticTacToe/current', () => launchTicTacToe(true));
+        return;
+    }
+    if (ticTacToeSettings.mode === 'versus-ai') return loadTicTacToeAi();
+    return loadTicTacToeVersus();
 }
 
 function openTicTacToeSettings() {
+    renderDuelModes('tic-tac-toe');
     openSharedGameMenu('tic-tac-toe', 'modes');
     document.getElementById('tic-tac-toe-mode').value = ticTacToeSettings.mode;
+    renderDuelModes('tic-tac-toe');
     syncGameSettingsSelects();
 }
 
@@ -70,7 +76,7 @@ function createTicTacToeState(mode = 'versus') {
 }
 
 function loadTicTacToeAi() {
-    database.ref(ticTacToeAiPath()).once('value').then(snapshot => {
+    return database.ref(ticTacToeAiPath()).once('value').then(snapshot => {
         const state = snapshot.val();
         if (state && state.status !== 'finished') {
             ticTacToeState = state;
@@ -86,7 +92,7 @@ function loadTicTacToeAi() {
 
 function loadTicTacToeVersus() {
     subscribeTicTacToe();
-    database.ref('games/ticTacToe/current').transaction(current => {
+    return database.ref('games/ticTacToe/current').transaction(current => {
         if (!current || current.status === 'finished') return createTicTacToeState('versus');
         current.players = current.players || {};
         current.players[localPlayer] = true;
@@ -134,6 +140,7 @@ function sendTicTacToeInvite() {
 }
 
 function renderTicTacToe() {
+    updateQuickGameLobby('tic-tac-toe', ticTacToeState);
     const board = document.getElementById('tic-tac-toe-board');
     const controls = document.getElementById('tic-tac-toe-controls');
     if (!board || !controls || !ticTacToeState) return;
@@ -266,7 +273,7 @@ function recordTicTacToeResult(winner, mode, player, opponent) {
 
 function startNewTicTacToeMatch() {
     if (!window.confirm('Start a new Tic-Tac-Toe match?')) return;
-    if (ticTacToeSettings.mode === 'versus-ai') database.ref(ticTacToeAiPath()).set(createTicTacToeState('versus-ai')).then(launchTicTacToe);
+    if (ticTacToeSettings.mode === 'versus-ai') database.ref(ticTacToeAiPath()).set(createTicTacToeState('versus-ai')).then(() => launchTicTacToe(true));
     else database.ref('games/ticTacToe/current').set(createTicTacToeState('versus')).then(sendTicTacToeInvite);
 }
 

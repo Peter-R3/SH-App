@@ -81,8 +81,9 @@ const root = path.resolve(__dirname, '..');
                 await screen.locator('[data-pause-action=back]').click();
                 if (['word-search', 'sudoku', 'tic-tac-toe', 'rps'].includes(game)) {
                     await screen.locator('[data-pause-action=settings]').click();
-                    assert.equal(await screen.locator('.shared-submenu h2').textContent(), 'Game Settings');
-                    assert.equal(await screen.locator('.game-custom-select').count() > 0, true);
+                    const modesOnly = ['tic-tac-toe', 'rps'].includes(game);
+                    assert.equal(await screen.locator('.shared-submenu h2').textContent(), modesOnly ? 'Modes' : 'Game Settings');
+                    assert.equal(await screen.locator(modesOnly ? '.mode-option-btn' : '.game-custom-select').count() > 0, true);
                     if (game === 'word-search' && width === 390) await page.screenshot({ path: path.join(os.tmpdir(), 'word-search-settings.png') });
                 }
                 await tab.click();
@@ -202,6 +203,63 @@ const root = path.resolve(__dirname, '..');
         });
         await page.waitForFunction(() => activeAppView === 'home' && !realmTransitioning);
         assert.deepEqual(await visible(), ['home-screen']);
+        assert.deepEqual(errors, []);
+        await page.setViewportSize({ width: 390, height: 844 });
+        for (const [id, launch] of [['connect-four', 'launchConnectFour'], ['tic-tac-toe', 'launchTicTacToe'], ['rps', 'launchRps']]) {
+            await page.evaluate(launch => window[launch](), launch);
+            const lobby = page.locator(`#${id}-screen .quick-game-lobby`);
+            await page.waitForFunction(id => !document.querySelector(`#${id}-screen .quick-game-lobby .word-search-lobby-primary`).disabled, id);
+            assert.equal(await lobby.isVisible(), true);
+            assert.equal(await lobby.locator('.word-search-lobby-primary').textContent(), 'Invite player');
+            if (id !== 'connect-four') {
+                await lobby.locator('.word-search-lobby-settings').click();
+                assert.equal(await page.locator(`#${id}-screen .mode-option-btn`).count(), 2);
+                assert.equal(await page.locator(`#${id}-screen .shared-submenu .sound-effects-toggle`).count(), 0);
+                await page.screenshot({ path: path.join(os.tmpdir(), `${id}-modes.png`), animations: 'disabled' });
+                await page.getByRole('button', { name: 'Back to lobby', exact: true }).click();
+                assert.equal(await lobby.isVisible(), true);
+            }
+            await page.screenshot({ path: path.join(os.tmpdir(), `${id}-lobby.png`), animations: 'disabled' });
+            await page.evaluate(() => switchTab('home'));
+        }
+        await page.evaluate(() => { window.confirmationResult = null; confirmNewPuzzle('New puzzle?', 'Replace this puzzle?', 'New puzzle').then(value => window.confirmationResult = value); });
+        await page.locator('#game-confirm-dialog button[value=cancel]').click();
+        await page.waitForFunction(() => window.confirmationResult === false);
+        await page.evaluate(() => { window.confirmationResult = null; confirmNewPuzzle('New grid?', 'Replace this grid?', 'New grid').then(value => window.confirmationResult = value); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(() => window.confirmationResult === true);
+        await page.evaluate(() => {
+            window.originalPuzzleRef = database.ref;
+            window.puzzleWrites = 0;
+            window.puzzleData = {};
+            database.ref = path => ({
+                once: async () => ({ val: () => window.puzzleData[path] || null }),
+                set: async value => { if (/^(wordSearch|sudoku)\/solo\//.test(path)) window.puzzleWrites++; window.puzzleData[path] = value; },
+                transaction: async update => {
+                    const value = update(window.puzzleData[path] || null);
+                    if (value !== undefined) window.puzzleData[path] = value;
+                    return { committed: value !== undefined, snapshot: { val: () => window.puzzleData[path] } };
+                }
+            });
+            wordSearchSettings.mode = 'solo';
+            sudokuSettings.mode = 'solo';
+            setActiveAppView('word-search');
+            window.cancelledRequestDone = false;
+            requestNewWordSearchGrid().then(() => { window.cancelledRequestDone = true; });
+        });
+        await page.locator('#game-confirm-dialog button[value=cancel]').click();
+        await page.waitForFunction(() => window.cancelledRequestDone);
+        assert.equal(await page.evaluate(() => window.puzzleWrites), 0);
+        await page.evaluate(() => { requestNewWordSearchGrid(); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForTimeout(200);
+        assert.deepEqual(errors, []);
+        await page.waitForFunction(() => window.puzzleWrites > 0 && activeAppView === 'word-search' && !document.getElementById('word-search-content').classList.contains('hidden'));
+        assert.equal(await page.locator('#word-search-lobby').isVisible(), false);
+        await page.evaluate(() => { setActiveAppView('sudoku'); requestNewSudokuPuzzle(); });
+        await page.locator('#game-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(() => window.puzzleWrites > 1 && activeAppView === 'sudoku' && document.getElementById('sudoku-lobby').classList.contains('hidden'));
+        await page.evaluate(() => { database.ref = window.originalPuzzleRef; });
         assert.deepEqual(errors, []);
         console.log('PASS: full script loading, navigation, six pause menus at three widths, Play toggles, scoped stats, solo/Jaylin pause checks and portal Back.');
     } finally { await browser.close(); }

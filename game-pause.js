@@ -3,10 +3,134 @@ const sharedPauseGames = {
     sudoku: { launch: launchSudoku, settingsAction: openSudokuSettings, settingsLabel: 'Game Settings', settings: () => sudokuSettings, stats: 'sudoku-stats-content', render: renderSudokuStats },
     battleship: { launch: launchBattleship, stats: 'battleship-stats-content', render: renderBattleshipStats },
     'connect-four': { launch: launchConnectFour, stats: 'connect-four-stats-content', render: renderConnectFourStats },
-    'tic-tac-toe': { launch: launchTicTacToe, settingsAction: openTicTacToeSettings, settingsLabel: 'Game Settings', settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
-    rps: { launch: launchRps, settingsAction: openRpsSettings, settingsLabel: 'Game Settings', settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
+    'tic-tac-toe': { launch: launchTicTacToe, settingsAction: openTicTacToeSettings, settingsLabel: 'Modes', settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
+    rps: { launch: launchRps, settingsAction: openRpsSettings, settingsLabel: 'Modes', settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
 };
 let sharedPauseSession = null;
+
+function confirmNewPuzzle(title, body, confirmLabel) {
+    let dialog = document.getElementById('game-confirm-dialog');
+    if (!dialog) {
+        dialog = document.createElement('dialog');
+        dialog.id = 'game-confirm-dialog';
+        dialog.className = 'game-confirm-dialog';
+        dialog.setAttribute('aria-labelledby', 'game-confirm-title');
+        dialog.innerHTML = '<h2 id="game-confirm-title"></h2><p></p><form method="dialog"><button value="cancel" autofocus>Cancel</button><button value="confirm" class="primary"></button></form>';
+        document.body.append(dialog);
+    }
+    if (dialog.open || dialog.confirmationPending) return Promise.resolve(false);
+    dialog.confirmationPending = true;
+    dialog.querySelector('h2').textContent = title;
+    dialog.querySelector('p').textContent = body;
+    dialog.querySelector('.primary').textContent = confirmLabel;
+    dialog.style.setProperty('--theme-color', themeColorFor(localPlayer));
+    dialog.style.setProperty('--theme-text-color', textColorFor(themeColorFor(localPlayer)));
+    dialog.returnValue = 'cancel';
+    return new Promise(resolve => {
+        dialog.addEventListener('close', () => {
+            dialog.confirmationPending = false;
+            resolve(dialog.returnValue === 'confirm');
+        }, { once: true });
+        dialog.showModal();
+    });
+}
+
+function renderDuelModes(id) {
+    const select = document.getElementById(`${id}-mode`);
+    const container = select.parentElement;
+    select.dataset.modeCards = 'true';
+    select.classList.add('hidden');
+    container.querySelector('label')?.classList.add('hidden');
+    container.querySelector(':scope > button')?.remove();
+    if (!container.querySelector('.duel-mode-cards')) {
+        const cards = document.createElement('div');
+        cards.className = 'duel-mode-cards';
+        cards.innerHTML = '<p class="menu-prompt">Select mode</p>';
+        for (const [value, title, detail] of [['versus', 'Player vs Player', 'Play together'], ['versus-ai', 'Player vs Jaylin', 'Play against Jaylin']]) {
+            const button = document.createElement('button');
+            button.className = 'mode-option-btn';
+            button.dataset.mode = value;
+            button.innerHTML = `<span>${title}</span><small>${detail}</small>`;
+            button.onclick = () => {
+                select.value = value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                renderDuelModes(id);
+                resumeSharedGame();
+            };
+            cards.append(button);
+        }
+        container.append(cards);
+    }
+    container.querySelectorAll('[data-mode]').forEach(button => {
+        const selected = button.dataset.mode === select.value;
+        button.classList.toggle('active-mode', selected);
+        button.setAttribute('aria-pressed', String(selected));
+    });
+}
+
+function openQuickGameLobby(id, mode, path, begin) {
+    const screen = document.getElementById(`${id}-screen`);
+    const content = screen.querySelector('.duel-game-content, .connect-four-content');
+    let lobby = screen.querySelector('.quick-game-lobby');
+    if (!lobby) {
+        lobby = document.createElement('div');
+        lobby.className = 'word-search-lobby quick-game-lobby';
+        lobby.innerHTML = '<div class="word-search-lobby-panel"><span class="word-search-lobby-mode"></span><h2>Ready to play?</h2><div class="word-search-lobby-status" role="status"></div><button class="word-search-lobby-primary" type="button">Play</button></div>';
+        content.before(lobby);
+        if (id !== 'connect-four') {
+            const modes = document.createElement('button');
+            modes.className = 'word-search-lobby-settings';
+            modes.textContent = 'Modes';
+            modes.onclick = () => sharedPauseGames[id].settingsAction();
+            lobby.firstElementChild.append(modes);
+        }
+    }
+    lobby.classList.remove('hidden');
+    content.classList.add('hidden');
+    const button = lobby.querySelector('.word-search-lobby-primary');
+    const status = lobby.querySelector('[role="status"]');
+    lobby.querySelector('.word-search-lobby-mode').textContent = mode === 'versus-ai' ? 'Player vs Jaylin' : 'Player vs Player';
+    button.disabled = true;
+    status.textContent = 'Checking for a match...';
+    const token = {};
+    lobby.sessionToken = token;
+    database.ref(path).once('value').then(snapshot => {
+        if (lobby.sessionToken !== token || ![`${id}-lobby`, `${id}-menu`].includes(activeAppView)) return;
+        const state = snapshot.val();
+        const ongoing = state && state.status !== 'finished';
+        button.textContent = mode === 'versus-ai' ? (ongoing ? 'Resume' : 'Play') : state?.status === 'finished' && id !== 'tic-tac-toe' ? 'View results' : ongoing ? (state.players?.[localPlayer] ? 'Resume' : 'Join match') : 'Invite player';
+        status.textContent = mode === 'versus-ai' ? 'Jaylin is ready when you are.' : ongoing ? 'Continue your shared match.' : 'Start a match together.';
+        button.disabled = false;
+    }).catch(() => { status.textContent = 'Could not check the match. Tap to retry.'; button.textContent = 'Retry'; button.disabled = false; });
+    button.onclick = async () => {
+        button.disabled = true;
+        playUiSound('confirm');
+        try {
+            await begin();
+        } catch {
+            status.textContent = 'Could not join. Please try again.';
+            button.disabled = false;
+        }
+    };
+}
+
+function updateQuickGameLobby(id, state) {
+    const screen = document.getElementById(`${id}-screen`);
+    const lobby = screen?.querySelector('.quick-game-lobby');
+    if (!lobby || !state) return;
+    if (state.status === 'waiting') {
+        lobby.classList.remove('hidden');
+        screen.querySelector('.duel-game-content, .connect-four-content').classList.add('hidden');
+        lobby.querySelector('[role="status"]').textContent = 'Invitation sent. Waiting for the other player...';
+        lobby.querySelector('.word-search-lobby-primary').textContent = 'Waiting';
+        lobby.querySelector('.word-search-lobby-primary').disabled = true;
+        return;
+    }
+    lobby.classList.add('hidden');
+    screen.querySelector('.duel-game-content, .connect-four-content').classList.remove('hidden');
+    if (activeAppView === `${id}-lobby`) setActiveAppView(id);
+    if (sharedPauseSession?.id === id) sharedPauseSession.returnView = id;
+}
 
 function setGamePauseTab(button, paused) {
     if (!button) return;
@@ -116,7 +240,7 @@ function openSharedGameMenu(id, view = 'pause') {
 }
 
 function enhanceGameSettingsSelects(root = document) {
-    root.querySelectorAll('select:not([data-custom-select])').forEach(select => {
+    root.querySelectorAll('select:not([data-custom-select]):not([data-mode-cards])').forEach(select => {
         select.dataset.customSelect = 'true';
         select.tabIndex = -1;
         select.setAttribute('aria-hidden', 'true');

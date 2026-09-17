@@ -196,21 +196,7 @@ function loadSoundEffectsPreference(player) {
 }
 
 function initialiseSoundEffectControls() {
-    for (const game of ['word-search', 'sudoku', 'tic-tac-toe', 'rps']) {
-        const screen = document.getElementById(`${game}-settings-screen`);
-        const content = screen?.children[1];
-        if (!content || content.querySelector('.sound-settings-row')) continue;
-        const row = document.createElement('div');
-        row.className = 'sound-settings-row';
-        const label = document.createElement('span');
-        label.textContent = 'Sound effects';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'sound-effects-toggle';
-        button.addEventListener('click', toggleSoundEffects);
-        row.append(label, button);
-        content.prepend(row);
-    }
+    document.querySelectorAll('.sound-settings-row').forEach(row => row.remove());
 }
 
 function stopUiSounds() {

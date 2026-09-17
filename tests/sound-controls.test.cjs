@@ -43,12 +43,12 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await setup(page);
-        assert.equal(await page.locator('.sound-settings-row').count(), 4);
+        assert.equal(await page.locator('.sound-settings-row').count(), 0);
         await page.evaluate(() => initialiseSoundEffectControls());
-        assert.equal(await page.locator('.sound-settings-row').count(), 4);
+        assert.equal(await page.locator('.sound-settings-row').count(), 0);
         await page.locator('#profile-sound-enabled').uncheck();
         assert.equal(await page.locator('#profile-sound-status').textContent(), 'Muted');
-        assert.equal(await page.locator('.sound-effects-toggle[aria-pressed=false]').count(), 5);
+        assert.equal(await page.locator('.sound-effects-toggle[aria-pressed=false]').count(), 1);
         await page.locator('.profile-theme-entry').click();
         assert.equal(await page.evaluate(() => startedTones), 0);
         await setup(page);
@@ -57,8 +57,12 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
         assert.equal(await page.evaluate(() => startedTones), 2, 'One confirmation when enabling');
         await page.locator('.profile-theme-entry').click();
         assert.equal(await page.evaluate(() => startedTones), 3, 'One menu tap');
-        await page.evaluate(() => showTestScreen('word-search-settings-screen'));
-        await page.locator('#word-search-settings-screen .sound-effects-toggle').click();
+        await page.evaluate(() => {
+            showTestScreen('game-1-to-10-screen');
+            document.getElementById('number-guess-menu-area').classList.remove('hidden');
+            document.getElementById('number-guess-pause-panel').classList.remove('hidden');
+        });
+        await page.locator('#number-guess-pause-panel .sound-effects-toggle').click();
         assert.equal(await page.locator('#profile-sound-enabled').isChecked(), false);
         assert.equal(await page.evaluate(() => activeSoundNodes.size), 0, 'Mute disconnects active sounds');
         await page.evaluate(() => { localPlayer = 'Jadey'; loadSoundEffectsPreference('Jadey'); });
