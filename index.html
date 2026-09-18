@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="realm-hub.css">
     <link rel="stylesheet" href="game-pause.css">
+    <link rel="stylesheet" href="achievements.css">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
@@ -64,7 +65,7 @@
                             <span>Realm Hub</span>
                         </button>
                     <section class="home-games-section" aria-labelledby="home-games-title">
-                    <h2 id="home-games-title" class="menu-prompt">Games &amp; Stats</h2>
+                    <h2 id="home-games-title" class="menu-prompt">Games</h2>
                     <div class="home-shortcut-grid">
                         <button class="home-shortcut-card games" onclick="switchTab('games')">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8h2v2h2v2H9v2H7v-2H5v-2h2V8zm9.5 1.5A1.5 1.5 0 1 0 18 11a1.5 1.5 0 0 0-1.5-1.5zm2 4A1.5 1.5 0 1 0 20 15a1.5 1.5 0 0 0-1.5-1.5zM7.47 5h9.06a4 4 0 0 1 3.96 3.43l1.09 7.66A2.5 2.5 0 0 1 17.26 18L15 15.5H9L6.74 18a2.5 2.5 0 0 1-4.32-1.91l1.09-7.66A4 4 0 0 1 7.47 5z"/></svg>
@@ -73,6 +74,10 @@
                         <button class="home-shortcut-card stats" onclick="openStatsScreen()">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19h14v2H5v-2zm1-7h3v5H6v-5zm5-4h3v9h-3V8zm5-5h3v14h-3V3z"/></svg>
                             <span>Game Stats</span>
+                        </button>
+                        <button class="home-shortcut-card achievements" onclick="openAchievements()">
+                            <img src="./assets/achievements/Gold_Star.svg" alt="">
+                            <span>Achievements</span>
                         </button>
                     </div>
                     </section>
@@ -1028,5 +1033,6 @@
     <script src="rps.js"></script>
     <script src="realm-hub.js"></script>
     <script src="game-pause.js"></script>
+    <script src="achievements.js"></script>
 </body>
 </html>

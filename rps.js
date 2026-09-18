@@ -190,7 +190,11 @@ function chooseRpsAi(choice) {
     const aiChoice = RPS_CHOICES[Math.floor(Math.random() * RPS_CHOICES.length)];
     const winner = resolveRpsWinner(choice, aiChoice, localPlayer, 'Jaylin');
     rpsState = { ...rpsState, status: 'finished', choices: { [localPlayer]: choice, Jaylin: aiChoice }, winner, completedAt: Date.now() };
-    database.ref(rpsAiPath()).set(rpsState);
+    const finishedState = JSON.parse(JSON.stringify(rpsState));
+    const player = localPlayer;
+    database.ref(rpsAiPath()).set(rpsState).then(() => {
+        if (typeof recordAchievementMatch === 'function') recordAchievementMatch('rps', finishedState, 'versusAi', player);
+    });
     recordRpsResult(winner, 'versusAi', localPlayer, 'Jaylin');
     renderRps();
 }
@@ -213,6 +217,7 @@ function chooseRpsVersus(choice) {
         if (!committed) return;
         const state = snapshot.val();
         const finished = state.status === 'finished';
+        if (typeof recordAchievementMatch === 'function') recordAchievementMatch('rps', state);
         const opponent = otherPlayer(localPlayer);
         if (finished) recordRpsResult(state.winner, 'versus', localPlayer, opponent);
         sendRpsNotification(opponent, finished ? 'Your RPS round finished' : `${playerProfiles[localPlayer]?.nickname || localPlayer} chose their RPS move`);

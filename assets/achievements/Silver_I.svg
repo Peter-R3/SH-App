@@ -1,0 +1,60 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:hyvector="https://www.hyvector.com/dtd"
+    width="500"
+    height="500"
+    viewBox="0 0 500 500"
+    >
+  <defs>
+    <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="G8WHIVEx"
+        spreadMethod="reflect"
+        x1="0"
+        y1="50"
+        x2="100"
+        y2="50"
+        gradientTransform="translate(10, 10) scale(4.8, 4.8)"
+        hyvector:paintTransform="scale(1)"
+        >
+      <stop
+        offset="0"
+        style="stop-color: rgb(255, 255, 255);"
+        />
+      <stop
+        offset="0.5035714285714286"
+        style="stop-color: rgb(192, 192, 192);"
+        />
+      <stop
+        offset="1"
+        style="stop-color: rgb(128, 128, 128);"
+        />
+    </linearGradient>
+  </defs>
+  <path
+    d="M10 10h480v480h-480z"
+    stroke-width="20"
+    stroke-linecap="square"
+    stroke-miterlimit="4"
+    hyvector:pathType="shape"
+    hyvector:shapeType="frame"
+    hyvector:thickness="1"
+    hyvector:cornerRounding="0"
+    hyvector:transform="translate(10, 10) scale(4.8, 4.8)"
+    fill="url(#G8WHIVEx)"
+    stroke="#000000"
+    />
+  <path
+    d="M230 110h40v280h-40z"
+    stroke-width="5"
+    stroke-linecap="square"
+    stroke-miterlimit="4"
+    hyvector:pathType="shape"
+    hyvector:shapeType="frame"
+    hyvector:thickness="1"
+    hyvector:cornerRounding="0"
+    hyvector:transform="translate(230, 110) scale(0.4, 2.8)"
+    fill="#000000"
+    stroke="#000000"
+    />
+</svg>

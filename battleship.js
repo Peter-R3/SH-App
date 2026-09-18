@@ -571,12 +571,13 @@ function fireBattleshipShot(index) {
             current.turn = target;
         }
         return current;
-    }, (error, committed) => {
+    }, (error, committed, snapshot) => {
         if (error || !committed || !result) return;
         database.ref(`stats/battleship/${localPlayer}/shots`).transaction(value => (value || 0) + 1);
         if (result.hit) database.ref(`stats/battleship/${localPlayer}/hits`).transaction(value => (value || 0) + 1);
         if (result.sunk) database.ref(`stats/battleship/${localPlayer}/shipsSunk`).transaction(value => (value || 0) + 1);
         if (result.allSunk) {
+            if (typeof recordAchievementMatch === 'function') recordAchievementMatch('battleship', snapshot.val());
             recordBattleshipResult(localPlayer, result.target);
             sendAppNotification({
                 type: 'Battleship',

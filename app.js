@@ -350,7 +350,7 @@ function soundForGameResult(game, state) {
 function scheduleUiSound(context, kind) {
     const settings = {
         tap: [0, 90], confirm: [1, 210], success: [2, 320], error: [1, 190],
-        ready: [2, 300], complete: [3, 650], 'realm-enter': [2, 620],
+        ready: [2, 300], complete: [3, 650], 'word-drag': [0, 65], 'realm-enter': [2, 620],
         'realm-exit': [2, 450], sent: [1, 140], notification: [1, 380]
     }[kind];
     if (!settings) return;
@@ -359,7 +359,9 @@ function scheduleUiSound(context, kind) {
     stopUiSounds();
     uiSoundPriority = settings[0];
     uiSoundUntil = now + settings[1];
-    if (kind === 'tap') {
+    if (kind === 'word-drag') {
+        playUiTone(context, 740, 0, 0.035, 0.035, 'sine', 820);
+    } else if (kind === 'tap') {
         playUiTone(context, 660, 0, 0.075, 0.12, 'sine', 780);
     } else if (kind === 'confirm') {
         playUiTone(context, 392, 0, 0.09, 0.12, 'sine', 430);
@@ -721,7 +723,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'home', 'profile', 'stats', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
+    const prefixes = ['dashboard', 'home', 'profile', 'stats', 'achievements', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -769,13 +771,17 @@ function switchTab(tabName) {
         openNotificationsScreen();
     } else if (tabName === 'stats') {
         openStatsScreen();
+    } else if (tabName === 'achievements') {
+        document.getElementById('achievements-screen')?.classList.remove('hidden');
+        applyThemeToScreen('achievements-screen', 'achievements-header-shell', 'achievements-nav-shell');
+        refreshSharedHeader('achievements');
     } else {
         const dash = document.getElementById('main-dashboard');
         if (dash) dash.classList.remove('hidden');
         initialiseMainDashboard();
     }
 
-    setActiveNavigationTab(tabName);
+    setActiveNavigationTab(tabName === 'achievements' ? 'home' : tabName);
     setActiveAppView(tabName);
 }
 
@@ -1394,6 +1400,7 @@ function initialiseRealtimeFeeds() {
     database.ref('stats').on('value', (snapshot) => {
         latestStats = snapshot.val() || {};
         renderStats();
+        if (typeof syncAchievementStats === 'function') syncAchievementStats(latestStats);
     });
 
     database.ref('profilePhotos').on('value', (snapshot) => {
@@ -2174,6 +2181,16 @@ async function adjustManagedScores(operation) {
 
     if (operation === 'reset' && !await confirmNewPuzzle('Reset game scores?', `Reset the selected statistics for ${profiles.length === 2 ? 'both profiles' : profiles[0]} to zero? This cannot be undone.`, 'Reset')) return;
     if (localPlayer !== 'Peter') return;
+    if (operation === 'reset') {
+        const updates = {};
+        for (const target of scoreTargets) {
+            updates[target.path] = 0;
+            updates[`stats/_achievementEpochs/${target.path.slice(6).replaceAll('/', '_')}`] = firebase.database.ServerValue.TIMESTAMP;
+        }
+        return database.ref().update(updates)
+            .then(() => setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`))
+            .catch(error => setManagementStatus(`Could not adjust scores: ${error.message}`));
+    }
     Promise.all(scoreTargets.map(target => {
         const targetOperation = target.isTime
             ? (operation === 'increment' ? 'increment-time' : operation === 'decrement' ? 'decrement-time' : 'reset')

@@ -484,6 +484,7 @@ function joinWordSearchVersus(difficulty) {
 }
 
 function renderVersusState(state) {
+    if (typeof noteAchievementPuzzleState === 'function') noteAchievementPuzzleState(state);
     soundForGameResult('word-search', state);
     if (!state?.puzzle) {
         wordSearchDisconnectHandle?.cancel?.();
@@ -622,6 +623,7 @@ function stopWordSearchRealtime() {
 }
 
 function applyWordSearchState(state) {
+    if (typeof noteAchievementPuzzleState === 'function') noteAchievementPuzzleState(state);
     if (!state?.puzzle) return;
     if (wordSearchStartedAt !== state.startedAt) wordSearchCompletedLocally = false;
     const justCompleted = wordSearchSettings.mode === 'coop' && state.completedAt &&
@@ -678,6 +680,7 @@ function bindWordSearchPointerEvents() {
         wordSearchDragging = true;
         grid.setPointerCapture?.(event.pointerId);
         wordSearchSelection = [start];
+        playUiSound('word-drag');
         updateWordSearchPreview();
     };
     const updateEndCell = event => {
@@ -685,6 +688,8 @@ function bindWordSearchPointerEvents() {
         if (!end || !wordSearchSelection.length) return;
         const line = straightLine(wordSearchSelection[0], end);
         if (line.length) {
+            const previous = wordSearchSelection.at(-1);
+            if (previous?.row !== end.row || previous?.col !== end.col) playUiSound('word-drag');
             wordSearchSelection = line;
             updateWordSearchPreview();
         }
@@ -798,6 +803,10 @@ function recordFoundWord(wordIndex) {
     database.ref(`wordSearch/versus/current/foundBy/${localPlayer}/${wordIndex}`).transaction(current => {
         if (current) return;
         return true;
+    }, (error, committed) => {
+        if (error || !committed) return;
+        playUiSound('confirm');
+        incrementWordSearchWordsFound(localPlayer, 'versus', wordSearchSettings.difficulty);
     });
 }
 
@@ -825,6 +834,8 @@ function claimPersistentWord(path, wordIndex, finder) {
         paintFoundWords();
         setWordSearchStatus(`${modeTitle(wordSearchSettings.mode)} - ${wordSearchPuzzle.size}x${wordSearchPuzzle.size}`);
         if (!committed) return;
+
+        playUiSound('confirm');
 
         const activityStart = Math.max(
             Number(wordSearchLastActivityAt) || wordSearchSessionStartedAt || now,
@@ -997,14 +1008,6 @@ function finishVersusMatch(elapsed) {
         return current;
     }, (error, committed, snapshot) => {
         if (error || !committed) return;
-        const finishedMatch = snapshot.val() || {};
-        ['Peter', 'Jadey'].forEach(player => {
-            const foundCount = Object.keys(finishedMatch.foundBy?.[player] || {}).length;
-            if (foundCount) {
-                database.ref(`stats/wordSearch/${player}/versus/${wordSearchSettings.difficulty}/wordsFound`)
-                    .transaction(value => (value || 0) + foundCount);
-            }
-        });
         incrementWordSearchCompletion(localPlayer, 'versus', wordSearchSettings.difficulty, elapsed);
         database.ref(`stats/wordSearch/${localPlayer}/versus/${wordSearchSettings.difficulty}/wins`).transaction(value => (value || 0) + 1);
         database.ref(`stats/wordSearch/${otherPlayer(localPlayer)}/versus/${wordSearchSettings.difficulty}/losses`).transaction(value => (value || 0) + 1);

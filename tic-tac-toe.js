@@ -185,8 +185,9 @@ function playTicTacToeVersusCell(index) {
         current.board[index] = localPlayer;
         result = finishTicTacToeTurn(current, localPlayer, otherPlayer(localPlayer));
         return current;
-    }, (error, committed) => {
+    }, (error, committed, snapshot) => {
         if (error || !committed || !result) return;
+        if (typeof recordAchievementMatch === 'function') recordAchievementMatch('ttt', snapshot.val());
         database.ref(`stats/ticTacToe/${localPlayer}/versus/moves`).transaction(value => (value || 0) + 1);
         if (result.finished) recordTicTacToeResult(result.winner, 'versus', localPlayer, otherPlayer(localPlayer));
         sendTicTacToeNotification(otherPlayer(localPlayer), result.finished ? 'Your Tic-Tac-Toe match finished' : `${playerProfiles[localPlayer]?.nickname || localPlayer} finished their turn in Tic-Tac-Toe`);
@@ -205,7 +206,11 @@ function playTicTacToeAiCell(index) {
             result = finishTicTacToeTurn(state, 'Jaylin', localPlayer);
         }
     }
-    database.ref(ticTacToeAiPath()).set(state);
+    const finishedState = JSON.parse(JSON.stringify(state));
+    const player = localPlayer;
+    database.ref(ticTacToeAiPath()).set(state).then(() => {
+        if (typeof recordAchievementMatch === 'function') recordAchievementMatch('ttt', finishedState, 'versusAi', player);
+    });
     database.ref(`stats/ticTacToe/${localPlayer}/versusAi/moves`).transaction(value => (value || 0) + 1);
     if (result.finished) recordTicTacToeResult(result.winner, 'versusAi', localPlayer, 'Jaylin');
     renderTicTacToe();

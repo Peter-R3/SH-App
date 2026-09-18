@@ -183,8 +183,9 @@ function dropConnectFourToken(column) {
             current.turn = result.opponent;
         }
         return current;
-    }, (error, committed) => {
+    }, (error, committed, snapshot) => {
         if (error || !committed || !result) return;
+        if (typeof recordAchievementMatch === 'function') recordAchievementMatch('connect', snapshot.val());
         database.ref(`stats/connectFour/${localPlayer}/tokensPlaced`).transaction(value => (value || 0) + 1);
         if (result.winningCells.length) {
             recordConnectFourResult(localPlayer, result.opponent);

@@ -419,7 +419,7 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => { adjustManagedScores('reset'); });
         await page.locator('#game-confirm-dialog button[value=confirm]').click();
         await page.waitForFunction(() => window.managementWrites.length === 1);
-        assert.deepEqual(await page.evaluate(() => window.managementWrites[0]), { path: 'stats/sudoku/Peter/versusAi/hard/medium/bestTime', value: 0 });
+        assert.deepEqual(await page.evaluate(() => window.managementWrites[0]), { 'stats/sudoku/Peter/versusAi/hard/medium/bestTime': 0, 'stats/_achievementEpochs/sudoku_Peter_versusAi_hard_medium_bestTime': 1 });
         await selectManagement('score-game', 'battleship');
         assert.equal(await page.locator('#score-mode-custom-button').isVisible(), false);
         await selectManagement('score-game', 'rps');
