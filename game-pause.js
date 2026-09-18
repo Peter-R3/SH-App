@@ -162,10 +162,19 @@ function initialiseGamePauseMenus() {
             if (!action) return;
             playUiSound('tap');
             if (action === 'resume') resumeSharedGame();
+            else if (action === 'achievements') openGameAchievements(id);
+            else if (action === 'history') openSharedGameMenu(id, 'history');
             else if (action === 'settings') config.settingsAction();
             else if (action === 'back' && sharedPauseSession?.directFromLobby) resumeSharedGame();
             else openSharedGameMenu(id, action === 'stats' ? 'stats' : 'pause');
         });
+        for (const [action, label] of [['history', 'History'], ['achievements', 'Achievements']]) {
+            const button = document.createElement('button');
+            button.className = 'pause-option-btn';
+            button.dataset.pauseAction = action;
+            button.textContent = label;
+            menu.querySelector('.shared-pause-panel').append(button);
+        }
         screen.insertBefore(menu, nav);
         const resize = () => {
             screen.style.setProperty('--pause-header-height', `${screen.querySelector('.dashboard-header').getBoundingClientRect().height}px`);
@@ -186,6 +195,7 @@ function restoreSharedMenuContent() {
 }
 
 function openSharedGameMenu(id, view = 'pause') {
+    if (typeof restoreGameAchievements === 'function') restoreGameAchievements();
     initialiseGamePauseMenus();
     const config = sharedPauseGames[id];
     if (!config || !localPlayer) return;
@@ -199,6 +209,8 @@ function openSharedGameMenu(id, view = 'pause') {
         }
     }
     restoreSharedMenuContent();
+    const submenuHost = document.querySelector(`#${id}-screen .shared-submenu-content`);
+    if (submenuHost) { submenuHost.historyToken = null; submenuHost.replaceChildren(); }
     setActiveAppView(`${id}-menu`);
     const screen = document.getElementById(`${id}-screen`);
     document.querySelectorAll('.screen').forEach(element => element.classList.add('hidden'));
@@ -222,8 +234,9 @@ function openSharedGameMenu(id, view = 'pause') {
         if (!child.matches('.dashboard-header, .bottom-nav-bar, .shared-game-menu')) child.inert = true;
     }
     if (view !== 'pause') {
-        menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : config.settingsLabel;
-        const content = view === 'stats' ? document.getElementById(config.stats) : document.getElementById(`${id}-settings-screen`)?.children[1];
+        menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : view === 'history' ? 'History' : view === 'achievements' ? 'Achievements' : config.settingsLabel;
+        const content = view === 'stats' ? document.getElementById(config.stats) : !['history', 'achievements'].includes(view) ? document.getElementById(`${id}-settings-screen`)?.children[1] : null;
+        if (view === 'history') loadGameHistory(id, menu.querySelector('.shared-submenu-content'));
         if (content) {
             const placeholder = document.createComment('Game menu content');
             content.before(placeholder);

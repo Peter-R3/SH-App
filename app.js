@@ -185,6 +185,7 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    if (typeof restoreGameAchievements === 'function') restoreGameAchievements();
     if (typeof sharedPauseSession !== 'undefined' && sharedPauseSession && view !== `${sharedPauseSession.id}-menu`) closeSharedGameMenu();
     activeAppView = view;
     updateAppPresence();
@@ -2780,7 +2781,8 @@ function openNumberGuessMenu(view = 'pause') {
         pause: { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' },
         modes: { title: 'Modes', activePanel: 'number-guess-modes-panel', screenClass: 'number-guess-submenu-view' },
         history: { title: 'History', activePanel: 'number-guess-history-panel', screenClass: 'number-guess-submenu-view' },
-        stats: { title: 'Statistics', activePanel: 'number-guess-stats-panel', screenClass: 'number-guess-submenu-view' }
+        stats: { title: 'Statistics', activePanel: 'number-guess-stats-panel', screenClass: 'number-guess-submenu-view' },
+        achievements: { title: 'Achievements', activePanel: 'number-guess-achievements-panel', screenClass: 'number-guess-submenu-view' }
     }[view] || { title: 'Paused', activePanel: 'number-guess-pause-panel', screenClass: 'number-guess-pause-view' };
 
     setActiveAppView(`number-guess-${view}`);
@@ -2808,6 +2810,7 @@ function openNumberGuessMenu(view = 'pause') {
     if (view === 'modes') updateModeButtons();
     if (view === 'history') loadNumberGuessHistory();
     if (view === 'stats') renderNumberGuessPauseStats();
+    document.getElementById('number-guess-achievements-panel')?.classList.toggle('hidden', view !== 'achievements');
 }
 
 function openNumberGuessPause() {
@@ -2876,21 +2879,14 @@ function renderNumberGuessHistory(records) {
         const resultClass = round.correct ? 'correct' : 'missed';
         return `
             <article class="history-card ${resultClass}">
+                <time>${Number(round.completedAt) ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(Number(round.completedAt))) : 'Date unavailable'}</time>
                 <div class="history-match-row">
-                    <div class="history-player-heading">
-                        <span>Picked</span>
-                        <strong>${escapeHtml(setterName)}</strong>
-                    </div>
                     ${miniNumberGuessCard(round.mode, round.target, setter)}
                     <span class="history-divider">:</span>
                     ${miniNumberGuessCard(round.mode, round.guess, guesser)}
-                    <div class="history-player-heading guesser">
-                        <span>Guessed</span>
-                        <strong>${escapeHtml(guesserName)}</strong>
-                    </div>
                 </div>
-                <div class="history-score-row ${peterPoints ? 'scored peter' : ''}"><span>${escapeHtml(playerProfiles.Peter?.nickname || 'Peter')}</span><strong>+${peterPoints} pts</strong></div>
-                <div class="history-score-row ${jadeyPoints ? 'scored jadey' : ''}"><span>${escapeHtml(playerProfiles.Jadey?.nickname || 'Jadey')}</span><strong>+${jadeyPoints} pts</strong></div>
+                <div class="history-score-row"><span style="color:${themeColorFor(setter)}">${escapeHtml(setterName)} <small>Picked</small></span><strong>+${setter === 'Peter' ? peterPoints : jadeyPoints} pts</strong></div>
+                <div class="history-score-row"><span style="color:${themeColorFor(guesser)}">${escapeHtml(guesserName)} <small>Guessed</small></span><strong>+${guesser === 'Peter' ? peterPoints : jadeyPoints} pts</strong></div>
             </article>
         `;
     }).join('');

@@ -1,0 +1,24 @@
+.history-card time { display: block; font-size: 12px; color: #9BA6B3; margin-bottom: 12px; }
+.history-match-row { grid-template-columns: 64px 20px 64px; justify-content: center; gap: 12px; margin: 14px 0 20px; }
+.history-match-row .history-mini-card { width: 64px; }
+.history-score-row { gap: 12px; }
+.history-score-row > span { min-width: 0; overflow-wrap: anywhere; }
+.history-score-row small { display: block; font-size: 11px; margin-top: 3px; }
+.history-mode, .history-duration { color: #B9C1CB; font-size: 13px; margin-bottom: 10px; }
+.history-card h3 { font-size: 18px; margin-bottom: 12px; }
+.history-result-table { margin-top: 18px; }
+.history-ttt-board { display: grid; grid-template-columns: repeat(3, 42px); width: max-content; gap: 3px; margin: 16px auto 20px; }
+.history-ttt-board span { display: grid; place-items: center; height: 42px; background: #161D24; font-size: 25px; font-weight: 800; }
+.shared-submenu-content .achievements-content, #number-guess-achievements-panel .achievements-content { padding: 0; overflow: visible; }
+.shared-submenu:has(.achievements-content) > .number-guess-submenu-heading { display: none; }
+.shared-pause-panel, #number-guess-pause-panel { gap: 8px; padding-top: 36px; padding-bottom: 0; }
+.shared-pause-panel .pause-option-btn, #number-guess-pause-panel .pause-option-btn { min-height: 46px; padding: 10px 14px; margin: 0; font-size: 16px; line-height: 1.3; display: flex; align-items: center; }
+.shared-pause-panel .pause-option-btn span, #number-guess-pause-panel .pause-option-btn span { font-size: 16px; margin: 0; }
+.shared-pause-panel .pause-option-btn small, #number-guess-pause-panel .pause-option-btn small { display: none; }
+.shared-pause-note, .number-guess-menu-subtitle { margin-bottom: 6px; }
+@media (max-height: 620px) {
+    .shared-game-menu { padding-top: 8px; padding-bottom: 8px; }
+    .shared-pause-panel, #number-guess-pause-panel { gap: 5px; padding-top: 30px; }
+    .shared-pause-panel .pause-option-btn, #number-guess-pause-panel .pause-option-btn { min-height: 38px; padding: 7px 12px; }
+    .shared-pause-panel h2, #number-guess-pause-panel h2 { font-size: 21px; margin-bottom: 4px; }
+}

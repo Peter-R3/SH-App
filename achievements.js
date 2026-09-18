@@ -137,6 +137,7 @@ function initialiseAchievements() {
     document.getElementById('achievement-reveal')?.close();
     achievementAutoPause = null;
     achievementPlayer = localPlayer;
+    if (typeof initialisePuzzleHistory === 'function') initialisePuzzleHistory(localPlayer);
     achievementState = {};
     achievementReady = false;
     const ref = database.ref(`achievements/${localPlayer}`);
@@ -236,6 +237,7 @@ function recoverAchievementMatches() {
 
 function recordAchievementMatch(game, state, mode = 'versus', player = localPlayer) {
     if (!state || state.status !== 'finished' || state.abandonedBy) return;
+    if (typeof recordGameHistory === 'function') recordGameHistory(game, state, mode, player);
     const eventId = `${game}_${mode}_${state.roundId || state.createdAt || state.startedAt}`;
     if (eventId.endsWith('_undefined')) return;
     const players = mode === 'versusAi' ? [player] : ['Peter','Jadey'];
@@ -286,6 +288,7 @@ function initialiseAchievementScreen() {
     document.getElementById('home-screen').after(screen);
     document.getElementById('achievement-back').onclick = () => {
         if (achievementSelectedTrack) { achievementSelectedTrack = null; renderAchievements(); }
+        else if (typeof gameAchievementContext !== 'undefined' && gameAchievementContext) gameAchievementContext.back();
         else switchTab('home');
         playUiSound('tap');
     };
@@ -317,7 +320,8 @@ function renderAchievements() {
     const track = ACHIEVEMENT_TRACKS.find(item => item.id === achievementSelectedTrack);
     document.getElementById('achievement-heading').textContent = track ? track.title : 'Your achievements';
     const back = document.getElementById('achievement-back');
-    back.title = track ? 'Back to achievements' : 'Back to Home';
+    const scoped = typeof gameAchievementContext !== 'undefined' && gameAchievementContext;
+    back.title = track ? 'Back to achievements' : scoped ? 'Back to pause menu' : 'Back to Home';
     back.setAttribute('aria-label', back.title);
     const status = document.getElementById('achievement-status');
     status.textContent = achievementError || (!achievementReady ? 'Loading achievements...' : '');
@@ -325,7 +329,7 @@ function renderAchievements() {
     review.hidden = Boolean(track);
     review.disabled = !Object.keys(achievementState.unlocked || {}).length;
     const filters = document.getElementById('achievement-filters');
-    filters.hidden = Boolean(track);
+    filters.hidden = Boolean(track || scoped);
     filters.replaceChildren();
     for (const [key, name] of [['all','All games'], ...Object.entries(ACHIEVEMENT_GAMES)]) {
         const button = document.createElement('button');

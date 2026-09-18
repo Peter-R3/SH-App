@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, '..');
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
         await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
-        for (const file of ['styles.css', 'realm-hub.css', 'game-pause.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['styles.css', 'realm-hub.css', 'game-pause.css', 'achievements.css', 'game-history.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach: () => {} };
             const ref = {
@@ -29,7 +29,7 @@ const root = path.resolve(__dirname, '..');
             window.AudioContext = undefined;
             window.webkitAudioContext = undefined;
         });
-        for (const file of ['app.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'game-pause.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['app.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => showAuthenticatedApp('Peter'));
         const visible = () => page.locator('.screen:not(.hidden)').evaluateAll(screens => screens.map(screen => screen.id));
         assert.deepEqual(await visible(), ['home-screen']);
@@ -58,11 +58,14 @@ const root = path.resolve(__dirname, '..');
         for (const width of [320, 390, 1280]) {
             await page.setViewportSize({ width, height: width === 320 ? 568 : 844 });
             await page.evaluate(() => calculateRealVh(true));
+            await page.evaluate(() => openNumberGuessPause());
+            assert.ok(await page.locator('#number-guess-menu-area').evaluate(el => el.scrollHeight <= el.clientHeight + 1), '1 to 10 pause fits without scrolling');
             for (const game of ['word-search', 'sudoku', 'battleship', 'connect-four', 'tic-tac-toe', 'rps']) {
                 await page.evaluate(game => openSharedGameMenu(game), game);
                 assert.deepEqual(await visible(), [game + '-screen']);
                 const screen = page.locator('#' + game + '-screen');
                 const tab = screen.locator('[data-pause-game]');
+                assert.ok(await screen.locator('.shared-game-menu').evaluate(el => el.scrollHeight <= el.clientHeight + 1), 'Pause menu fits without scrolling');
                 assert.equal(await tab.textContent(), 'Play');
                 if (game === 'rps') {
                     await page.evaluate(() => { rpsState = { mode: 'versus', status: 'active', players: { Peter: true, Jadey: true }, choices: {} }; renderRps(); });
@@ -78,6 +81,9 @@ const root = path.resolve(__dirname, '..');
                 await screen.locator('[data-pause-action=stats]').click();
                 assert.equal(await screen.locator('.shared-submenu h2').textContent(), 'Statistics');
                 if (game === 'rps' && width === 390) await page.screenshot({ path: path.join(os.tmpdir(), 'shared-pause-stats.png') });
+                await screen.locator('[data-pause-action=back]').click();
+                await screen.locator('[data-pause-action=history]').click();
+                await page.waitForFunction(id => document.querySelector(`#${id}-screen .shared-submenu-content`).textContent.includes('No completed games'), game);
                 await screen.locator('[data-pause-action=back]').click();
                 if (['word-search', 'sudoku', 'tic-tac-toe', 'rps'].includes(game)) {
                     await screen.locator('[data-pause-action=settings]').click();

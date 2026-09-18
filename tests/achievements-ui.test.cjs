@@ -17,7 +17,7 @@ const root = path.resolve(__dirname, '..');
             return route.fulfill({ contentType: 'text/html', body: html });
         });
         await page.goto('http://achievements.test/');
-        for (const file of ['styles.css','realm-hub.css','game-pause.css','achievements.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
+        for (const file of ['styles.css','realm-hub.css','game-pause.css','achievements.css','game-history.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach() {} };
             const ref = { on() {}, off() {}, once: async () => snapshot, set: async () => {}, update: async () => {}, remove: async () => {}, push: () => ({ key: 'key', set: async () => {} }),
@@ -28,7 +28,7 @@ const root = path.resolve(__dirname, '..');
             window.AudioContext = undefined;
             window.webkitAudioContext = undefined;
         });
-        for (const file of ['app.js','wordsearch.js','battleship.js','connect-four.js','sudoku.js','tic-tac-toe.js','rps.js','realm-hub.js','game-pause.js','achievements.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
+        for (const file of ['app.js','wordsearch.js','battleship.js','connect-four.js','sudoku.js','tic-tac-toe.js','rps.js','realm-hub.js','game-pause.js','achievements.js','game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
         await page.evaluate(() => { showAuthenticatedApp('Peter'); achievementReady = true; achievementPlayer = 'Peter'; });
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });
@@ -114,6 +114,29 @@ const root = path.resolve(__dirname, '..');
         }
         await page.locator('#achievement-continue').click();
         assert.equal(await page.locator('#achievements-screen').isVisible(), true);
+        for (const id of ['number-guess','word-search','sudoku','battleship','connect-four','tic-tac-toe','rps']) {
+            await page.evaluate(id => openGameAchievements(id), id);
+            assert.ok(await page.locator('.achievement-track').count() > 0);
+            assert.equal(await page.locator('#achievement-filters').isVisible(), false);
+            await page.locator('.achievement-track').first().click();
+            await page.locator('#achievement-back').click();
+            await page.locator('#achievement-back').click();
+            assert.equal(await page.evaluate(() => gameAchievementContext), null);
+            if (id !== 'number-guess') assert.equal(await page.locator(`#${id}-screen .shared-pause-panel`).isVisible(), true);
+        }
+        await page.evaluate(() => { switchTab('home'); openAchievements(); });
+        assert.equal(await page.locator('.achievement-track').count(), 31);
+        await page.setViewportSize({ width: 320, height: 568 });
+        await page.evaluate(() => {
+            calculateRealVh(true);
+            openNumberGuessHistory();
+        });
+        await page.evaluate(() => {
+            renderNumberGuessHistory([{ setter: 'Peter', guesser: 'Jadey', target: 7, guess: 5, mode: 'ten', completedAt: Date.now(), points: { Peter: 0, Jadey: 0 } }]);
+        });
+        assert.equal(await page.locator('.history-player-heading').count(), 0);
+        assert.equal(await page.locator('#number-guess-history-list time').count(), 1);
+        await page.screenshot({ path: path.join(os.tmpdir(), 'number-history-refined.png') });
         assert.deepEqual(errors, []);
         console.log('PASS: three-column Home, real badge loading, progress bars, all tier details, safe competitive queues, persistent reveal acknowledgement and solo pause/resume.');
     } finally { await browser.close(); }
