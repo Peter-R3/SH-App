@@ -52,6 +52,17 @@ const root = path.resolve(__dirname, '..');
         });
         assert.equal(await page.locator('.achievement-track').count(), 31);
         assert.equal(await page.locator('.achievement-track progress').count(), 31);
+        assert.equal(await page.locator('#achievements-screen').isVisible(), true);
+        await page.locator('#achievement-review').click();
+        assert.equal(await page.locator('.achievement-reward-group').count(), 2);
+        assert.equal(await page.locator('.achievement-reward').count(), 4);
+        await page.locator('.achievement-reward img').evaluateAll(images => Promise.all(images.flatMap(image => image.getAnimations().map(animation => animation.finished))));
+        await page.screenshot({ path: path.join(os.tmpdir(), 'achievement-grouped-rewards.png') });
+        await page.locator('#achievement-continue').click();
+        await page.locator('#achievement-back').click();
+        await page.locator('.home-shortcut-card.achievements').click();
+        assert.equal(await page.locator('#achievements-screen').isVisible(), true, 'Reopening after rewards shows achievements, not Games');
+        assert.equal(await page.locator('#main-dashboard').isVisible(), false);
         await page.waitForFunction(() => [...document.querySelectorAll('.achievement-track img')].every(image => image.complete && image.naturalWidth > 0));
         await page.screenshot({ path: path.join(os.tmpdir(),'achievement-tracks.png') });
         await page.locator('[data-track="number-total"]').click();
@@ -61,6 +72,7 @@ const root = path.resolve(__dirname, '..');
         await page.screenshot({ path: path.join(os.tmpdir(),'achievement-tiers.png') });
         await page.locator('#achievement-back').click();
         await page.evaluate(() => {
+            localStorage.removeItem('achievement-seen:Peter');
             achievementState = awardAchievementTiers({ totals: { number_ten: 1 } }, Date.now());
             window.fixtureAchievements = achievementState;
             setActiveAppView('rps'); rpsState = { status: 'active' };
@@ -87,6 +99,21 @@ const root = path.resolve(__dirname, '..');
         });
         await page.locator('#achievement-continue').click();
         assert.equal(await page.evaluate(() => activeAppView), 'word-search-menu', 'Already paused game stays paused');
+        await page.evaluate(() => {
+            switchTab('home');
+            achievementState = awardAchievementTiers({ totals: { number_ten: 750, ws_solo_5_completed: 500 } }, Date.now());
+            window.fixtureAchievements = achievementState;
+            openAchievements();
+        });
+        await page.locator('#achievement-review').click();
+        assert.equal(await page.locator('.achievement-reward').count(), 33);
+        assert.equal(await page.locator('.achievement-reward-group').count(), 2);
+        for (const width of [320, 390, 1280]) {
+            await page.setViewportSize({ width, height: 844 });
+            assert.ok(await page.locator('#achievement-reveal').evaluate(el => el.scrollWidth <= el.clientWidth), 'Large batch has no horizontal overflow');
+        }
+        await page.locator('#achievement-continue').click();
+        assert.equal(await page.locator('#achievements-screen').isVisible(), true);
         assert.deepEqual(errors, []);
         console.log('PASS: three-column Home, real badge loading, progress bars, all tier details, safe competitive queues, persistent reveal acknowledgement and solo pause/resume.');
     } finally { await browser.close(); }

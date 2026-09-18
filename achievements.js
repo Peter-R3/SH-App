@@ -278,6 +278,11 @@ function initialiseAchievementScreen() {
     content.className = 'achievements-content';
     content.innerHTML = '<div class="stats-content-heading"><h2 id="achievement-heading">Your achievements</h2><button class="mode-select-btn stats-content-back-btn" id="achievement-back" aria-label="Back to Home" title="Back to Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg></button></div><div id="achievement-filters" class="achievement-filters"></div><p id="achievement-status" role="status"></p><div id="achievement-list"></div>';
     screen.append(header, content, nav);
+    const review = document.createElement('button');
+    review.id = 'achievement-review';
+    review.textContent = 'View unlocked';
+    review.onclick = () => { maybeRevealAchievements(true); playUiSound('tap'); };
+    content.querySelector('#achievement-status').after(review);
     document.getElementById('home-screen').after(screen);
     document.getElementById('achievement-back').onclick = () => {
         if (achievementSelectedTrack) { achievementSelectedTrack = null; renderAchievements(); }
@@ -294,8 +299,9 @@ function initialiseAchievementScreen() {
     document.body.append(dialog);
 }
 function openAchievements() {
-    switchTab('achievements');
     achievementSelectedTrack = null;
+    achievementSelectedGame = 'all';
+    switchTab('achievements');
     syncAchievementStats(latestStats || {});
     retryAchievementEvents();
     renderAchievements();
@@ -315,6 +321,9 @@ function renderAchievements() {
     back.setAttribute('aria-label', back.title);
     const status = document.getElementById('achievement-status');
     status.textContent = achievementError || (!achievementReady ? 'Loading achievements...' : '');
+    const review = document.getElementById('achievement-review');
+    review.hidden = Boolean(track);
+    review.disabled = !Object.keys(achievementState.unlocked || {}).length;
     const filters = document.getElementById('achievement-filters');
     filters.hidden = Boolean(track);
     filters.replaceChildren();
@@ -364,11 +373,11 @@ function achievementRevealPolicy(view) {
     }
     return 'safe';
 }
-function maybeRevealAchievements() {
+function maybeRevealAchievements(review = false) {
     const dialog = document.getElementById('achievement-reveal');
     if (!dialog || dialog.open || !localPlayer || !achievementReady || document.hidden || !auth.currentUser || document.querySelector('dialog[open]') || document.activeElement?.matches('input, textarea') || realmTransitioning) return;
     const seen = localSeenAchievements(localPlayer);
-    const pending = Object.keys(achievementState.unlocked || {}).filter(key => !achievementState.unlocked[key].seenAt && !seen.includes(key));
+    const pending = Object.keys(achievementState.unlocked || {}).filter(key => review || (!achievementState.unlocked[key].seenAt && !seen.includes(key)));
     if (!pending.length) return;
     const policy = achievementRevealPolicy(activeAppView);
     if (policy === 'wait') return;
@@ -379,12 +388,15 @@ function maybeRevealAchievements() {
     }
     achievementRevealKeys = pending;
     const rewards = document.getElementById('achievement-rewards');
-    rewards.innerHTML = ACHIEVEMENT_TRACKS.flatMap(track => track.thresholds.map((goal, index) => {
+    rewards.innerHTML = Object.entries(ACHIEVEMENT_GAMES).map(([game, name]) => {
+        const cards = ACHIEVEMENT_TRACKS.filter(track => track.game === game).flatMap(track => track.thresholds.map((goal, index) => {
         if (!pending.includes(`${track.id}_${index}`)) return '';
         const badge = achievementBadge(track, index);
-        return `<article class="achievement-reward"><img src="${badge.path}" alt="${badge.name}"><span>${ACHIEVEMENT_GAMES[track.game]}</span><h3>${escapeHtml(track.title)}</h3><strong>${badge.name}</strong><p>${escapeHtml(track.requirement(goal, index))}</p></article>`;
-    })).join('');
-    document.getElementById('achievement-reveal-title').textContent = pending.length === 1 ? 'Achievement unlocked' : `${pending.length} achievements unlocked`;
+        return `<article class="achievement-reward"><img src="${badge.path}" alt="${badge.name}"><div><h3>${escapeHtml(track.title)}</h3><strong>${badge.name}</strong><p>${escapeHtml(track.requirement(goal, index))}</p></div></article>`;
+        })).filter(Boolean);
+        return cards.length ? `<section class="achievement-reward-group" aria-label="${escapeHtml(name)}"><h3>${escapeHtml(name)} <span>(${cards.length})</span></h3><div class="achievement-reward-grid">${cards.join('')}</div></section>` : '';
+    }).join('');
+    document.getElementById('achievement-reveal-title').textContent = review ? `Your unlocked achievements (${pending.length})` : pending.length === 1 ? 'Achievement unlocked' : `${pending.length} achievements unlocked`;
     dialog.dataset.player = localPlayer;
     dialog.showModal();
     playUiSound('complete');

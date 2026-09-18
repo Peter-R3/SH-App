@@ -1,11 +1,11 @@
-const CACHE_NAME = 'sweethearts-app-v40';
+const CACHE_NAME = 'sweethearts-app-v41';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
-  './achievements.js',
-  './achievements.css',
+  './styles.css?v=41',
+  './app.js?v=41',
+  './achievements.js?v=41',
+  './achievements.css?v=41',
   ...['Bronze','Silver','Gold'].flatMap(tier => ['I','II','III','IV','V','Star'].map(rank => `./assets/achievements/${tier}_${rank}.svg`)),
   './realm-hub.js',
   './realm-hub.css',
