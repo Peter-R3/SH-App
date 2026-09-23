@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-title" content="Sweetheart's App">
     <meta name="format-detection" content="telephone=no">
     <title>Sweetheart's App</title>
-    <link rel="stylesheet" href="styles.css?v=42">
+    <link rel="stylesheet" href="styles.css?v=43">
     <link rel="stylesheet" href="realm-hub.css">
-    <link rel="stylesheet" href="game-pause.css?v=42">
-    <link rel="stylesheet" href="achievements.css?v=42">
-    <link rel="stylesheet" href="game-history.css?v=42">
+    <link rel="stylesheet" href="game-pause.css?v=43">
+    <link rel="stylesheet" href="achievements.css?v=43">
+    <link rel="stylesheet" href="game-history.css?v=43">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
@@ -58,8 +58,11 @@
 
                 <div class="home-content">
                     <div class="home-greeting">
-                        <p id="home-greeting-text">Hello,</p>
-                        <h2 id="home-greeting-name"></h2>
+                        <h2 id="home-greeting-text">Welcome</h2>
+                        <div id="home-coin-preview" class="home-coin-balance" aria-label="Coin balance: 0" hidden>
+                            <img src="./assets/currency/Coin.svg" alt="" width="24" height="24">
+                            <span>0</span>
+                        </div>
                     </div>
                         <button class="home-shortcut-card realm" onclick="openRealmHub()">
                             <svg class="realm-symbol" viewBox="0 0 32 36" aria-hidden="true"><path fill="#41344F" d="M4 1h24v34H4z"/><path fill="#AF72EE" d="M9 6h14v24H9z"/><path fill="none" stroke="#E3BBFF" stroke-width="2" d="M13 10h6v16h-6V15h3v7"/><path fill="#736083" d="M4 7h5v3H4zm19 13h5v3h-5zM11 1h5v5h-5zm6 29h5v6h-5z"/></svg>
@@ -1025,7 +1028,7 @@
     <script src="./vendor/firebase/firebase-auth-compat.js"></script>
     <script src="./vendor/firebase/firebase-database-compat.js"></script>
 
-    <script src="app.js?v=42"></script>
+    <script src="app.js?v=43"></script>
     <script src="wordsearch.js"></script>
     <script src="battleship.js"></script>
     <script src="connect-four.js"></script>
@@ -1033,8 +1036,8 @@
     <script src="tic-tac-toe.js"></script>
     <script src="rps.js"></script>
     <script src="realm-hub.js"></script>
-    <script src="game-pause.js?v=42"></script>
-    <script src="achievements.js?v=42"></script>
-    <script src="game-history.js?v=42"></script>
+    <script src="game-pause.js?v=43"></script>
+    <script src="achievements.js?v=43"></script>
+    <script src="game-history.js?v=43"></script>
 </body>
 </html>

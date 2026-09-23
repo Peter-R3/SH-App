@@ -11,13 +11,16 @@
 .history-ttt-board span { display: grid; place-items: center; height: 42px; background: #161D24; font-size: 25px; font-weight: 800; }
 .shared-submenu-content .achievements-content, #number-guess-achievements-panel .achievements-content { padding: 0; overflow: visible; }
 .shared-submenu:has(.achievements-content) > .number-guess-submenu-heading { display: none; }
-.shared-pause-panel, #number-guess-pause-panel { gap: 8px; padding-top: 36px; padding-bottom: 0; }
+.shared-game-menu:not(.shared-menu-solid), .number-guess-menu-area.number-guess-pause-view { display: flex; align-items: center; justify-content: center; padding: 18px; }
+.shared-pause-panel, #number-guess-pause-panel { flex: 0 0 auto; min-height: 0; width: 100%; max-width: 360px; margin: 0 auto; gap: 8px; padding-top: 36px; padding-bottom: 0; }
+.shared-pause-panel h2, #number-guess-pause-panel h2 { font-size: 28px; line-height: 1.2; margin: 0 0 8px; }
+.shared-pause-note, .number-guess-menu-subtitle { max-width: 300px; margin: 0 auto 6px; font-size: 13px; font-weight: 700; line-height: 1.35; text-align: center; }
 .shared-pause-panel .pause-option-btn, #number-guess-pause-panel .pause-option-btn { min-height: 46px; padding: 10px 14px; margin: 0; font-size: 16px; line-height: 1.3; display: flex; align-items: center; }
 .shared-pause-panel .pause-option-btn span, #number-guess-pause-panel .pause-option-btn span { font-size: 16px; margin: 0; }
 .shared-pause-panel .pause-option-btn small, #number-guess-pause-panel .pause-option-btn small { display: none; }
 .shared-pause-note, .number-guess-menu-subtitle { margin-bottom: 6px; }
 @media (max-height: 620px) {
-    .shared-game-menu { padding-top: 8px; padding-bottom: 8px; }
+    .shared-game-menu:not(.shared-menu-solid), .number-guess-menu-area.number-guess-pause-view { padding-top: 8px; padding-bottom: 8px; }
     .shared-pause-panel, #number-guess-pause-panel { gap: 5px; padding-top: 30px; }
     .shared-pause-panel .pause-option-btn, #number-guess-pause-panel .pause-option-btn { min-height: 38px; padding: 7px 12px; }
     .shared-pause-panel h2, #number-guess-pause-panel h2 { font-size: 21px; margin-bottom: 4px; }

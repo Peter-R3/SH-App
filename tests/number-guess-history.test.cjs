@@ -16,12 +16,13 @@ function write(key, value) {
 const snapshot = value => ({
     val: () => structuredClone(value),
     forEach: callback => Object.entries(value || {}).sort((a, b) => a[1].completedAt - b[1].completedAt || a[0].localeCompare(b[0]))
-        .forEach(([key, child]) => callback({ key, val: () => structuredClone(child) }))
+        .some(([key, child]) => Boolean(callback({ key, val: () => structuredClone(child) })))
 });
 const database = { ref(key = '') { return {
     push: () => ({ key: `round-${String(++sequence).padStart(4, '0')}` }),
     child: id => database.ref(`${key}/${id}`),
     orderByChild() { return this; },
+    limitToLast() { return this; },
     once: async () => snapshot(read(key)),
     update: async updates => Object.entries(updates).forEach(([path, value]) => write(path, value)),
     transaction: async (update, complete) => {
@@ -40,13 +41,16 @@ const context = vm.createContext({
     gameState1To10: {}, gameModes: { ten: {}, hundred: {}, colours: {} },
     playerProfiles: { Peter: { nickname: 'Peter' }, Jadey: { nickname: 'Jadey' } },
     otherPlayer: player => player === 'Peter' ? 'Jadey' : 'Peter', playUiSound() {}, sendAppNotification() {},
-    getCurrentMode: () => ({ title: '1 to 10' })
+    getCurrentMode: () => ({ title: '1 to 10' }),
+    document: { getElementById: () => ({ innerHTML: '' }) },
+    renderNumberGuessHistory: records => { context.renderedHistory = records; }
 });
 vm.runInContext(
     section('function normalizeGameState(', 'function createFreshRound(') +
     section('function getNumberGuessActingPlayer(', 'function numberGuessTurnCueKey(') +
     section('function recordNumberGuessHistory(', 'function showNumberGuessRoundSummary(') +
-    section('let numberGuessSubmissionPending =', 'function advanceRoundAfterReveal('), context);
+    section('let numberGuessSubmissionPending =', 'function advanceRoundAfterReveal(') +
+    section('function loadNumberGuessHistory(', 'function renderNumberGuessHistory('), context);
 const run = code => vm.runInContext(code, context);
 (async () => {
     let firstRecord;
@@ -83,5 +87,8 @@ const run = code => vm.runInContext(code, context);
     }
     assert.deepEqual(Object.keys(read('history/numberGuess')).sort(), ids.slice(-7).sort());
     assert.equal(firstRecord.target, 1);
+    run('loadNumberGuessHistory()');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(context.renderedHistory.length, 7, 'Firebase iteration must read all seven records');
     console.log('PASS: ten alternating rounds, fresh IDs despite reused legacy state, cold-cache retries, immutable history, stale submissions and exactly seven retained entries.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

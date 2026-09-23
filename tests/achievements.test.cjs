@@ -21,12 +21,22 @@ const plain = value => JSON.parse(JSON.stringify(value));
 (async () => {
     assert.equal(run('ACHIEVEMENT_TRACKS.length'), 31);
     for (const track of plain(run('ACHIEVEMENT_TRACKS'))) {
-        assert.equal(track.thresholds.length, track.stars ? 3 : 15);
+        assert.equal(track.thresholds.length, track.stars ? 5 : 25);
+        if (!track.stars) assert.ok(track.thresholds.every((n, i) => !i || n > track.thresholds[i - 1]));
         track.thresholds.forEach((_, index) => {
             const badge = run(`achievementBadge(ACHIEVEMENT_TRACKS.find(t => t.id === '${track.id}'), ${index})`);
             assert.ok(fs.existsSync(path.join(root, badge.path)));
         });
     }
+    assert.equal(run("achievementBadge(ACHIEVEMENT_TRACKS[0], 24).name"), 'Morganite V');
+    run("var previousUnlock = { at: 10, seenAt: 20 }; var migrated = awardAchievementTiers({ totals: { number_ten: 7500 }, unlocked: { 'number-total_14': previousUnlock } }, 999)");
+    assert.deepEqual(plain(run("migrated.unlocked['number-total_14']")), { at: 10, seenAt: 20 });
+    assert.ok(run("migrated.unlocked['number-total_24']"));
+    run("var repeated = awardAchievementTiers({ totals: { connect_horizontal_count: 20, connect_vertical_count: 20, connect_diagonal_count: 19, battleship_fullFleetWins: 20, ws_versusAi_5_hard_wins: 50 } }, 1000)");
+    assert.ok(run("repeated.unlocked['connect-lines_3']"));
+    assert.equal(run("repeated.unlocked['connect-lines_4']"), undefined);
+    assert.ok(run("repeated.unlocked['battleship-fleet_4']"));
+    assert.ok(run("repeated.unlocked['ws-jaylin_4']"));
     run('var state = mergeAchievementStats(null, { number_ten: 5 }, 100)');
     assert.ok(run("state.unlocked['number-total_1']"));
     assert.ok(run("state.unlocked['number-ten_0']"));
@@ -58,6 +68,7 @@ const plain = value => JSON.parse(JSON.stringify(value));
     run("recordAchievementMatch('ttt', match)");
     await run("Promise.all([...achievementQueues.values()])");
     assert.equal(saved['achievements/Peter'].totals.ttt_versus_wins, 1, 'Replay does not count twice');
+    assert.equal(saved['achievements/Peter'].totals.ttt_versus_line0_count, 1, 'Repeated-line counter is idempotent');
     run("recordAchievementMatch('ttt', { ...match, createdAt: 2000, abandonedBy: 'Jadey' })");
     await run("Promise.all([...achievementQueues.values()])");
     assert.equal(saved['achievements/Peter'].totals.ttt_versus_wins, 1, 'Abandonment is excluded');

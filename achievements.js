@@ -8,13 +8,19 @@ const achievementTotal = (state, key) => achievementNumber(state.totals?.[key]);
 const achievementSum = (state, predicate) => Object.entries(state.totals || {}).reduce((sum, [key, value]) => sum + (predicate(key) ? achievementNumber(value) : 0), 0);
 
 function addAchievementTrack(game, id, title, thresholds, value, requirement, stars = false, checklist = null) {
+    // Append long-term milestones without moving or renaming existing unlock IDs.
+    if (!stars) {
+        const last = thresholds.at(-1);
+        const step = last >= 1000 ? 100 : 25;
+        thresholds = [...thresholds, ...[1.3,1.7,2.2,2.8,3.5,4.5,5.5,7,8.5,10].map(factor => Math.ceil(last * factor / step) * step)];
+    }
     const singular = { 'correct guesses': 'correct guess', 'co-op grids': 'co-op grid', 'co-op puzzles': 'co-op puzzle', grids: 'grid', puzzles: 'puzzle', matches: 'match', rounds: 'round', 'enemy ships': 'enemy ship' };
     const readableRequirement = (goal, index) => requirement(goal, index).replace(/\b1 (correct guesses|co-op grids|co-op puzzles|grids|puzzles|matches|rounds|enemy ships)\b/g, (_, noun) => `1 ${singular[noun]}`);
     ACHIEVEMENT_TRACKS.push({ game, id, title, thresholds, value, requirement: readableRequirement, stars, checklist });
 }
 const numberSteps = [1,5,10,15,25,40,60,85,115,150,200,275,375,500,750];
 addAchievementTrack('number', 'number-total', 'Correct guesses', numberSteps, s => achievementSum(s, k => k.startsWith('number_')), n => `Make ${n} correct guesses across all modes.`);
-for (const [mode, name, goals] of [['ten','1 to 10',[5,25,100]],['hundred','1 to 100',[1,5,20]],['colours','Colours',[3,15,60]]]) {
+for (const [mode, name, goals] of [['ten','1 to 10',[5,25,100,250,750]],['hundred','1 to 100',[1,5,20,50,150]],['colours','Colours',[3,15,60,150,450]]]) {
     addAchievementTrack('number', `number-${mode}`, `${name} specialist`, goals, s => achievementTotal(s, `number_${mode}`), n => `Make ${n} correct guesses in ${name}.`, true);
 }
 for (const [game, sizes, completed, coop] of [
@@ -28,23 +34,23 @@ for (const [game, sizes, completed, coop] of [
         s => achievementSum(s, k => k.startsWith(`${game}_coop_`) && k.endsWith('_completed')), n => `Complete ${n} co-op ${noun} together.`);
     const sizeChecklist = s => sizes.map(size => ({ label: game === 'ws' ? `${size} x ${size}` : size[0].toUpperCase() + size.slice(1),
         value: achievementSum(s, k => k.startsWith(`${game}_`) && k.split('_')[2] === size && k.endsWith('_completed')) }));
-    addAchievementTrack(game, `${game}-variety`, game === 'ws' ? 'Every grid size' : 'Every difficulty', [1,5,10],
+    addAchievementTrack(game, `${game}-variety`, game === 'ws' ? 'Every grid size' : 'Every difficulty', [1,5,10,25,50],
         s => Math.min(...sizeChecklist(s).map(item => item.value)), n => `Complete each ${game === 'ws' ? 'grid size' : 'puzzle difficulty'} ${n} ${n === 1 ? 'time' : 'times'}.`, true, sizeChecklist);
     // Each Jaylin star has its own requirement, rather than a cumulative difficulty score.
-    const levels = ['easy','medium','hard'];
-    addAchievementTrack(game, `${game}-jaylin`, 'Beat Jaylin', [1,1,1],
+    const levels = ['easy','medium','hard','hard','hard'];
+    addAchievementTrack(game, `${game}-jaylin`, 'Beat Jaylin', [1,1,1,10,50],
         (s, index) => achievementSum(s, k => k.startsWith(`${game}_versusAi_`) && k.endsWith(`_${levels[index]}_wins`)),
-        (_, index) => `Beat ${levels[index][0].toUpperCase() + levels[index].slice(1)} Jaylin on any ${game === 'ws' ? 'grid size' : 'puzzle difficulty'}.`, true);
+        (goal, index) => `Beat ${levels[index][0].toUpperCase() + levels[index].slice(1)} Jaylin ${goal === 1 ? 'once' : `${goal} times`} on any ${game === 'ws' ? 'grid size' : 'puzzle difficulty'}.`, true);
 }
 addAchievementTrack('ws', 'ws-words', 'Words found', [5,15,30,50,75,125,200,300,450,650,900,1250,1750,2500,3500],
     s => achievementSum(s, k => k.startsWith('ws_') && k.endsWith('_words')), n => `Personally find ${n} words across all modes.`);
 addAchievementTrack('battleship', 'battleship-wins', 'Matches won', [1,2,3,5,8,12,18,25,35,50,70,95,125,165,220], s => achievementTotal(s, 'battleship_wins'), n => `Win ${n} completed matches.`);
 addAchievementTrack('battleship', 'battleship-ships', 'Ships sunk', [1,5,10,20,35,60,90,130,180,250,350,475,625,825,1100], s => achievementTotal(s, 'battleship_ships'), n => `Sink ${n} enemy ships.`);
-addAchievementTrack('battleship', 'battleship-fleet', 'Fleet remaining', [1,3,5], s => achievementTotal(s, 'battleship_fleet'), n => `Win with at least ${n} ${n === 1 ? 'ship' : 'ships'} still afloat.`, true);
+addAchievementTrack('battleship', 'battleship-fleet', 'Fleet remaining', [1,3,5,5,20], (s, index) => index < 3 ? achievementTotal(s, 'battleship_fleet') : achievementTotal(s, 'battleship_fullFleetWins'), (n, index) => index < 3 ? `Win with at least ${n} ${n === 1 ? 'ship' : 'ships'} still afloat.` : `Win ${n} matches with all 5 ships still afloat.`, true);
 addAchievementTrack('connect', 'connect-wins', 'Matches won', [1,3,5,8,12,18,25,35,50,70,95,125,165,220,300], s => achievementTotal(s, 'connect_wins'), n => `Win ${n} completed matches.`);
 addAchievementTrack('connect', 'connect-complete', 'Matches completed', [1,5,10,15,25,40,60,85,115,150,200,275,375,500,650], s => achievementTotal(s, 'connect_complete'), n => `Finish ${n} matches, including draws and losses.`);
-const connectChecklist = s => ['horizontal','vertical','diagonal'].map(name => ({ label: name, value: achievementTotal(s, `connect_${name}`) }));
-addAchievementTrack('connect', 'connect-lines', 'Winning directions', [1,2,3], s => connectChecklist(s).filter(item => item.value).length, n => `Win using ${n} different line ${n === 1 ? 'type' : 'types'}.`, true, connectChecklist);
+const connectChecklist = (s, index = 0) => ['horizontal','vertical','diagonal'].map(name => ({ label: name, value: achievementTotal(s, `connect_${name}${index < 3 ? '' : '_count'}`) }));
+addAchievementTrack('connect', 'connect-lines', 'Winning directions', [1,2,3,5,20], (s, index) => index < 3 ? connectChecklist(s).filter(item => item.value).length : Math.min(...connectChecklist(s, index).map(item => item.value)), (n, index) => index < 3 ? `Win using ${n} different line ${n === 1 ? 'type' : 'types'}.` : `Win ${n} times in each direction: horizontal, vertical and diagonal.`, true, connectChecklist);
 const ACHIEVEMENT_TTT_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 for (const game of ['ttt','rps']) for (const mode of ['versus','versusAi']) {
     const suffix = mode === 'versus' ? 'Player' : 'Jaylin';
@@ -53,16 +59,16 @@ for (const game of ['ttt','rps']) for (const mode of ['versus','versusAi']) {
     addAchievementTrack(game, `${game}-${mode}-wins`, `Wins - ${suffix}`, wins, s => achievementTotal(s, `${game}_${mode}_wins`), n => `Win ${n} ${game === 'ttt' ? 'matches' : 'rounds'} against ${suffix === 'Player' ? 'the other player' : 'Jaylin'}.`);
     addAchievementTrack(game, `${game}-${mode}-complete`, `Completions - ${suffix}`, completed, s => achievementTotal(s, `${game}_${mode}_complete`), n => `Finish ${n} ${game === 'ttt' ? 'matches' : 'rounds'} against ${suffix === 'Player' ? 'the other player' : 'Jaylin'}, including draws and losses.`);
     const labels = game === 'ttt' ? ['Top row','Middle row','Bottom row','Left column','Middle column','Right column','Descending diagonal','Ascending diagonal'] : ['Rock','Paper','Scissors'];
-    const checklist = s => labels.map((label, index) => ({ label, value: achievementTotal(s, `${game}_${mode}_${game === 'ttt' ? `line${index}` : label.toLowerCase()}`) }));
-    addAchievementTrack(game, `${game}-${mode}-collection`, `${game === 'ttt' ? 'Winning lines' : 'Every choice'} - ${suffix}`, game === 'ttt' ? [1,4,8] : [1,5,10],
-        s => game === 'ttt' ? checklist(s).filter(item => item.value).length : Math.min(...checklist(s).map(item => item.value)),
-        n => game === 'ttt' ? `Win using ${n} distinct board ${n === 1 ? 'line' : 'lines'} against ${suffix.toLowerCase() === 'player' ? 'the other player' : 'Jaylin'}.` : `Win with Rock, Paper and Scissors ${n} ${n === 1 ? 'time' : 'times'} each against ${suffix === 'Player' ? 'the other player' : 'Jaylin'}.`, true, checklist);
+    const checklist = (s, tier = 0) => labels.map((label, index) => ({ label, value: achievementTotal(s, `${game}_${mode}_${game === 'ttt' ? `line${index}${tier < 3 ? '' : '_count'}` : label.toLowerCase()}`) }));
+    addAchievementTrack(game, `${game}-${mode}-collection`, `${game === 'ttt' ? 'Winning lines' : 'Every choice'} - ${suffix}`, game === 'ttt' ? [1,4,8,3,10] : [1,5,10,25,75],
+        (s, index) => game === 'ttt' && index < 3 ? checklist(s).filter(item => item.value).length : Math.min(...checklist(s, index).map(item => item.value)),
+        (n, index) => game === 'ttt' ? (index < 3 ? `Win using ${n} distinct board ${n === 1 ? 'line' : 'lines'}` : `Win ${n} times with each of the 8 board lines`) + ` against ${suffix === 'Player' ? 'the other player' : 'Jaylin'}.` : `Win with Rock, Paper and Scissors ${n} ${n === 1 ? 'time' : 'times'} each against ${suffix === 'Player' ? 'the other player' : 'Jaylin'}.`, true, checklist);
 }
 
 function achievementBadge(track, index) {
-    const tier = ['Bronze','Silver','Gold'][track.stars ? index : Math.floor(index / 5)];
+    const tier = ['Bronze','Silver','Gold','Osmium','Pink'][track.stars ? index : Math.floor(index / 5)];
     const rank = track.stars ? 'Star' : ['I','II','III','IV','V'][index % 5];
-    return { name: `${tier} ${rank}`, path: `./assets/achievements/${tier}_${rank}.svg` };
+    return { name: `${tier === 'Pink' ? 'Morganite' : tier} ${rank}`, path: `./assets/achievements/${tier}_${rank}.svg` };
 }
 function awardAchievementTiers(state, now) {
     state.unlocked ||= {};
@@ -249,7 +255,7 @@ function recordAchievementMatch(game, state, mode = 'versus', player = localPlay
         if (state.winner === owner) {
             add[`${prefix}_wins`] = 1;
             if (game === 'ttt') ACHIEVEMENT_TTT_LINES.forEach((line, index) => {
-                if (line.every(cell => state.board?.[cell] === owner)) max[`${prefix}_line${index}`] = 1;
+                if (line.every(cell => state.board?.[cell] === owner)) { max[`${prefix}_line${index}`] = 1; add[`${prefix}_line${index}_count`] = 1; }
             });
             if (game === 'rps' && ['rock','paper','scissors'].includes(state.choices?.[owner])) add[`${prefix}_${state.choices[owner]}`] = 1;
             if (game === 'connect') {
@@ -257,11 +263,13 @@ function recordAchievementMatch(game, state, mode = 'versus', player = localPlay
                 if (cells.length) {
                     const direction = cells.every(cell => Math.floor(cell / 7) === Math.floor(cells[0] / 7)) ? 'horizontal' : cells.every(cell => cell % 7 === cells[0] % 7) ? 'vertical' : 'diagonal';
                     max[`connect_${direction}`] = 1;
+                    add[`connect_${direction}_count`] = 1;
                 }
             }
             if (game === 'battleship') {
                 const board = state.boards?.[owner];
                 max.battleship_fleet = (board?.ships || []).filter(ship => !ship.cells.every(cell => board.shotsReceived?.[cell]?.hit)).length;
+                if (max.battleship_fleet === 5) add.battleship_fullFleetWins = 1;
             }
         }
         if (Object.keys(add).length || Object.keys(max).length) sendAchievementEvent(owner, { id: eventId, at: state.completedAt || Date.now(), add, max });
@@ -342,8 +350,8 @@ function renderAchievements() {
         list.innerHTML = `<p class="achievement-game-label">${ACHIEVEMENT_GAMES[track.game]}</p>` + track.thresholds.map((goal, index) => {
             const unlocked = achievementState.unlocked?.[`${track.id}_${index}`];
             const badge = achievementBadge(track, index);
-            const checklist = track.checklist?.(achievementState);
-            const target = track.id.endsWith('lines') || track.id.startsWith('ttt-') ? 1 : goal;
+            const checklist = track.checklist?.(achievementState, index);
+            const target = index < 3 && (track.id.endsWith('lines') || track.id.startsWith('ttt-')) ? 1 : goal;
             return `<article class="achievement-tier"><img src="${badge.path}" alt="${badge.name}" class="${unlocked ? '' : 'locked'}"><div><h3>${badge.name}</h3><p>${escapeHtml(track.requirement(goal, index))}</p><strong class="achievement-earned">${unlocked ? 'Unlocked' : 'Locked'}</strong>${achievementProgress(track, index, achievementState)}${checklist ? `<ul class="achievement-checklist">${checklist.map(item => `<li class="${item.value >= target ? 'done' : ''}">${escapeHtml(item.label)} <span>${Math.min(item.value, target)} / ${target}</span></li>`).join('')}</ul>` : ''}</div></article>`;
         }).join('');
     } else {

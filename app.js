@@ -640,11 +640,11 @@ function initialiseHomeScreen() {
     setActiveNavigationTab('home');
     applyThemeToScreen('home-screen', 'home-header-shell', 'home-nav-shell');
     refreshSharedHeader('home');
-    const greetings = ['Hello,', 'Hey there,', 'Welcome back,', 'Lovely to see you,', 'Hi there,', 'Good to see you,'];
+    const greetings = ['Hello', 'Hey there', 'Welcome', 'Welcome back', 'Lovely to see you', 'Hi there', 'Good to see you'];
     const choices = greetings.filter(greeting => greeting !== previousHomeGreeting);
     previousHomeGreeting = choices[Math.floor(Math.random() * choices.length)];
     document.getElementById('home-greeting-text').textContent = previousHomeGreeting;
-    document.getElementById('home-greeting-name').textContent = playerProfiles[localPlayer]?.nickname || localPlayer || '';
+    document.getElementById('home-coin-preview').hidden = localPlayer !== 'Peter';
 }
 
 function homeNavigationMarkup() {
@@ -1184,7 +1184,7 @@ function applyNicknameRecords(records) {
             ? value.trim().slice(0, 24) : player === 'Peter' ? 'Peter' : 'Sweetheart';
     }
     if (!localPlayer) return;
-    document.querySelectorAll('.header-nickname, #header-nickname, #profile-label-nickname, #home-greeting-name').forEach(element => {
+    document.querySelectorAll('.header-nickname, #header-nickname, #profile-label-nickname').forEach(element => {
         element.textContent = playerProfiles[localPlayer].nickname;
     });
     renderMessages();
@@ -2446,7 +2446,7 @@ function recordNumberGuessHistory(round, wasCorrect) {
     return recordRef.transaction(current => current || record, undefined, false).then(() =>
         historyRef.orderByChild('completedAt').once('value').then(snapshot => {
             const removals = [];
-            snapshot.forEach(child => removals.push(child.key));
+            snapshot.forEach(child => { removals.push(child.key); });
             const extra = removals.length - 7;
             if (extra <= 0) return null;
             const updates = {};
@@ -2853,7 +2853,7 @@ function loadNumberGuessHistory() {
     database.ref('history/numberGuess').orderByChild('completedAt').limitToLast(7).once('value')
         .then(snapshot => {
             const records = [];
-            snapshot.forEach(child => records.push({ id: child.key, ...child.val() }));
+            snapshot.forEach(child => { records.push({ id: child.key, ...child.val() }); });
             renderNumberGuessHistory(records.reverse());
         })
         .catch(error => {

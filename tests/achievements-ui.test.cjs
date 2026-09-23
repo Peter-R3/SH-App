@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, '..');
         const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
         await page.route('**/*', route => {
             const asset = new URL(route.request().url()).pathname;
-            if (/^\/assets\/achievements\/[A-Za-z_]+\.svg$/.test(asset)) return route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, asset.slice(1))) });
+            if (/^\/assets\/(achievements|currency)\/[A-Za-z_]+\.svg$/.test(asset)) return route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, asset.slice(1))) });
             return route.fulfill({ contentType: 'text/html', body: html });
         });
         await page.goto('http://achievements.test/');
@@ -30,6 +30,12 @@ const root = path.resolve(__dirname, '..');
         });
         for (const file of ['app.js','wordsearch.js','battleship.js','connect-four.js','sudoku.js','tic-tac-toe.js','rps.js','realm-hub.js','game-pause.js','achievements.js','game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
         await page.evaluate(() => { showAuthenticatedApp('Peter'); achievementReady = true; achievementPlayer = 'Peter'; });
+        assert.equal(await page.locator('#home-coin-preview').isVisible(), true);
+        assert.equal(await page.locator('#home-coin-preview span').textContent(), '0');
+        await page.waitForFunction(() => document.querySelector('#home-coin-preview img').naturalWidth > 0);
+        await page.evaluate(() => { localPlayer = 'Jadey'; initialiseHomeScreen(); });
+        assert.equal(await page.locator('#home-coin-preview').isVisible(), false);
+        await page.evaluate(() => { localPlayer = 'Peter'; initialiseHomeScreen(); });
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });
             await page.evaluate(() => { calculateRealVh(); switchTab('home'); });
@@ -39,6 +45,12 @@ const root = path.resolve(__dirname, '..');
             }));
             assert.equal(bounds.length, 3);
             assert.ok(bounds.every(box => box.y === bounds[0].y && Math.abs(box.width - bounds[0].width) < 1 && box.fits));
+            await page.evaluate(() => { document.getElementById('home-greeting-text').textContent = 'Lovely to see you'; });
+            assert.ok(await page.locator('.home-greeting').evaluate(el => {
+                const title = el.querySelector('h2').getBoundingClientRect();
+                const coin = el.querySelector('.home-coin-balance').getBoundingClientRect();
+                return title.right <= coin.left && coin.right <= el.getBoundingClientRect().right && el.scrollWidth <= el.clientWidth;
+            }), 'Greeting and coin preview do not overlap');
             await page.screenshot({ path: path.join(os.tmpdir(), `achievement-home-${width}.png`) });
         }
         await page.setViewportSize({ width: 390, height: 844 });
@@ -67,8 +79,10 @@ const root = path.resolve(__dirname, '..');
         await page.screenshot({ path: path.join(os.tmpdir(),'achievement-tracks.png') });
         await page.locator('[data-track="number-total"]').click();
         assert.equal(await page.locator('#achievement-filters').isVisible(), false);
-        assert.equal(await page.locator('.achievement-tier').count(), 15);
+        assert.equal(await page.locator('.achievement-tier').count(), 25);
         assert.equal(await page.locator('.achievement-tier img:not(.locked)').count(), 2);
+        assert.equal(await page.locator('.achievement-tier h3').last().textContent(), 'Morganite V');
+        await page.waitForFunction(() => [...document.querySelectorAll('.achievement-tier img')].every(image => image.complete && image.naturalWidth > 0));
         await page.screenshot({ path: path.join(os.tmpdir(),'achievement-tiers.png') });
         await page.locator('#achievement-back').click();
         await page.evaluate(() => {
@@ -106,7 +120,7 @@ const root = path.resolve(__dirname, '..');
             openAchievements();
         });
         await page.locator('#achievement-review').click();
-        assert.equal(await page.locator('.achievement-reward').count(), 33);
+        assert.equal(await page.locator('.achievement-reward').count(), 35);
         assert.equal(await page.locator('.achievement-reward-group').count(), 2);
         for (const width of [320, 390, 1280]) {
             await page.setViewportSize({ width, height: 844 });

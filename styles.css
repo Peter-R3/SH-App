@@ -525,9 +525,11 @@ button:disabled {
 .theme-peter .home-shortcut-card { border-color: var(--peter-theme); }
 .theme-jadey .home-shortcut-card { border-color: var(--jadey-theme); }
 
-.home-greeting { padding: 12px 0 24px; }
-.home-greeting p { font-size: 15px; line-height: 1.5; color: #B9B4C3; }
-.home-greeting h2 { margin-top: 3px; font-size: 27px; line-height: 1.25; overflow-wrap: anywhere; }
+.home-greeting { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0 24px; }
+.home-greeting h2 { min-width: 0; margin: 0; font-size: 27px; line-height: 1.25; overflow-wrap: anywhere; }
+.home-coin-balance { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 10px; border: 1px solid #30363D; border-radius: 8px; background: #0A0F14; color: #FFF; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-coin-balance[hidden] { display: none; }
+.home-coin-balance img { width: 24px; height: 24px; object-fit: contain; }
 .home-content .home-shortcut-card.realm { width: 100%; min-height: 76px; padding: 14px 18px; flex-direction: row; justify-content: flex-start; gap: 16px; background: #23132F; border-color: #81509F; color: #F2DFFF; }
 .home-content .home-shortcut-card.realm span { text-align: left; }
 .home-games-section { margin-top: 26px; }

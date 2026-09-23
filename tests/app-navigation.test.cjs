@@ -33,6 +33,13 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => showAuthenticatedApp('Peter'));
         const visible = () => page.locator('.screen:not(.hidden)').evaluateAll(screens => screens.map(screen => screen.id));
         assert.deepEqual(await visible(), ['home-screen']);
+        const greeting = await page.locator('.home-greeting h2').textContent();
+        assert.ok(greeting && !greeting.endsWith(','));
+        assert.equal(await page.locator('.home-greeting p, #home-greeting-name').count(), 0);
+        await page.evaluate(() => applyNicknameRecords({ Peter: { value: 'Pet name' } }));
+        assert.equal(await page.locator('.home-greeting h2').textContent(), greeting, 'Nickname sync does not overwrite the greeting');
+        await page.evaluate(() => switchTab('home'));
+        assert.notEqual(await page.locator('.home-greeting h2').textContent(), greeting);
         for (const [tab, id] of [['games', 'main-dashboard'], ['messages', 'messages-screen'], ['alerts', 'notifications-screen'], ['profile', 'profile-screen'], ['home', 'home-screen']]) {
             await page.evaluate(tab => switchTab(tab), tab);
             assert.deepEqual(await visible(), [id]);
@@ -60,11 +67,22 @@ const root = path.resolve(__dirname, '..');
             await page.evaluate(() => calculateRealVh(true));
             await page.evaluate(() => openNumberGuessPause());
             assert.ok(await page.locator('#number-guess-menu-area').evaluate(el => el.scrollHeight <= el.clientHeight + 1), '1 to 10 pause fits without scrolling');
+            const expectedSpacing = await page.locator('#number-guess-pause-panel').evaluate(panel => ({
+                gap: getComputedStyle(panel).gap,
+                height: getComputedStyle(panel.querySelector('.pause-option-btn')).height,
+                padding: getComputedStyle(panel.querySelector('.pause-option-btn')).padding
+            }));
             for (const game of ['word-search', 'sudoku', 'battleship', 'connect-four', 'tic-tac-toe', 'rps']) {
                 await page.evaluate(game => openSharedGameMenu(game), game);
                 assert.deepEqual(await visible(), [game + '-screen']);
                 const screen = page.locator('#' + game + '-screen');
                 const tab = screen.locator('[data-pause-game]');
+                const spacing = await screen.locator('.shared-pause-panel').evaluate(panel => ({
+                    gap: getComputedStyle(panel).gap,
+                    height: getComputedStyle(panel.querySelector('.pause-option-btn')).height,
+                    padding: getComputedStyle(panel.querySelector('.pause-option-btn')).padding
+                }));
+                assert.deepEqual(spacing, expectedSpacing, `${game}: button spacing matches 1 to 10`);
                 assert.ok(await screen.locator('.shared-game-menu').evaluate(el => el.scrollHeight <= el.clientHeight + 1), 'Pause menu fits without scrolling');
                 assert.equal(await tab.textContent(), 'Play');
                 if (game === 'rps') {

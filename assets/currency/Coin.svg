@@ -1,0 +1,58 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    xmlns:hyvector="https://www.hyvector.com/dtd"
+    width="500"
+    height="500"
+    viewBox="0 0 500 500"
+    >
+  <defs>
+    <linearGradient
+        gradientUnits="userSpaceOnUse"
+        id="lw9YZ7G0"
+        spreadMethod="reflect"
+        x1="0"
+        y1="50"
+        x2="100"
+        y2="50"
+        gradientTransform="translate(15, 15) scale(4.7, 4.7)"
+        hyvector:paintTransform="scale(1)"
+        >
+      <stop
+        offset="0"
+        style="stop-color: rgb(255, 209, 220);"
+        />
+      <stop
+        offset="1"
+        style="stop-color: rgb(255, 245, 247);"
+        />
+    </linearGradient>
+  </defs>
+  <path
+    d="M250 15c129.79 0 235 105.21 235 235 0 129.79-105.21 235-235 235-129.79 0-235-105.21-235-235 0-129.79 105.21-235 235-235z"
+    stroke-width="30"
+    stroke-linecap="square"
+    stroke-miterlimit="4"
+    hyvector:pathType="shape"
+    hyvector:shapeType="donut"
+    hyvector:innerRadius="0"
+    hyvector:sweep="1"
+    hyvector:startAngle="0"
+    hyvector:transform="translate(15, 15) scale(4.7, 4.7)"
+    fill="url(#lw9YZ7G0)"
+    stroke="#ffc2d1"
+    />
+  <path
+    d="M250 186c9.73-25.89 27.92-53.5 62.36-53.5 36.25 0 65.64 30.58 65.64 68.31 0 103.53-80.02 156.99-128 184.69-47.98-27.7-128-81.16-128-184.69 0-37.73 29.39-68.31 65.64-68.31 34.44 0 52.63 27.61 62.36 53.5z"
+    stroke-width="0.01"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    hyvector:pathType="shape"
+    hyvector:shapeType="heart"
+    hyvector:cleftDepth="0.27970734168699"
+    hyvector:tipAngle="1"
+    hyvector:lobeFullness="0.5211744776962165"
+    hyvector:transform="translate(122, 132.5) scale(2.53, 2.53)"
+    fill="#ffc2d1"
+    stroke="#ffc2d1"
+    />
+</svg>
