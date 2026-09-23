@@ -29,4 +29,30 @@ assert.equal(Object.values(records['history/games/ws/Jadey'])[0].players.Peter.w
 record('ttt', { startedAt: 1, completedAt: 5, status: 'finished', board: ['Peter','Jaylin','Peter'], winner: 'Peter' }, 'versusAi');
 assert.equal(records['history/games/ttt/Jadey'], undefined);
 assert.equal(Object.values(records['history/games/ttt/Peter'])[0].board.length, 9);
+assert.equal(Object.values(records['history/games/ttt/Peter'])[0].players.Peter.participant, true);
+context.playerProfiles = { Peter: { nickname: 'Peter' }, Jadey: { nickname: 'Jadey' } };
+context.themeColorFor = () => '#15AFD1';
+context.escapeHtml = value => String(value);
+vm.runInContext(source.slice(source.indexOf('function historyDate'), source.indexOf('function mergeGameHistory')), context);
+vm.runInContext(source.slice(source.indexOf('function historyPlayerName'), source.indexOf('if (localPlayer) initialisePuzzleHistory')), context);
+context.sharedPauseSession = { id: 'tic-tac-toe' };
+context.historyGameKeys = { 'tic-tac-toe': 'ttt' };
+context.host = { innerHTML: '' };
+context.oldRecord = { mode: 'versus', completedAt: 1000, winner: 'Peter', board: { 0: 'Peter', 1: 'Peter', 2: 'Peter' } };
+context.database.ref = () => ({ once: async () => ({ val: () => ({ old: context.oldRecord }) }) });
+(async () => {
+    await vm.runInContext("loadGameHistory('tic-tac-toe', host)", context);
+    assert.ok(context.host.innerHTML.includes('Peter won'));
+    assert.ok(context.host.innerHTML.includes('Jadey'));
+    assert.equal((context.host.innerHTML.match(/<span style="color:/g) || []).length, 11, 'Nine cells and two player rows');
+    assert.ok(!context.host.innerHTML.includes('Could not load'));
+    for (const [game, mode] of [['ttt', 'versusAi'], ['connect', 'versus'], ['sudoku', 'solo']]) {
+        context.oldRecord.mode = mode;
+        const html = vm.runInContext(`gameHistoryCard('${game}', oldRecord)`, context);
+        assert.ok(html.includes('history-card'));
+        if (mode === 'versusAi') assert.ok(html.includes('Jaylin'));
+        if (mode === 'solo') assert.ok(!html.includes('Jadey'));
+    }
+    console.log('PASS: Firebase-pruned legacy player data and object-shaped boards load across Tic-Tac-Toe, Connect 4 and Sudoku.');
+})().catch(error => { console.error(error); process.exitCode = 1; });
 console.log('PASS: seven per game/profile, shared results, personal solo/AI history, duplicate and abandoned exclusion, pause-adjusted time and personal words.');

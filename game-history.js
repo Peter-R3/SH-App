@@ -59,7 +59,8 @@ function recordGameHistory(game, state, mode, player = localPlayer) {
     if (game === 'connect') record.moves = Object.values(state.board || {}).filter(Boolean).length;
     const participants = ai ? [player, 'AI'] : owners;
     for (const owner of participants) {
-        const details = {};
+        // Firebase removes empty objects, so retain a real field for every participant.
+        const details = { participant: true };
         if (game === 'rps') details.choice = state.choices?.[owner] || state.choices?.Jaylin || '';
         if (game === 'ws') details.words = owner === 'AI' ? (record.winner === 'Jaylin' ? state.puzzle?.words?.length || 0 : null) : mode === 'versus' ? Object.keys(state.foundBy?.[owner] || {}).length : Object.values(state.found || {}).filter(finder => finder === owner).length;
         if (game === 'battleship') {
@@ -110,8 +111,11 @@ function gameHistoryCard(game, record) {
     const mode = { solo: 'Solo', coop: 'Co-op', versus: 'Player vs Player', versusAi: 'Player vs Jaylin', 'versus-ai': 'Player vs Jaylin' }[record.mode] || record.mode;
     const details = [mode, record.difficulty ? (game === 'ws' ? `${record.difficulty} x ${record.difficulty}` : record.difficulty) : '', record.aiDifficulty ? `Jaylin: ${record.aiDifficulty}` : ''].filter(Boolean).join(' · ');
     const result = record.winner && record.winner !== 'draw' ? `${historyPlayerName(record.winner)} won` : ['ws','sudoku'].includes(game) ? 'Complete' : 'Draw';
-    const board = game === 'ttt' ? `<div class="history-ttt-board">${(record.board || []).map(owner => `<span style="color:${owner ? historyPlayerColour(owner) : '#8B949E'}">${owner ? owner === localPlayer ? 'X' : 'O' : ''}</span>`).join('')}</div>` : '';
-    const rows = Object.entries(record.players).map(([player, values]) => `<div class="history-score-row"><span style="color:${historyPlayerColour(player)}">${escapeHtml(historyPlayerName(player))}</span><strong>${escapeHtml(historyPlayerResult(game, record, player, values))}</strong></div>`).join('');
+    const board = game === 'ttt' ? `<div class="history-ttt-board">${Array.from({ length: 9 }, (_, i) => record.board?.[i] || '').map(owner => `<span style="color:${owner ? historyPlayerColour(owner) : '#8B949E'}">${owner ? owner === localPlayer ? 'X' : 'O' : ''}</span>`).join('')}</div>` : '';
+    // Older records lost empty player objects during Firebase serialization.
+    const participants = record.mode === 'solo' ? [localPlayer] : ['versus-ai', 'versusAi'].includes(record.mode) ? [localPlayer, 'Jaylin'] : ['Peter', 'Jadey'];
+    const players = { ...Object.fromEntries(participants.map(player => [player, {}])), ...(record.players || {}) };
+    const rows = Object.entries(players).map(([player, values]) => `<div class="history-score-row"><span style="color:${historyPlayerColour(player)}">${escapeHtml(historyPlayerName(player))}</span><strong>${escapeHtml(historyPlayerResult(game, record, player, values || {}))}</strong></div>`).join('');
     return `<article class="history-card"><time>${historyDate(record.completedAt)}</time><p class="history-mode">${escapeHtml(details)}</p><h3>${escapeHtml(result)}</h3>${board}${record.elapsed ? `<p class="history-duration">${Math.floor(record.elapsed / 60000)}m ${Math.floor(record.elapsed / 1000) % 60}s</p>` : ''}${record.moves ? `<p>${record.moves} moves</p>` : ''}<div class="history-result-table">${rows}</div></article>`;
 }
 async function loadGameHistory(id, host) {

@@ -644,7 +644,7 @@ function initialiseHomeScreen() {
     const choices = greetings.filter(greeting => greeting !== previousHomeGreeting);
     previousHomeGreeting = choices[Math.floor(Math.random() * choices.length)];
     document.getElementById('home-greeting-text').textContent = previousHomeGreeting;
-    document.getElementById('home-coin-preview').hidden = localPlayer !== 'Peter';
+    document.getElementById('home-coin-preview').hidden = !localPlayer;
 }
 
 function homeNavigationMarkup() {

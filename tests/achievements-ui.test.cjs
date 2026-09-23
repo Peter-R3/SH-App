@@ -30,11 +30,14 @@ const root = path.resolve(__dirname, '..');
         });
         for (const file of ['app.js','wordsearch.js','battleship.js','connect-four.js','sudoku.js','tic-tac-toe.js','rps.js','realm-hub.js','game-pause.js','achievements.js','game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root,file),'utf8') });
         await page.evaluate(() => { showAuthenticatedApp('Peter'); achievementReady = true; achievementPlayer = 'Peter'; });
+        assert.equal(await page.locator('.home-shortcut-card.achievements img').getAttribute('src'), './assets/achievements/Pink_Star.svg');
+        await page.waitForFunction(() => document.querySelector('.home-shortcut-card.achievements img').naturalWidth > 0);
         assert.equal(await page.locator('#home-coin-preview').isVisible(), true);
         assert.equal(await page.locator('#home-coin-preview span').textContent(), '0');
         await page.waitForFunction(() => document.querySelector('#home-coin-preview img').naturalWidth > 0);
         await page.evaluate(() => { localPlayer = 'Jadey'; initialiseHomeScreen(); });
-        assert.equal(await page.locator('#home-coin-preview').isVisible(), false);
+        assert.equal(await page.locator('#home-coin-preview').isVisible(), true);
+        assert.equal(await page.locator('#home-coin-preview span').textContent(), '0');
         await page.evaluate(() => { localPlayer = 'Peter'; initialiseHomeScreen(); });
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });
