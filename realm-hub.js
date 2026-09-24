@@ -264,12 +264,12 @@ function renderRealmLocations() {
     document.getElementById('realm-location-count').classList.toggle('realm-near-limit', Object.keys(realmLocations).length >= 270);
     if (Object.keys(realmLocations).length >= 300) setRealmStatus('Location limit reached. Delete a location to add another.');
     document.getElementById('realm-location-list').innerHTML = locations.length ? locations.map(([id, value]) => `
-        <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3>${typeof realmFavouriteButton === 'function' ? realmFavouriteButton(id) : ''}<span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span></div>
-            ${typeof realmCategoryLabel === 'function' ? realmCategoryLabel(value.category) : ''}
+        <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3><div class="realm-location-tags"><span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span>${typeof realmCategoryLabel === 'function' ? realmCategoryLabel(value.category) : ''}</div></div>
+            <div class="realm-location-tools"><button class="realm-copy" data-realm-action="copy-coordinates" data-id="${escapeHtml(id)}" aria-label="Copy coordinates" title="Copy coordinates"><img src="assets/icons/copy.svg" width="24" height="24" alt=""></button>${typeof realmFavouriteButton === 'function' ? realmFavouriteButton(id) : ''}</div>
             <p class="realm-coordinates">${['x', 'y', 'z'].map(axis => `<span><b class="realm-axis-${axis}">${axis.toUpperCase()}</b> ${escapeHtml(value[axis])}</span>`).join('')}</p>
             ${value.note ? `<p class="realm-note">${escapeHtml(value.note)}</p>` : ''}
             <p class="realm-metadata">Added by ${escapeHtml(playerProfiles[value.createdBy]?.nickname || value.createdBy || 'Unknown')}<br>Updated by ${escapeHtml(playerProfiles[value.updatedBy]?.nickname || value.updatedBy || 'Unknown')}:<br>${escapeHtml(formatRealmUpdatedAt(value.updatedAt))}</p>
-            <div class="realm-actions"><button data-realm-action="copy-coordinates" data-id="${escapeHtml(id)}">Copy coordinates</button><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
+            <div class="realm-actions"><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
         </article>`).join('') : `<p class="realm-empty">${realmReady ? (query || dimension !== 'all' ? 'No matching locations.' : 'No locations yet.') : 'Loading...'}</p>`;
 }
 
@@ -297,7 +297,7 @@ function renderRealmCoordinateHelper() {
     const zInput = document.getElementById('realm-z').value;
     const factor = dimension === 'nether' ? 8 : 1 / 8;
     document.getElementById('realm-coordinate-helper').innerHTML = dimension === 'end' || !/^-?\d+$/.test(xInput) || !/^-?\d+$/.test(zInput) ? '' :
-        `${dimension === 'nether' ? 'Overworld' : 'Nether'} equivalent: <span class="realm-axis-x">X ${Math.floor(Number(xInput) * factor)}</span>, <span class="realm-axis-z">Z ${Math.floor(Number(zInput) * factor)}</span>`;
+        `${dimension === 'nether' ? 'Overworld' : 'Nether'} equivalent: <span class="realm-converted-coordinate"><b class="realm-axis-x">X</b> ${Math.floor(Number(xInput) * factor)}</span>, <span class="realm-converted-coordinate"><b class="realm-axis-z">Z</b> ${Math.floor(Number(zInput) * factor)}</span>`;
 }
 
 function setRealmBusy(busy) {

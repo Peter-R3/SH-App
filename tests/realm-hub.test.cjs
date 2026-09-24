@@ -52,8 +52,9 @@ const fixture = () => {
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
-        await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
-        for (const css of ['styles.css', 'realm-hub.css', 'realm-planner.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, css), 'utf8') });
+        await page.route('**/assets/icons/copy.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, 'assets/icons/copy.svg')) }));
+        await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace('<head>', '<head><base href="https://realm.test/">'));
+        for (const css of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'achievements.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, css), 'utf8') });
         await page.evaluate(fixture);
         await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'realm-hub.js'), 'utf8') });
         await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'realm-planner.js'), 'utf8') });
@@ -189,17 +190,34 @@ const fixture = () => {
         await page.locator('#realm-plan-target').fill('128');
         await page.locator('#realm-plan-amount').fill('32');
         await page.locator('#realm-plan-form button[type=submit]').click();
-        assert.match(await page.locator('.realm-quantity-summary').textContent(), /32 \/ 128/);
+        assert.match(await page.locator('.realm-checklist-item .realm-quantity-summary').textContent(), /96 left32 \/ 128/);
         await page.locator('[data-plan-action=quantity]').click();
         await page.locator('#realm-plan-amount').fill('16');
         await page.locator('#realm-plan-form button[type=submit]').click();
-        assert.match(await page.locator('.realm-quantity-summary').textContent(), /48 \/ 128/);
+        assert.match(await page.locator('.realm-checklist-item .realm-quantity-summary').textContent(), /80 left48 \/ 128/);
+        assert.equal(await page.locator('[data-plan-action=item-delete]').getAttribute('class'), 'realm-danger');
+        assert.equal(await page.locator('[data-plan-check]').evaluate(el => getComputedStyle(el).appearance), 'none');
+        for (const width of [320, 390, 1280]) {
+            await page.setViewportSize({ width, height: 844 });
+            const boxes = await page.locator('.realm-item-actions button').evaluateAll(elements => elements.map(el => ({ top: el.getBoundingClientRect().top, right: el.getBoundingClientRect().right })));
+            assert.ok(boxes.every(box => Math.abs(box.top - boxes[0].top) < 1 && box.right <= width), 'Item actions share a row and fit');
+            await page.screenshot({ path: path.join(os.tmpdir(), `realm-lists-refined-${width}.png`) });
+        }
         await page.locator('[data-plan-check]').check();
         assert.match(await page.locator('#realm-lists-content summary').textContent(), /Completed \(1\)/);
         await page.locator('#realm-lists-content summary').click();
         await page.locator('[data-plan-check]').uncheck();
         await page.screenshot({ path: path.join(os.tmpdir(), 'realm-checklists.png') });
         await page.locator('[data-plan-action=tab][data-tab=locations]').click();
+        await page.evaluate(async () => {
+            Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { window.copiedCoordinates = value; } } });
+            await database.ref('realmHub').transaction(data => {
+                Object.values(data.locations)[0].category = 'bases';
+                return data;
+            });
+        });
+        await page.locator('[data-realm-action=copy-coordinates]').click();
+        assert.match(await page.evaluate(() => copiedCoordinates), /Our base.*X -120, Y -64, Z -32/);
         await page.locator('#realm-dimension-filter-trigger').click();
         await page.locator('#realm-search').click();
         assert.equal(await page.locator('#realm-dimension-filter-trigger').getAttribute('aria-expanded'), 'false');
@@ -207,7 +225,20 @@ const fixture = () => {
             await page.setViewportSize(viewport);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No horizontal overflow');
             await page.screenshot({ path: path.join(os.tmpdir(), `realm-hub-${viewport.width}.png`) });
+            await page.locator('.realm-location').scrollIntoViewIfNeeded();
+            assert.ok(await page.locator('.realm-copy img').evaluate(img => img.complete && img.naturalWidth > 0), 'Copy asset loads');
+            const alignment = await page.locator('.realm-location').evaluate(card => {
+                const box = selector => card.querySelector(selector).getBoundingClientRect();
+                const copy = box('.realm-copy'), favourite = box('.realm-favourite'), coordinates = box('.realm-coordinates');
+                return Math.abs(copy.right - favourite.right) < 1 && favourite.top >= copy.bottom && Math.abs(copy.top - coordinates.top) < 1 && card.scrollWidth <= card.clientWidth;
+            });
+            assert.ok(alignment, 'Copy and favourite align on the right without card overflow');
+            await page.locator('.realm-location').screenshot({ path: path.join(os.tmpdir(), `realm-location-refined-${viewport.width}.png`) });
             await page.locator('#realm-add').click();
+            assert.equal(await page.locator('#realm-note').evaluate(el => getComputedStyle(el).resize), 'vertical');
+            for (const axis of ['x', 'z']) await page.locator(`#realm-${axis}`).fill('16');
+            assert.equal(await page.locator('#realm-coordinate-helper .realm-axis-x').textContent(), 'X');
+            assert.equal(await page.locator('#realm-coordinate-helper .realm-converted-coordinate').first().evaluate(el => getComputedStyle(el).color), 'rgb(255, 255, 255)');
             assert.ok(await page.locator('#realm-editor').evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth), 'Editor fits viewport');
             await page.screenshot({ path: path.join(os.tmpdir(), `realm-editor-${viewport.width}.png`) });
             await page.locator('[data-realm-action=cancel-edit]').click();

@@ -90,6 +90,9 @@ async function commitRealmPlanner(command) {
     playUiSound('confirm');
 }
 function realmLimitLabel(count, limit) { return `<span class="realm-limit ${count >= limit * .9 ? 'realm-near-limit' : ''}">${count} / ${limit}</span>`; }
+function realmProgress(amount, target, title) {
+    return `<div class="realm-quantity-summary"><div class="achievement-progress-label"><span class="achievement-remaining">${Math.max(0, target - amount)} left</span><span>${amount} / ${target}</span></div><progress class="app-progress" max="${Math.max(1, target)}" value="${amount}" aria-label="${escapeHtml(title)}"></progress></div>`;
+}
 function realmFavouriteButton(id) {
     const selected = Boolean(realmPlannerData.favourites?.[localPlayer]?.[id]);
     return `<button class="realm-favourite" data-plan-action="favourite" data-id="${escapeHtml(id)}" aria-pressed="${selected}" title="${selected ? 'Remove from favourites' : 'Add to favourites'}" aria-label="${selected ? 'Remove from favourites' : 'Add to favourites'}">${selected ? '&#9733;' : '&#9734;'}</button>`;
@@ -129,6 +132,7 @@ function mountRealmPlanner() {
     locations.insertAdjacentHTML('beforebegin', '<div class="realm-tabs" role="tablist"><button role="tab" aria-selected="true" aria-controls="realm-locations-panel" data-plan-action="tab" data-tab="locations">Locations</button><button role="tab" aria-selected="false" aria-controls="realm-lists-panel" data-plan-action="tab" data-tab="lists">Lists</button></div>');
     document.getElementById('realm-dimension-filter').closest('.realm-select').insertAdjacentHTML('afterend', '<div class="realm-organisation"><label><input id="realm-favourites-filter" type="checkbox"> Favourites</label><label for="realm-category-filter">Category</label><select id="realm-category-filter" aria-label="Filter by category"></select><button data-plan-action="categories">Manage categories</button></div>');
     locations.insertAdjacentHTML('afterend', '<section id="realm-lists-panel" hidden><p id="realm-planner-status" role="status"></p><div id="realm-lists-content"></div></section>');
+    document.getElementById('realm-favourites-filter').classList.add('app-checkbox');
     document.getElementById('realm-name').parentElement.insertAdjacentHTML('afterend', '<small class="realm-character-count" data-character-count="realm-name"></small><label for="realm-category">Category</label><select id="realm-category" aria-label="Location category"></select>');
     document.getElementById('realm-note').parentElement.insertAdjacentHTML('afterend', '<small class="realm-character-count" data-character-count="realm-note"></small>');
     document.body.insertAdjacentHTML('beforeend', '<dialog id="realm-plan-editor" class="realm-dialog" aria-labelledby="realm-plan-title"><form id="realm-plan-form"></form></dialog><dialog id="realm-categories-dialog" class="realm-dialog" aria-label="Categories"><div id="realm-categories-content"></div></dialog>');
@@ -188,11 +192,18 @@ function renderRealmPlanner() {
         return;
     }
     const items = Object.entries(list.items || {});
-    const row = ([id,item]) => `<article class="realm-checklist-item"><label><input type="checkbox" data-plan-check="${id}" ${item.amount >= item.target ? 'checked' : ''}><strong>${escapeHtml(item.title)}</strong></label>${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}${item.kind === 'quantity' ? `<div class="realm-quantity-summary"><span>${item.amount} / ${item.target}</span><progress max="${item.target}" value="${item.amount}" aria-label="${escapeHtml(item.title)}"></progress></div><button data-plan-action="quantity" data-id="${id}">Update amount</button>` : ''}<div class="realm-actions"><button data-plan-action="item-edit" data-id="${id}">Edit</button><button data-plan-action="item-delete" data-id="${id}">Delete</button></div></article>`;
+    const row = ([id,item]) => `<article class="realm-checklist-item"><label><input class="app-checkbox" type="checkbox" data-plan-check="${id}" ${item.amount >= item.target ? 'checked' : ''}><strong>${escapeHtml(item.title)}</strong></label>${item.note ? `<p>${escapeHtml(item.note)}</p>` : ''}${item.kind === 'quantity' ? realmProgress(item.amount, item.target, item.title) : ''}<div class="realm-actions realm-item-actions">${item.kind === 'quantity' ? `<button data-plan-action="quantity" data-id="${id}">Update amount</button>` : ''}<button data-plan-action="item-edit" data-id="${id}">Edit</button><button class="realm-danger" data-plan-action="item-delete" data-id="${id}">Delete</button></div></article>`;
     const complete = items.filter(([,item]) => item.amount >= item.target);
     const location = realmPlannerData.locations?.[list.locationId];
     host.innerHTML = `<div class="realm-section-heading"><h2>${escapeHtml(list.title)}</h2><button data-plan-action="lists-back">Back</button></div>${list.note ? `<p class="realm-note">${escapeHtml(list.note)}</p>` : ''}${location ? `<button data-plan-action="linked-location" data-id="${list.locationId}">${escapeHtml(location.name)}</button>` : ''}<div class="realm-actions"><button data-plan-action="list-edit" data-id="${realmSelectedList}">Edit list</button><button data-plan-action="list-archive" data-id="${realmSelectedList}">${list.archived ? 'Restore' : 'Archive'}</button><button class="realm-danger" data-plan-action="list-delete" data-id="${realmSelectedList}">Delete list</button></div><div class="realm-section-heading"><h3>Items ${realmLimitLabel(items.length,150)}</h3><button class="realm-primary" data-plan-action="item-add" ${items.length >= 150 ? 'disabled' : ''}>Add item</button></div>${items.length >= 150 ? '<p>Item limit reached. Delete an item to add another.</p>' : ''}${items.filter(([,item]) => item.amount < item.target).map(row).join('')}<details class="realm-completed"><summary>Completed (${complete.length})</summary>${complete.map(row).join('')}</details>`;
     host.querySelectorAll('[data-plan-check]').forEach(input => { input.onchange = () => runRealmPlanner({ action: 'item-check', id: input.dataset.planCheck, listId: realmSelectedList, completed: input.checked }); });
+    const summary = document.createElement('article');
+    summary.className = 'realm-list-summary';
+    const heading = host.querySelector('.realm-section-heading');
+    host.prepend(summary);
+    summary.append(heading);
+    while (summary.nextElementSibling && !summary.nextElementSibling.classList.contains('realm-section-heading')) summary.append(summary.nextElementSibling);
+    summary.insertAdjacentHTML('beforeend', realmProgress(complete.length, items.length, `${list.title} items complete`));
 }
 function plannerTextField(id, label, value = '', notes = false) {
     return `<label>${label}${notes ? `<textarea id="${id}" maxlength="1000" rows="3">${escapeHtml(value)}</textarea>` : `<input id="${id}" maxlength="80" required value="${escapeHtml(value)}">`}</label><small class="realm-character-count" data-character-count="${id}"></small>`;

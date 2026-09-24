@@ -3,11 +3,11 @@
 .realm-tabs [aria-selected=true] { background: #6E438F; border-color: #C69BE5; }
 .realm-organisation { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; margin: 14px 0; }
 .realm-organisation > label:first-child { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.realm-organisation input[type=checkbox], .realm-checklist-item input[type=checkbox] { width: 20px; height: 20px; min-height: 20px; padding: 0; margin: 0; flex: 0 0 20px; accent-color: var(--theme-color); }
-.realm-hub .realm-favourite { margin-left: auto; width: 40px; height: 40px; padding: 3px; font-size: 27px; }
+.realm-hub .realm-favourite, .realm-hub .realm-copy { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; margin: 0; line-height: 1; font-size: 27px; }
+.realm-copy img { display: block; width: 24px; height: 24px; }
 .realm-favourite[aria-pressed=true] { color: #F4D982; border-color: #CFAD60; }
-.realm-category-label { font-size: 12px; color: #CFB2E6; margin-top: 8px; }
-.realm-limit { font-size: 12px; font-weight: 400; color: #CDB8D9; white-space: nowrap; }
+.realm-category-label { font-size: 12px; color: #CFB2E6; margin: 3px 0 0; overflow-wrap: anywhere; }
+.realm-limit { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; padding: 0 7px; border: 1px solid #76528C; border-radius: 6px; background: #30203F; color: #EDD8FF; font-size: 13px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .realm-near-limit { color: #F1C478 !important; }
 .realm-character-count { display: block; text-align: right; color: #BFA9CF; font-size: 11px; margin-top: 5px; }
 .realm-category-row { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
@@ -21,6 +21,33 @@
 .realm-checklist-item strong, #realm-lists-content h2 { overflow-wrap: anywhere; min-width: 0; }
 .realm-checklist-item p { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; color: #CDB8D9; margin: 10px 0; }
 .realm-checklist-item .realm-actions { margin-top: 10px; }
+.realm-checklist-item .realm-item-actions { display: flex; flex-wrap: nowrap; gap: 6px; }
+.realm-item-actions button { min-height: 40px; padding: 8px; font-size: 12px; white-space: nowrap; }
+.realm-list-summary { padding: 14px; border: 1px solid #543366; border-radius: 8px; background: #191020; box-shadow: inset 3px 0 #9864BF; }
+.realm-list-summary .realm-section-heading { margin: 0 0 14px; flex-wrap: nowrap; align-items: flex-start; }
+.realm-list-summary .realm-section-heading button { flex-shrink: 0; }
+.realm-list-summary > .realm-note, .realm-list-summary > button { margin-bottom: 14px; }
+.realm-list-summary > .realm-quantity-summary { margin-bottom: 0; }
+.realm-section-heading h3 { display: flex; align-items: center; gap: 8px; }
+#realm-planner-status:empty, #realm-plan-status:empty { display: none; }
+.realm-dialog textarea { resize: vertical; width: 100%; max-width: 100%; box-sizing: border-box; }
+.realm-dialog label { line-height: 1.5; }
+.realm-dialog .realm-select { margin-top: 6px; }
+input[type=checkbox].app-checkbox { appearance: none; -webkit-appearance: none; display: grid; place-content: center; width: 22px; height: 22px; min-height: 22px; padding: 0; margin: 0; flex: 0 0 22px; border: 1px solid #9479A7; border-radius: 5px; background: #110C18; cursor: pointer; }
+input[type=checkbox].app-checkbox::after { content: ''; width: 6px; height: 11px; border: solid var(--theme-text-color, #000); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); visibility: hidden; }
+input[type=checkbox].app-checkbox:checked { background: var(--theme-color); border-color: var(--theme-color); }
+input[type=checkbox].app-checkbox:checked::after { visibility: visible; }
+input[type=checkbox].app-checkbox:focus-visible { outline: 2px solid #FFF; outline-offset: 3px; }
+input[type=checkbox].app-checkbox:disabled { opacity: .45; cursor: default; }
+.realm-location { display: grid; grid-template-columns: minmax(0,1fr) 40px; gap: 0 12px; }
+.realm-location-heading { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) minmax(70px,40%); align-items: start; margin-bottom: 12px; }
+.realm-location-tags { text-align: right; line-height: 1.4; }
+.realm-location-tools { grid-column: 2; grid-row: 2 / span 3; display: flex; flex-direction: column; align-items: end; gap: 8px; }
+.realm-location > .realm-coordinates, .realm-location > .realm-note, .realm-location > .realm-metadata { grid-column: 1; }
+.realm-location > .realm-coordinates { grid-row: 2; margin: 0 0 12px; min-height: 40px; align-items: center; gap: 8px 12px; }
+.realm-location > .realm-actions { grid-column: 1 / -1; margin-top: 4px; }
+.realm-converted-coordinate { color: #FFF; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .app-progress::-webkit-progress-value { transition: none; } }
 .realm-quantity-summary { margin: 12px 0; font-size: 13px; }
 .realm-quantity-summary progress { width: 100%; display: block; height: 8px; margin-top: 8px; accent-color: var(--theme-color); }
 .realm-completed { margin: 20px 0; }
