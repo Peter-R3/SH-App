@@ -328,7 +328,7 @@ function initialiseAchievementScreen() {
     toolbar.className = 'achievement-toolbar';
     const compare = document.createElement('label');
     compare.className = 'achievement-compare-toggle';
-    compare.innerHTML = '<input id="achievement-compare" type="checkbox">Compare';
+    compare.innerHTML = '<input id="achievement-compare" class="app-checkbox" type="checkbox">Compare';
     compare.querySelector('input').onchange = event => { setAchievementComparison(event.target.checked); playUiSound('tap'); };
     toolbar.append(review, compare);
     content.querySelector('#achievement-status').after(toolbar);

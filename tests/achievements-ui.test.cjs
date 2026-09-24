@@ -178,6 +178,8 @@ const root = path.resolve(__dirname, '..');
         assert.match(await page.locator('[data-track=number-total] .achievement-next').textContent(), /Bronze III/);
         assert.equal(await page.locator('[data-track=number-total] .achievement-remaining').textContent(), '3 left');
         await page.locator('#achievement-compare').check();
+        assert.equal(await page.locator('#achievement-compare').evaluate(el => getComputedStyle(el).appearance), 'none');
+        assert.ok(await page.locator('.achievement-comparison-player').evaluateAll(rows => rows.every(row => getComputedStyle(row.querySelector('.achievement-next')).color === getComputedStyle(row.querySelector('.achievement-earned')).color)), 'Next and Earned use each player theme');
         assert.equal(await page.locator('[data-track=number-total] progress').count(), 2);
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });

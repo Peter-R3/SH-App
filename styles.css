@@ -565,7 +565,13 @@ button:disabled {
     background: #9CADBA;
 }
 
-.game-card-art:has(img[src*="word-search.svg"]) { background: #93AEB0; }
+.game-card-art:has(img[src*="word-search.svg"]) { background: #D9B8C6; }
+input[type=checkbox].app-checkbox { appearance: none; -webkit-appearance: none; display: grid; place-content: center; width: 22px; height: 22px; min-height: 22px; padding: 0; margin: 0; flex: 0 0 22px; border: 1px solid #9479A7; border-radius: 5px; background: #110C18; cursor: pointer; }
+input[type=checkbox].app-checkbox::after { content: ''; width: 6px; height: 11px; border: solid var(--theme-text-color, #000); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); visibility: hidden; }
+input[type=checkbox].app-checkbox:checked { background: var(--theme-color); border-color: var(--theme-color); }
+input[type=checkbox].app-checkbox:checked::after { visibility: visible; }
+input[type=checkbox].app-checkbox:focus-visible { outline: 2px solid #FFF; outline-offset: 3px; }
+input[type=checkbox].app-checkbox:disabled { opacity: .45; cursor: default; }
 .game-card-art:has(img[src*="connect-four.svg"]) { background: #CEC9DA; }
 .game-card-art:has(img[src*="sudoku.svg"]) { background: #91AFAC; }
 .game-card-art:has(img[src*="tic-tac-toe.svg"]) { background: #A9BFC7; }

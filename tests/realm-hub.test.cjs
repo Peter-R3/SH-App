@@ -233,6 +233,11 @@ const fixture = () => {
                 return Math.abs(copy.right - favourite.right) < 1 && favourite.top >= copy.bottom && Math.abs(copy.top - coordinates.top) < 1 && card.scrollWidth <= card.clientWidth;
             });
             assert.ok(alignment, 'Copy and favourite align on the right without card overflow');
+            assert.ok(await page.locator('.realm-location').evaluate(card => {
+                const coords = card.querySelector('.realm-coordinates');
+                const notes = card.querySelector('.realm-note');
+                return getComputedStyle(coords).minHeight === '0px' && notes.getBoundingClientRect().top - coords.getBoundingClientRect().bottom <= 7;
+            }), 'Coordinates and notes remain compact');
             await page.locator('.realm-location').screenshot({ path: path.join(os.tmpdir(), `realm-location-refined-${viewport.width}.png`) });
             await page.locator('#realm-add').click();
             assert.equal(await page.locator('#realm-note').evaluate(el => getComputedStyle(el).resize), 'vertical');

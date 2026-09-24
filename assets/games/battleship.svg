@@ -8,7 +8,7 @@
   <defs>
     <linearGradient
         gradientUnits="userSpaceOnUse"
-        id="asL0MbcS"
+        id="MKHy0UQ8"
         x1="0"
         y1="50"
         x2="100"
@@ -18,15 +18,15 @@
         >
       <stop
         offset="0"
-        style="stop-color: rgb(145, 213, 232);"
+        stop-color="#91d5e8"
         />
       <stop
         offset="0.49642857142857144"
-        style="stop-color: rgb(107, 175, 194);"
+        stop-color="#6bafc2"
         />
       <stop
         offset="1"
-        style="stop-color: rgb(69, 137, 156);"
+        stop-color="#45899c"
         />
     </linearGradient>
   </defs>
@@ -37,14 +37,14 @@
     hyvector:thickness="1"
     hyvector:cornerRounding="0"
     hyvector:transform="scale(5, 5)"
-    fill="url(#asL0MbcS)"
+    fill="url(#MKHy0UQ8)"
     />
   <g>
     <path
-      d="M0 450h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 450h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 450h500"
       hyvector:nodetypes="2c"
@@ -52,10 +52,10 @@
       stroke="#000000"
       />
     <path
-      d="M500 400h-500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M500 400h-500"
       hyvector:transform="scale(1)"
       hyvector:d="M500 400h-500"
       hyvector:nodetypes="2c"
@@ -63,10 +63,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 350h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 350h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 350h500"
       hyvector:nodetypes="2c"
@@ -74,10 +74,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 300h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 300h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 300h500"
       hyvector:nodetypes="2c"
@@ -85,10 +85,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 250h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 250h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 250h500"
       hyvector:nodetypes="2c"
@@ -96,10 +96,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 200h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 200h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 200h500"
       hyvector:nodetypes="2c"
@@ -107,10 +107,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 150h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 150h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 150h500"
       hyvector:nodetypes="2c"
@@ -118,10 +118,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 100h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 100h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 100h500"
       hyvector:nodetypes="2c"
@@ -129,10 +129,10 @@
       stroke="#000000"
       />
     <path
-      d="M0 50h500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M0 50h500"
       hyvector:transform="scale(1)"
       hyvector:d="M0 50h500"
       hyvector:nodetypes="2c"
@@ -140,10 +140,10 @@
       stroke="#000000"
       />
     <path
-      d="M50 0v500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M50 0v500"
       hyvector:transform="scale(1)"
       hyvector:d="M50 0v500"
       hyvector:nodetypes="2c"
@@ -151,10 +151,10 @@
       stroke="#000000"
       />
     <path
-      d="M100 500v-500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M100 500v-500"
       hyvector:transform="scale(1)"
       hyvector:d="M100 500v-500"
       hyvector:nodetypes="2c"
@@ -162,10 +162,10 @@
       stroke="#000000"
       />
     <path
-      d="M150 0v500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M150 0v500"
       hyvector:transform="scale(1)"
       hyvector:d="M150 0v500"
       hyvector:nodetypes="2c"
@@ -173,10 +173,10 @@
       stroke="#000000"
       />
     <path
-      d="M200 500v-500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M200 500v-500"
       hyvector:transform="scale(1)"
       hyvector:d="M200 500v-500"
       hyvector:nodetypes="2c"
@@ -184,10 +184,10 @@
       stroke="#000000"
       />
     <path
-      d="M250 0v500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M250 0v500"
       hyvector:transform="scale(1)"
       hyvector:d="M250 0v500"
       hyvector:nodetypes="2c"
@@ -195,10 +195,10 @@
       stroke="#000000"
       />
     <path
-      d="M300 500v-500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M300 500v-500"
       hyvector:transform="scale(1)"
       hyvector:d="M300 500v-500"
       hyvector:nodetypes="2c"
@@ -206,10 +206,10 @@
       stroke="#000000"
       />
     <path
-      d="M350 0v500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M350 0v500"
       hyvector:transform="scale(1)"
       hyvector:d="M350 0v500"
       hyvector:nodetypes="2c"
@@ -217,10 +217,10 @@
       stroke="#000000"
       />
     <path
-      d="M400 500v-500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M400 500v-500"
       hyvector:transform="scale(1)"
       hyvector:d="M400 500v-500"
       hyvector:nodetypes="2c"
@@ -228,10 +228,10 @@
       stroke="#000000"
       />
     <path
-      d="M450 0v500"
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
+      d="M450 0v500"
       hyvector:transform="scale(1)"
       hyvector:d="M450 0v500"
       hyvector:nodetypes="2c"
@@ -240,7 +240,7 @@
       />
   </g>
   <path
-    d="M114 64.34c0-1.29 5.04-2.34 11.25-2.34h102.5c6.21 0 11.25 1.05 11.25 2.34v21.32c0 1.29-5.04 2.34-11.25 2.34h-102.5c-6.21 0-11.25-1.05-11.25-2.34z"
+    d="M112.5 64.34c0-1.29 5.04-2.34 11.25-2.34h102.5c6.21 0 11.25 1.05 11.25 2.34v21.32c0 1.29-5.04 2.34-11.25 2.34h-102.5c-6.21 0-11.25-1.05-11.25-2.34z"
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
@@ -248,12 +248,12 @@
     hyvector:shapeType="frame"
     hyvector:thickness="1"
     hyvector:cornerRounding="0.18"
-    hyvector:transform="translate(114, 62) scale(1.25, 0.26)"
+    hyvector:transform="translate(112.5, 62) scale(1.25, 0.26)"
     fill="#8c9598"
     stroke="#000000"
     />
   <path
-    d="M62.84 335.5c-1.29 0-2.34-3.02-2.34-6.75v-61.5c0-3.73 1.05-6.75 2.34-6.75h21.32c1.29 0 2.34 3.02 2.34 6.75v61.5c0 3.73-1.05 6.75-2.34 6.75z"
+    d="M64.34 337.5c-1.29 0-2.34-3.02-2.34-6.75v-61.5c0-3.73 1.05-6.75 2.34-6.75h21.32c1.29 0 2.34 3.02 2.34 6.75v61.5c0 3.73-1.05 6.75-2.34 6.75z"
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
@@ -261,12 +261,12 @@
     hyvector:shapeType="frame"
     hyvector:thickness="1"
     hyvector:cornerRounding="0.18"
-    hyvector:transform="translate(60.5, 335.5) rotate(-90) scale(0.75, 0.26)"
+    hyvector:transform="translate(62, 337.5) rotate(-90) scale(0.75, 0.26)"
     fill="#8c9598"
     stroke="#000000"
     />
   <path
-    d="M413.5 463.34c0-1.29 3.02-2.34 6.75-2.34h61.5c3.73 0 6.75 1.05 6.75 2.34v21.32c0 1.29-3.02 2.34-6.75 2.34h-61.5c-3.73 0-6.75-1.05-6.75-2.34z"
+    d="M412.5 464.34c0-1.29 3.02-2.34 6.75-2.34h61.5c3.73 0 6.75 1.05 6.75 2.34v21.32c0 1.29-3.02 2.34-6.75 2.34h-61.5c-3.73 0-6.75-1.05-6.75-2.34z"
     stroke-width="2"
     stroke-linecap="round"
     stroke-linejoin="round"
@@ -274,7 +274,7 @@
     hyvector:shapeType="frame"
     hyvector:thickness="1"
     hyvector:cornerRounding="0.18"
-    hyvector:transform="translate(413.5, 461) scale(0.75, 0.26)"
+    hyvector:transform="translate(412.5, 462) scale(0.75, 0.26)"
     fill="#8c9598"
     stroke="#000000"
     />
@@ -293,7 +293,7 @@
     />
   <path
     d="M334.04 262.51l3.45 3.45-9.05 9.04 9.05 9.04-3.45 3.45-9.04-9.05-9.04 9.05-3.45-3.45 9.05-9.04-9.05-9.04 3.45-3.45 9.04 9.05z"
-    stroke-width="1.9989803508212534"
+    stroke-width="1.99898"
     stroke-linecap="round"
     stroke-linejoin="round"
     hyvector:pathType="shape"
@@ -306,7 +306,7 @@
     />
   <path
     d="M384.05 112.5l3.45 3.45-9.05 9.05 9.05 9.05-3.45 3.45-9.05-9.05-9.05 9.05-3.45-3.45 9.05-9.05-9.05-9.05 3.45-3.45 9.05 9.05z"
-    stroke-width="1.9989271265281192"
+    stroke-width="1.99893"
     stroke-linecap="round"
     stroke-linejoin="round"
     hyvector:pathType="shape"
@@ -319,7 +319,7 @@
     />
   <path
     d="M234.05 412.5l3.45 3.45-9.05 9.05 9.05 9.05-3.45 3.45-9.05-9.05-9.05 9.05-3.45-3.45 9.05-9.05-9.05-9.05 3.45-3.45 9.05 9.05z"
-    stroke-width="1.9979445556224205"
+    stroke-width="1.99794"
     stroke-linecap="round"
     stroke-linejoin="round"
     hyvector:pathType="shape"
