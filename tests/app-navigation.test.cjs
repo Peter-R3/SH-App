@@ -12,7 +12,8 @@ const root = path.resolve(__dirname, '..');
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
-        await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
+        await page.route('**/assets/currency/Coin.svg*', route => route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, 'assets/currency/Coin.svg')) }));
+        await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace('<head>', '<head><base href="https://app.test/">'));
         for (const file of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'game-pause.css', 'achievements.css', 'game-history.css', 'store.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach: () => {} };
@@ -47,14 +48,17 @@ const root = path.resolve(__dirname, '..');
         assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => !bar.textContent.includes('Stats'))));
         assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => Array.from(bar.querySelectorAll('.nav-tab-btn > span:not(.notification-badge)')).slice(0,4).map(el => el.textContent.trim()).join(',') === 'Home,Store,Messages,Alerts')));
         await page.locator('#home-nav-shell [onclick="switchTab(\'store\')"]').click();
-        assert.equal(await page.locator('.store-item').count(), 4);
+        assert.equal(await page.locator('.store-item').count(), 8);
+        assert.equal(await page.locator('#store-coin-balance span').textContent(), '0');
+        await page.waitForFunction(() => document.querySelector('#store-coin-balance img').naturalWidth > 0);
+        assert.equal(await page.locator('#store-screen .store-heading h2').textContent(), 'Browse the collection');
         const beforePreview = await page.evaluate(() => JSON.stringify({ profiles: playerProfiles, photos: profilePhotos }));
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });
             await page.evaluate(() => calculateRealVh(true));
             await page.screenshot({ path: path.join(os.tmpdir(), `store-${width}.png`) });
             assert.ok(await page.locator('.store-content').evaluate(el => el.scrollWidth <= el.clientWidth));
-            for (const id of ['sweetheart','pearl','love-note','cloud']) {
+            for (const id of ['sweetheart','pearl','love-note','cloud','ribbon','starlight','postage','gingham']) {
                 await page.locator(`[data-store-item="${id}"]`).click();
                 assert.equal(await page.locator('#store-preview').isVisible(), true);
                 await page.locator('#store-preview').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
@@ -64,9 +68,25 @@ const root = path.resolve(__dirname, '..');
             }
         }
         await page.locator('[data-store-category=messages]').click();
-        assert.equal(await page.locator('.store-item').count(), 2);
+        assert.equal(await page.locator('.store-item').count(), 4);
         await page.locator('[data-store-category=frames]').click();
-        assert.equal(await page.locator('.store-item').count(), 2);
+        assert.equal(await page.locator('.store-item').count(), 4);
+        const originalThemes = await page.evaluate(() => JSON.stringify(playerThemes));
+        await page.locator('#store-screen [data-store-colour="#FFD1DC"]').click();
+        await page.locator('[data-store-item=ribbon]').click();
+        assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#FFD1DC');
+        await page.locator('#store-preview [data-store-colour="#15AFD1"]').click();
+        assert.equal(await page.locator('#store-screen').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#15AFD1');
+        await page.locator('.store-custom-colour summary').click();
+        await page.locator('#store-colour-hex').fill('#ABCDEF');
+        assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#ABCDEF');
+        await page.locator('#store-colour-hex').fill('invalid');
+        assert.equal(await page.locator('#store-colour-hex').getAttribute('aria-invalid'), 'true');
+        assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#ABCDEF');
+        await page.locator('#store-colour-h').fill('170');
+        assert.equal(await page.locator('#store-colour-hex').getAttribute('aria-invalid'), null);
+        await page.keyboard.press('Escape');
+        assert.equal(await page.evaluate(() => JSON.stringify(playerThemes)), originalThemes, 'Preview colours never change actual themes');
         assert.equal(await page.evaluate(() => JSON.stringify({ profiles: playerProfiles, photos: profilePhotos })), beforePreview, 'Preview does not equip cosmetics or alter profiles');
         assert.equal(await page.locator('#store-screen button, #store-preview button').evaluateAll(buttons => buttons.some(b => /buy|purchase|equip/i.test(b.textContent))), false);
         await page.evaluate(() => { localPlayer = 'Jadey'; switchTab('store'); });
@@ -81,6 +101,22 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => { localPlayer = 'Peter'; switchTab('home'); });
         await page.locator('.home-shortcut-card.games').click();
         assert.deepEqual(await visible(), ['main-dashboard']);
+        await page.evaluate(() => {
+            switchTab('home');
+            homePresenceReady = true; homePresenceConnected = true;
+            homePresenceData = { visible: true, view: 'store', updatedAt: Date.now() };
+            renderHomePresence();
+        });
+        assert.equal(await page.locator('#home-presence').getAttribute('data-status'), 'online');
+        await page.setViewportSize({ width: 390, height: 844 });
+        await page.evaluate(() => calculateRealVh(true));
+        await page.screenshot({ path: path.join(os.tmpdir(), 'home-presence.png') });
+        await page.evaluate(() => { homePresenceData.visible = false; renderHomePresence(); });
+        assert.equal(await page.locator('#home-presence').getAttribute('data-status'), 'offline');
+        await page.evaluate(() => { homePresenceData.visible = true; homePresenceData.updatedAt -= 121000; renderHomePresence(); });
+        assert.equal(await page.locator('#home-presence').getAttribute('data-status'), 'offline');
+        await page.evaluate(() => { homePresenceConnected = false; renderHomePresence(); });
+        assert.match(await page.locator('#home-presence').textContent(), /Status unavailable/);
         await page.evaluate(() => openStatsScreen());
         for (const game of ['number-guess', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps']) {
             await page.evaluate(game => openStatsCategory(game), game);

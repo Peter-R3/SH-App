@@ -33,10 +33,11 @@
 .realm-dialog textarea { resize: vertical; width: 100%; max-width: 100%; box-sizing: border-box; }
 .realm-dialog label { line-height: 1.5; }
 .realm-dialog .realm-select { margin-top: 6px; }
-.realm-location { display: grid; grid-template-columns: minmax(0,1fr) 40px; gap: 0 12px; }
-.realm-location-heading { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) minmax(70px,40%); align-items: start; margin-bottom: 6px; }
-.realm-location-tags { text-align: right; line-height: 1.4; }
-.realm-location-tools { grid-column: 2; grid-row: 2 / span 3; display: flex; flex-direction: column; align-items: end; gap: 8px; }
+.realm-location { display: grid; grid-template-columns: minmax(0,1fr) 78px; gap: 0 10px; }
+.realm-location-heading { display: contents; }
+.realm-location-heading h3 { grid-column: 1; grid-row: 1; margin: 0 0 6px; }
+.realm-location-tags { grid-column: 2; grid-row: 1 / span 2; text-align: right; line-height: 1.4; padding-bottom: 6px; }
+.realm-location-tools { grid-column: 2; grid-row: 3 / span 2; display: flex; flex-direction: column; align-items: end; gap: 8px; }
 .realm-location > .realm-coordinates, .realm-location > .realm-note, .realm-location > .realm-metadata { grid-column: 1; }
 .realm-location > .realm-coordinates { grid-row: 2; margin: 0 0 6px; min-height: 0; align-items: start; gap: 6px 12px; }
 .realm-location > .realm-actions { grid-column: 1 / -1; margin-top: 4px; }

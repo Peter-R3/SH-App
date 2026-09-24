@@ -178,6 +178,58 @@ let retentionCleanupRunning = false;
 let authRejectionMessage = '';
 let activeAppView = 'signed-out';
 let presenceDisconnectHandle = null;
+let homePresencePlayer = null;
+let homePresenceData = null;
+let homePresenceReady = false;
+let homePresenceConnected = false;
+let homePresenceOffset = 0;
+let homePresenceUnsubscribe = [];
+window.setInterval(renderHomePresence, 15000);
+
+function stopHomePresence() {
+    homePresenceUnsubscribe.forEach(stop => stop());
+    homePresenceUnsubscribe = [];
+    homePresencePlayer = null;
+    homePresenceData = null;
+    homePresenceReady = false;
+    homePresenceConnected = false;
+    homePresenceOffset = 0;
+}
+function startHomePresence() {
+    if (homePresencePlayer === localPlayer) { renderHomePresence(); return; }
+    stopHomePresence();
+    homePresencePlayer = localPlayer;
+    const player = localPlayer;
+    const watch = (path, update) => {
+        const ref = database.ref(path);
+        const callback = snapshot => {
+            if (localPlayer !== player || homePresencePlayer !== player) return;
+            update(snapshot.val());
+            renderHomePresence();
+        };
+        ref.on('value', callback, () => {
+            if (localPlayer !== player || homePresencePlayer !== player) return;
+            homePresenceReady = false;
+            renderHomePresence();
+        });
+        homePresenceUnsubscribe.push(() => ref.off('value', callback));
+    };
+    watch(`presence/${otherPlayer(player)}`, value => { homePresenceData = value; homePresenceReady = true; });
+    watch('.info/connected', value => { homePresenceConnected = value === true; });
+    watch('.info/serverTimeOffset', value => { homePresenceOffset = Number(value) || 0; });
+    renderHomePresence();
+}
+function renderHomePresence() {
+    const host = document.getElementById('home-presence');
+    if (!host || !localPlayer) return;
+    const other = otherPlayer(localPlayer);
+    const name = playerProfiles[other]?.nickname || other;
+    const age = Date.now() + homePresenceOffset - Number(homePresenceData?.updatedAt || 0);
+    const online = homePresenceData?.visible === true && homePresenceData?.view !== 'signed-out' && age >= -30000 && age < 120000;
+    const known = homePresenceReady && homePresenceConnected;
+    host.dataset.status = known ? (online ? 'online' : 'offline') : 'unknown';
+    host.querySelector('span').textContent = `${name} · ${known ? online ? 'Online' : 'Offline' : 'Status unavailable'}`;
+}
 let messageHoldTimer = null;
 let selectedMessageActionId = null;
 let notificationSwipe = null;
@@ -522,6 +574,7 @@ function setAuthBusy(busy) {
 }
 
 function showAuthScreen(message = 'Sign in with your approved account.', isError = false) {
+    stopHomePresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const loginScreen = document.getElementById('login-screen');
     if (loginScreen) loginScreen.classList.remove('hidden');
@@ -645,6 +698,7 @@ function initialiseHomeScreen() {
     previousHomeGreeting = choices[Math.floor(Math.random() * choices.length)];
     document.getElementById('home-greeting-text').textContent = previousHomeGreeting;
     document.getElementById('home-coin-preview').hidden = !localPlayer;
+    startHomePresence();
 }
 
 function homeNavigationMarkup() {
@@ -1202,6 +1256,7 @@ function applyNicknameRecords(records) {
     });
     renderMessages();
     renderNotifications();
+    renderHomePresence();
 }
 
 function openNicknameProposal() {

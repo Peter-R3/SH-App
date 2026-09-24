@@ -230,7 +230,8 @@ const fixture = () => {
             const alignment = await page.locator('.realm-location').evaluate(card => {
                 const box = selector => card.querySelector(selector).getBoundingClientRect();
                 const copy = box('.realm-copy'), favourite = box('.realm-favourite'), coordinates = box('.realm-coordinates');
-                return Math.abs(copy.right - favourite.right) < 1 && favourite.top >= copy.bottom && Math.abs(copy.top - coordinates.top) < 1 && card.scrollWidth <= card.clientWidth;
+                const tags = box('.realm-location-tags'), title = box('h3');
+                return Math.abs(copy.right - favourite.right) < 1 && favourite.top >= copy.bottom && copy.top >= tags.bottom && coordinates.top - title.bottom <= 7 && card.scrollWidth <= card.clientWidth;
             });
             assert.ok(alignment, 'Copy and favourite align on the right without card overflow');
             assert.ok(await page.locator('.realm-location').evaluate(card => {

@@ -1,8 +1,8 @@
 .store-content { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; }
 .store-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .store-heading h2 { font-size: 19px; }
-.store-heading > span, .store-preview small { color: #E9BDCF; font-size: 12px; }
-.store-heading > span { flex-shrink: 0; }
+.store-heading small, .store-preview small { display: block; color: #C9B8C5; font-size: 12px; margin-top: 5px; }
+.store-heading .home-coin-balance { flex-shrink: 0; }
 .store-filters { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
 .store-filters button { background: #191820; color: #DDD3DF; border: 1px solid #433A49; padding: 9px 10px; border-radius: 6px; font-size: 12px; min-height: 40px; }
 .store-filters [aria-pressed=true] { background: var(--theme-color); color: var(--theme-text-color); border-color: transparent; }
@@ -11,26 +11,23 @@
 .store-item-info { display: grid; gap: 5px; padding: 12px; }
 .store-item-info strong { font-size: 14px; overflow-wrap: anywhere; }
 .store-item-info small { font-size: 11px; color: #C9B8C5; }
-.store-sample { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; height: 190px; padding: 12px; background: #35242F; overflow: hidden; border-bottom: 1px solid #FFFFFF12; }
-.store-sample.pearl { background: #203036; }
-.store-sample.love-note { background: #30242A; }
-.store-sample.cloud { background: #222D3B; }
-.store-frame { position: relative; padding: 5px; border: 3px solid #F7B7D2; border-radius: 50%; box-shadow: 0 0 0 3px #763F59, inset 0 0 0 1px #FFF1F8; }
+.store-sample { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; height: 190px; padding: 12px; background: var(--decor-stage); overflow: hidden; border-bottom: 1px solid #FFFFFF12; }
+.store-frame { position: relative; padding: 5px; border: 3px solid var(--decor-border); border-radius: 50%; box-shadow: 0 0 0 3px var(--decor-dark), inset 0 0 0 1px var(--decor-light); }
 .store-avatar { display: grid; place-items: center; width: 70px; height: 70px; border-radius: 50%; background: #0A0F14 center/cover; color: var(--theme-color); font-size: 28px; font-weight: bold; }
-.store-charm { position: absolute; bottom: -13px; left: 50%; transform: translateX(-50%); color: #FDE0ED; background: #763F59; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-size: 24px; line-height: 1; }
-.pearl .store-frame { border-color: #E9ECEA; outline: 2px dotted #B7D2D4; outline-offset: 3px; box-shadow: inset 0 0 0 2px #94B6BB; }
-.pearl .store-charm { color: #21393E; background: #D6E9E9; }
+.store-charm { position: absolute; bottom: -13px; left: 50%; transform: translateX(-50%); color: var(--decor-light); background: var(--decor-dark); border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-size: 24px; line-height: 1; }
+.pearl .store-frame { border-color: var(--decor-light); outline: 2px dotted var(--decor-border); outline-offset: 3px; box-shadow: inset 0 0 0 2px var(--decor-accent); }
+.pearl .store-charm { color: var(--decor-dark); background: var(--decor-soft); }
 .store-message { width: 100%; max-width: 230px; }
 .store-message-name { display: block; text-align: right; font-size: 11px; color: #EFE0EA; margin: 0 4px 8px; overflow-wrap: anywhere; }
-.store-bubble { position: relative; padding: 13px 10px; color: #51293C; background: #FFDCE9; border: 2px solid #D996B4; border-radius: 16px 16px 4px 16px; font-size: 13px; text-align: center; overflow-wrap: anywhere; box-shadow: 0 3px 0 #A763812B; }
+.store-bubble { position: relative; padding: 13px 10px; color: var(--decor-dark); background: var(--decor-soft); border: 2px solid var(--decor-border); border-radius: 16px 16px 4px 16px; font-size: 13px; text-align: center; overflow-wrap: anywhere; box-shadow: 0 3px 0 var(--decor-dark); }
 .store-bubble span { white-space: nowrap; }
-.cloud .store-bubble { color: #29465B; background: #E7F5FC; border-color: #AECEDC; border-radius: 22px; box-shadow: 0 4px 0 #AECEDC55; }
+.cloud .store-bubble { background: var(--decor-light); border-radius: 22px; box-shadow: 0 4px 0 var(--decor-border); }
 .store-preview { width: min(420px,calc(100% - 28px)); max-height: calc(100dvh - 40px); overflow: auto; margin: auto; padding: 18px; background: #151219; color: #FFF; border: 1px solid #665269; border-radius: 8px; }
 .store-preview::backdrop { background: #000B; backdrop-filter: blur(5px); }
 .store-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .store-preview h2 { font-size: 21px; margin-top: 5px; }
 .store-preview-heading button { width: 40px; height: 40px; padding: 0; border: 1px solid #665269; border-radius: 6px; color: #FFF; background: #2E2433; font-size: 27px; }
-.store-preview .store-sample { height: 260px; border-radius: 8px; }
+.store-preview .store-sample { height: 210px; border-radius: 8px; }
 .store-preview .store-avatar { width: 110px; height: 110px; font-size: 38px; }
 .store-preview .store-bubble { font-size: 17px; padding: 18px; }
 .store-content button:focus-visible, .store-preview button:focus-visible { outline: 2px solid var(--theme-color); outline-offset: 3px; }
@@ -46,3 +43,30 @@
     @media(hover:hover) { .store-item:hover { transform: translateY(-3px); border-color: #D5ADC2; } }
 }
 @keyframes store-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.store-palette { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 20px; font-size: 12px; color: #D2C6D4; }
+.store-swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+.store-swatches button { display: grid; place-items: center; width: 34px; height: 40px; background: transparent; border: 1px solid transparent; border-radius: 6px; padding: 4px; }
+.store-swatches button::before { content: ''; display: block; width: 22px; height: 22px; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 0 0 1px #FFFFFF40; }
+.store-swatches button[aria-pressed=true] { border-color: #FFF; background: #FFFFFF12; }
+.store-colour-readout { color: #CBBCCF; font: 12px monospace; }
+.store-colour-heading { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 8px; gap: 8px; }
+.store-colour-heading h3 { font-size: 15px; }
+.store-custom-colour { border-top: 1px solid #443747; margin-top: 14px; padding-top: 4px; }
+.store-custom-colour summary { padding: 12px 0; cursor: pointer; font-size: 14px; }
+.store-custom-colour label { display: block; font-size: 12px; color: #CBBCCF; margin: 12px 0 6px; }
+.store-custom-colour input { box-sizing: border-box; width: 100%; min-width: 0; font-size: 16px; }
+.store-custom-colour input[type=text], #store-colour-hex { padding: 10px; border-radius: 6px; border: 1px solid #665269; background: #08070A; color: #FFF; }
+.store-custom-colour input[type=range] { height: 28px; accent-color: var(--decor-border); }
+#store-colour-status { font-size: 12px; color: #FFB4B4; margin-top: 8px; }
+#store-colour-status:empty { display: none; }
+.ribbon .store-frame { border: 5px double var(--decor-border); box-shadow: 0 0 0 2px var(--decor-light); }
+.ribbon .store-charm { background: transparent; bottom: -9px; }
+.store-bow { width: 12px; height: 12px; border-radius: 4px; background: var(--decor-dark); position: relative; }
+.store-bow::before, .store-bow::after { content: ''; position: absolute; width: 24px; height: 20px; top: -5px; background: var(--decor-soft); border: 2px solid var(--decor-dark); }
+.store-bow::before { right: 8px; border-radius: 6px 12px 12px 6px; transform: rotate(12deg); }
+.store-bow::after { left: 8px; border-radius: 12px 6px 6px 12px; transform: rotate(-12deg); }
+.starlight .store-frame { border-color: var(--decor-soft); box-shadow: 0 0 0 3px var(--decor-dark), 0 0 18px var(--decor-accent); }
+.starlight .store-charm { left: auto; right: -10px; top: -5px; bottom: auto; transform: none; background: var(--decor-dark); color: var(--decor-soft); }
+.postage .store-bubble { border: 2px dashed var(--decor-dark); outline: 4px solid var(--decor-soft); background: var(--decor-light); border-radius: 2px; box-shadow: 0 5px 0 var(--decor-border); }
+.gingham .store-bubble { background-color: var(--decor-light); background-image: repeating-linear-gradient(0deg, transparent 0 9px, var(--decor-pattern) 9px 18px), repeating-linear-gradient(90deg, transparent 0 9px, var(--decor-pattern) 9px 18px); border: 4px double var(--decor-border); border-radius: 12px; }
+.store-preview-heading { position: sticky; top: -18px; z-index: 1; background: #151219; padding-top: 8px; padding-bottom: 8px; }

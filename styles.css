@@ -566,6 +566,11 @@ button:disabled {
 }
 
 .game-card-art:has(img[src*="word-search.svg"]) { background: #D9B8C6; }
+.home-presence { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #C8C6CE; margin: -2px 0 16px; min-height: 24px; }
+.home-presence i { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #85818D; }
+.home-presence[data-status=online] i { background: #9EDCB0; }
+.home-presence[data-status=unknown] i { background: transparent; border: 1px solid #85818D; }
+.home-presence span { overflow-wrap: anywhere; min-width: 0; }
 input[type=checkbox].app-checkbox { appearance: none; -webkit-appearance: none; display: grid; place-content: center; width: 22px; height: 22px; min-height: 22px; padding: 0; margin: 0; flex: 0 0 22px; border: 1px solid #9479A7; border-radius: 5px; background: #110C18; cursor: pointer; }
 input[type=checkbox].app-checkbox::after { content: ''; width: 6px; height: 11px; border: solid var(--theme-text-color, #000); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); visibility: hidden; }
 input[type=checkbox].app-checkbox:checked { background: var(--theme-color); border-color: var(--theme-color); }
