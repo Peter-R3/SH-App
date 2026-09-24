@@ -125,6 +125,37 @@ let achievementSelectedTrack = null;
 let achievementSelectedGame = 'all';
 let achievementError = '';
 let achievementReady = false;
+let achievementCompare = false;
+let achievementOtherState = {};
+let achievementOtherReady = false;
+let achievementOtherError = '';
+let achievementOtherUnsubscribe = null;
+function setAchievementComparison(enabled) {
+    achievementOtherUnsubscribe?.();
+    achievementOtherUnsubscribe = null;
+    achievementCompare = enabled;
+    achievementOtherReady = false;
+    achievementOtherState = {};
+    achievementOtherError = '';
+    if (enabled && localPlayer) {
+        const player = localPlayer;
+        const ref = database.ref(`achievements/${otherPlayer(player)}`);
+        const listener = snapshot => {
+            if (!achievementCompare || localPlayer !== player) return;
+            achievementOtherState = snapshot.val() || {};
+            achievementOtherReady = true;
+            achievementOtherError = '';
+            renderAchievements();
+        };
+        ref.on('value', listener, () => {
+            if (!achievementCompare || localPlayer !== player) return;
+            achievementOtherError = 'Could not load comparison. Switch Compare off and on to retry.';
+            renderAchievements();
+        });
+        achievementOtherUnsubscribe = () => ref.off('value', listener);
+    }
+    renderAchievements();
+}
 let achievementAutoPause = null;
 let achievementRevealKeys = [];
 let achievementWordSearchState = null;
@@ -140,6 +171,7 @@ function queueAchievementWrite(player, update) {
 function initialiseAchievements() {
     if (!localPlayer || achievementPlayer === localPlayer) return;
     achievementUnsubscribe?.();
+    setAchievementComparison(false);
     document.getElementById('achievement-reveal')?.close();
     achievementAutoPause = null;
     achievementPlayer = localPlayer;
@@ -292,7 +324,14 @@ function initialiseAchievementScreen() {
     review.id = 'achievement-review';
     review.textContent = 'View unlocked';
     review.onclick = () => { maybeRevealAchievements(true); playUiSound('tap'); };
-    content.querySelector('#achievement-status').after(review);
+    const toolbar = document.createElement('div');
+    toolbar.className = 'achievement-toolbar';
+    const compare = document.createElement('label');
+    compare.className = 'achievement-compare-toggle';
+    compare.innerHTML = '<input id="achievement-compare" type="checkbox">Compare';
+    compare.querySelector('input').onchange = event => { setAchievementComparison(event.target.checked); playUiSound('tap'); };
+    toolbar.append(review, compare);
+    content.querySelector('#achievement-status').after(toolbar);
     document.getElementById('home-screen').after(screen);
     document.getElementById('achievement-back').onclick = () => {
         if (achievementSelectedTrack) { achievementSelectedTrack = null; renderAchievements(); }
@@ -320,12 +359,30 @@ function openAchievements() {
 function achievementProgress(track, index, state) {
     const goal = track.thresholds[index];
     const value = Math.min(goal, achievementNumber(track.value(state, index)));
-    return `<div class="achievement-progress-label"><span>${value.toLocaleString()} / ${goal.toLocaleString()}</span></div><progress max="${goal}" value="${value}" aria-label="${escapeHtml(track.title)} progress"></progress>`;
+    return `<div class="achievement-progress-label"><span class="achievement-remaining">${(goal - value).toLocaleString()} left</span><span>${value.toLocaleString()} / ${goal.toLocaleString()}</span></div><progress max="${goal}" value="${value}" aria-label="${escapeHtml(track.title)} progress"></progress>`;
+}
+function achievementTrackSummary(track, state) {
+    const earned = track.thresholds.map((_, index) => index).filter(index => state.unlocked?.[`${track.id}_${index}`]);
+    const next = track.thresholds.findIndex((_, index) => !state.unlocked?.[`${track.id}_${index}`]);
+    const index = next < 0 ? track.thresholds.length - 1 : next;
+    const badge = achievementBadge(track, index);
+    const labels = `<span class="achievement-earned">Earned: <strong>${earned.length ? achievementBadge(track, earned.at(-1)).name : 'None yet'}</strong></span><span class="achievement-next">${next < 0 ? 'Track complete' : `Next: <strong>${badge.name}</strong>`}</span>`;
+    return { badge, next, index, labels };
+}
+function achievementComparisonRow(track, player, state, ready, index = null) {
+    const name = escapeHtml(playerProfiles[player]?.nickname || player);
+    if (!ready) return `<div class="achievement-comparison-player"><strong>${name}</strong><p>${player === localPlayer ? 'Loading progress...' : achievementOtherError || 'Loading progress...'}</p></div>`;
+    const summary = achievementTrackSummary(track, state);
+    const tier = index ?? summary.index;
+    const badge = achievementBadge(track, tier);
+    const unlocked = state.unlocked?.[`${track.id}_${tier}`];
+    return `<div class="achievement-comparison-player" style="--theme-color:${themeColorFor(player)}"><strong class="achievement-comparison-name">${name}</strong><div class="achievement-comparison-details"><img src="${badge.path}" class="${unlocked ? '' : 'locked'}" alt="${badge.name}"><div>${index === null ? summary.labels : `<span class="achievement-earned">${unlocked ? 'Unlocked' : 'Locked'}</span>`}<p>${escapeHtml(track.requirement(track.thresholds[tier], tier))}</p>${achievementProgress(track, tier, state)}</div></div></div>`;
 }
 function renderAchievements() {
     const list = document.getElementById('achievement-list');
     if (!list) return;
     const track = ACHIEVEMENT_TRACKS.find(item => item.id === achievementSelectedTrack);
+    document.getElementById('achievement-compare').checked = achievementCompare;
     document.getElementById('achievement-heading').textContent = track ? track.title : 'Your achievements';
     const back = document.getElementById('achievement-back');
     const scoped = typeof gameAchievementContext !== 'undefined' && gameAchievementContext;
@@ -348,6 +405,7 @@ function renderAchievements() {
     }
     if (track) {
         list.innerHTML = `<p class="achievement-game-label">${ACHIEVEMENT_GAMES[track.game]}</p>` + track.thresholds.map((goal, index) => {
+            if (achievementCompare) return `<article class="achievement-tier achievement-comparison"><h3>${achievementBadge(track, index).name}</h3>${achievementComparisonRow(track, localPlayer, achievementState, achievementReady, index)}${achievementComparisonRow(track, otherPlayer(localPlayer), achievementOtherState, achievementOtherReady, index)}</article>`;
             const unlocked = achievementState.unlocked?.[`${track.id}_${index}`];
             const badge = achievementBadge(track, index);
             const checklist = track.checklist?.(achievementState, index);
@@ -356,11 +414,9 @@ function renderAchievements() {
         }).join('');
     } else {
         list.innerHTML = ACHIEVEMENT_TRACKS.filter(item => achievementSelectedGame === 'all' || item.game === achievementSelectedGame).map(item => {
-            const earned = item.thresholds.map((_, index) => index).filter(index => achievementState.unlocked?.[`${item.id}_${index}`]);
-            const next = item.thresholds.findIndex((_, index) => !achievementState.unlocked?.[`${item.id}_${index}`]);
-            const index = next < 0 ? item.thresholds.length - 1 : next;
-            const badge = achievementBadge(item, index);
-            return `<button class="achievement-track" data-track="${item.id}"><img src="${badge.path}" class="${next < 0 ? '' : 'locked'}" alt="${badge.name}"><div><span class="achievement-game-label">${ACHIEVEMENT_GAMES[item.game]}</span><h3>${escapeHtml(item.title)}</h3><p>${next < 0 ? 'Track complete' : escapeHtml(item.requirement(item.thresholds[index], index))}</p><span class="achievement-earned">${earned.length ? `Earned: ${achievementBadge(item, earned.at(-1)).name}` : 'No tiers unlocked yet'}</span>${achievementProgress(item, index, achievementState)}</div></button>`;
+            if (achievementCompare) return `<button class="achievement-track achievement-comparison" data-track="${item.id}"><div><span class="achievement-game-label">${ACHIEVEMENT_GAMES[item.game]}</span><h3>${escapeHtml(item.title)}</h3></div>${achievementComparisonRow(item, localPlayer, achievementState, achievementReady)}${achievementComparisonRow(item, otherPlayer(localPlayer), achievementOtherState, achievementOtherReady)}</button>`;
+            const { badge, next, index, labels } = achievementTrackSummary(item, achievementState);
+            return `<button class="achievement-track" data-track="${item.id}"><img src="${badge.path}" class="${next < 0 ? '' : 'locked'}" alt="${badge.name}"><div><span class="achievement-game-label">${ACHIEVEMENT_GAMES[item.game]}</span><h3>${escapeHtml(item.title)}</h3><p>${next < 0 ? 'Track complete' : escapeHtml(item.requirement(item.thresholds[index], index))}</p>${labels}${achievementProgress(item, index, achievementState)}</div></button>`;
         }).join('');
         list.querySelectorAll('[data-track]').forEach(button => { button.onclick = () => {
             achievementSelectedTrack = button.dataset.track; renderAchievements();

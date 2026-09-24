@@ -19,7 +19,19 @@
 .achievement-track p, .achievement-tier p { font-size: 13px; font-weight: 400; color: #C9D1D9; line-height: 1.5; }
 .achievement-game-label { font-size: 11px; color: #B9B4C3; }
 .achievement-earned { display: block; font-size: 12px; color: var(--theme-color); margin: 8px 0; }
-.achievement-progress-label { font-size: 12px; text-align: right; color: #C9D1D9; }
+.achievement-progress-label { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; text-align: right; color: #C9D1D9; margin-top: 8px; }
+.achievement-progress-label span { white-space: nowrap; }
+.achievement-remaining { text-align: left; }
+.achievement-next { display: block; font-size: 12px; color: #C9D1D9; margin: 0 0 10px; }
+.achievement-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.achievement-toolbar #achievement-review { margin: 0; }
+.achievement-compare-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; font-size: 14px; }
+.achievement-compare-toggle input { width: 18px; height: 18px; accent-color: var(--theme-color); }
+.achievement-track.achievement-comparison, .achievement-tier.achievement-comparison { grid-template-columns: minmax(0,1fr); }
+.achievement-comparison-player { min-width: 0; padding-top: 12px; border-top: 1px solid #30363D; }
+.achievement-comparison-name { display: block; color: var(--theme-color); margin-bottom: 8px; overflow-wrap: anywhere; }
+.achievement-comparison-details { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: 10px; }
+.achievement-comparison-details img { width: 44px; height: 44px; }
 #achievement-list progress { width: 100%; height: 8px; display: block; margin-top: 6px; appearance: none; border: none; border-radius: 4px; overflow: hidden; background: #30363D; accent-color: var(--theme-color); }
 #achievement-list progress::-webkit-progress-bar { background: #30363D; }
 #achievement-list progress::-webkit-progress-value { background: var(--theme-color); border-radius: 4px; transition: width 250ms ease; }

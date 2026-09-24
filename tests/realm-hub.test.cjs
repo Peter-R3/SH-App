@@ -53,9 +53,10 @@ const fixture = () => {
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
         await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
-        for (const css of ['styles.css', 'realm-hub.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, css), 'utf8') });
+        for (const css of ['styles.css', 'realm-hub.css', 'realm-planner.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, css), 'utf8') });
         await page.evaluate(fixture);
         await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'realm-hub.js'), 'utf8') });
+        await page.addScriptTag({ content: fs.readFileSync(path.join(root, 'realm-planner.js'), 'utf8') });
         await page.evaluate(() => openRealmHub());
         assert.equal(await page.locator('#realm-code-value').textContent(), 'Code hidden');
         await page.locator('#realm-reveal').click();
@@ -78,6 +79,30 @@ const fixture = () => {
         await fillLocation('Our base');
         await page.locator('#realm-location-form button[type=submit]').click();
         assert.equal(await page.locator('.realm-location').count(), 1);
+        await page.locator('[data-plan-action=favourite]').click();
+        assert.equal(await page.locator('[data-plan-action=favourite]').getAttribute('aria-pressed'), 'true');
+        await page.locator('#realm-favourites-filter').check();
+        assert.equal(await page.locator('.realm-location').count(), 1);
+        await page.locator('#realm-favourites-filter').uncheck();
+        await page.locator('[data-plan-action=categories]').click();
+        await page.locator('[data-plan-action=category-add]').click();
+        await page.locator('#realm-plan-name').fill('Projects');
+        await page.locator('#realm-plan-form button[type=submit]').click();
+        const categoryId = await page.evaluate(() => Object.keys(testStore.realmHub.categories).find(id => testStore.realmHub.categories[id] === 'Projects'));
+        await page.locator('[data-plan-action=close-categories]').click();
+        await page.locator('[data-realm-action=edit]').click();
+        await selectDimension('realm-category', categoryId);
+        await page.locator('#realm-location-form button[type=submit]').click();
+        await selectDimension('realm-category-filter', categoryId);
+        assert.equal(await page.locator('.realm-location').count(), 1);
+        assert.equal(await page.locator('.realm-category-label').textContent(), 'Projects');
+        await page.evaluate(() => { delete realmPlannerData.lists; });
+        await page.locator('[data-plan-action=categories]').click();
+        await page.locator(`[data-plan-action=category-delete][data-id="${categoryId}"]`).click();
+        await page.locator('#app-confirm-dialog button[value=confirm]').click();
+        await page.waitForFunction(id => !testStore.realmHub.categories[id], categoryId);
+        await page.locator('[data-plan-action=close-categories]').click();
+        assert.equal(await page.locator('.realm-category-label').count(), 0);
         await page.locator('#realm-add').click();
         await fillLocation('Duplicate');
         await page.locator('#realm-location-form button[type=submit]').click();
@@ -105,6 +130,9 @@ const fixture = () => {
 
         await page.evaluate(() => { localPlayer = 'Jadey'; return openRealmHub(); });
         assert.equal(await page.locator('#realm-code-edit').isVisible(), false);
+        await page.locator('#realm-favourites-filter').check();
+        assert.equal(await page.locator('.realm-location').count(), 0, 'Favourites are personal');
+        await page.locator('#realm-favourites-filter').uncheck();
         await selectDimension('realm-dimension-filter', 'all');
         assert.equal(await page.locator('.realm-location').count(), 1);
         await page.locator('[data-realm-action=edit]').click();
@@ -137,6 +165,7 @@ const fixture = () => {
                 !!validateRealmLocation({ ...a, x: 1.5 }),
                 !validateRealmLocation({ ...a, x: -40 }),
                 !!validateRealmLocation({ ...a, note: 'x'.repeat(1001) })
+                ,updateRealmLocations(Object.fromEntries(Array.from({ length: 300 }, (_, i) => [`l${i}`, { ...a, x: i }])), 'new', { ...a, x: 301 }, null) === undefined
             ];
         });
         assert.ok(checks.every(Boolean), 'Duplicate, edit conflict and validation checks');
@@ -149,6 +178,28 @@ const fixture = () => {
         await page.locator('#realm-dimension-filter-trigger').click();
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('#realm-dimension-filter-trigger').getAttribute('aria-expanded'), 'false');
+        await page.locator('[data-plan-action=tab][data-tab=lists]').click();
+        await page.locator('[data-plan-action=list-add]').click();
+        await page.locator('#realm-plan-name').fill('Iron farm materials');
+        await page.locator('#realm-plan-form button[type=submit]').click();
+        await page.locator('[data-plan-action=list-open]').click();
+        await page.locator('[data-plan-action=item-add]').click();
+        await page.locator('#realm-plan-name').fill('Iron');
+        await selectDimension('realm-plan-kind', 'quantity');
+        await page.locator('#realm-plan-target').fill('128');
+        await page.locator('#realm-plan-amount').fill('32');
+        await page.locator('#realm-plan-form button[type=submit]').click();
+        assert.match(await page.locator('.realm-quantity-summary').textContent(), /32 \/ 128/);
+        await page.locator('[data-plan-action=quantity]').click();
+        await page.locator('#realm-plan-amount').fill('16');
+        await page.locator('#realm-plan-form button[type=submit]').click();
+        assert.match(await page.locator('.realm-quantity-summary').textContent(), /48 \/ 128/);
+        await page.locator('[data-plan-check]').check();
+        assert.match(await page.locator('#realm-lists-content summary').textContent(), /Completed \(1\)/);
+        await page.locator('#realm-lists-content summary').click();
+        await page.locator('[data-plan-check]').uncheck();
+        await page.screenshot({ path: path.join(os.tmpdir(), 'realm-checklists.png') });
+        await page.locator('[data-plan-action=tab][data-tab=locations]').click();
         await page.locator('#realm-dimension-filter-trigger').click();
         await page.locator('#realm-search').click();
         assert.equal(await page.locator('#realm-dimension-filter-trigger').getAttribute('aria-expanded'), 'false');

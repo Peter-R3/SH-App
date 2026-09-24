@@ -9,10 +9,11 @@
     <meta name="apple-mobile-web-app-title" content="Sweetheart's App">
     <meta name="format-detection" content="telephone=no">
     <title>Sweetheart's App</title>
-    <link rel="stylesheet" href="styles.css?v=43">
+    <link rel="stylesheet" href="styles.css?v=45">
     <link rel="stylesheet" href="realm-hub.css">
+    <link rel="stylesheet" href="realm-planner.css?v=46">
     <link rel="stylesheet" href="game-pause.css?v=43">
-    <link rel="stylesheet" href="achievements.css?v=43">
+    <link rel="stylesheet" href="achievements.css?v=46">
     <link rel="stylesheet" href="game-history.css?v=43">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
@@ -60,7 +61,7 @@
                     <div class="home-greeting">
                         <h2 id="home-greeting-text">Welcome</h2>
                         <div id="home-coin-preview" class="home-coin-balance" aria-label="Coin balance: 0" hidden>
-                            <img src="./assets/currency/Coin.svg" alt="" width="24" height="24">
+                            <img src="./assets/currency/Coin.svg?v=45" alt="" width="22" height="22">
                             <span>0</span>
                         </div>
                     </div>
@@ -111,12 +112,12 @@
                     <h2 class="menu-prompt">Select a Game</h2>
                     
                     <div class="games-grid">
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('number-guess')" style="--game-art: url('./assets/games/one-to-ten.svg');"><img class="game-card-image" src="./assets/games/one-to-ten.svg" alt=""><span>1 to 10</span></button>
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg');"><img class="game-card-image" src="./assets/games/word-search.svg" alt=""><span>Word Search</span></button>
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('battleship')" style="--game-art: url('./assets/games/battleship.svg');"><img class="game-card-image" src="./assets/games/battleship.svg" alt=""><span>Battleship</span></button>
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('connect-four')" style="--game-art: url('./assets/games/connect-four.svg');"><img class="game-card-image" src="./assets/games/connect-four.svg" alt=""><span>Connect 4</span></button>
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('sudoku')" style="--game-art: url('./assets/games/sudoku.svg');"><img class="game-card-image" src="./assets/games/sudoku.svg" alt=""><span>Sudoku</span></button>
-                        <button class="grid-game-btn game-card-art" onclick="launchGame('tic-tac-toe')" style="--game-art: url('./assets/games/tic-tac-toe.svg');"><img class="game-card-image" src="./assets/games/tic-tac-toe.svg" alt=""><span>Tic-Tac-Toe</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('number-guess')" style="--game-art: url('./assets/games/one-to-ten.svg?v=45');"><img class="game-card-image" src="./assets/games/one-to-ten.svg?v=45" alt=""><span>1 to 10</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('word-search')" style="--game-art: url('./assets/games/word-search.svg?v=45');"><img class="game-card-image" src="./assets/games/word-search.svg?v=45" alt=""><span>Word Search</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('battleship')" style="--game-art: url('./assets/games/battleship.svg?v=45');"><img class="game-card-image" src="./assets/games/battleship.svg?v=45" alt=""><span>Battleship</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('connect-four')" style="--game-art: url('./assets/games/connect-four.svg?v=45');"><img class="game-card-image" src="./assets/games/connect-four.svg?v=45" alt=""><span>Connect 4</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('sudoku')" style="--game-art: url('./assets/games/sudoku.svg?v=45');"><img class="game-card-image" src="./assets/games/sudoku.svg?v=45" alt=""><span>Sudoku</span></button>
+                        <button class="grid-game-btn game-card-art" onclick="launchGame('tic-tac-toe')" style="--game-art: url('./assets/games/tic-tac-toe.svg?v=45');"><img class="game-card-image" src="./assets/games/tic-tac-toe.svg?v=45" alt=""><span>Tic-Tac-Toe</span></button>
                         <button class="grid-game-btn game-card-art" onclick="launchGame('rps')" style="--game-art: url('./assets/games/rps.png');"><img class="game-card-image" src="./assets/games/rps.png" alt=""><span>RPS</span></button>
                     </div>
                 </div>
@@ -290,27 +291,27 @@
                             </button>
                         </div>
                         <button class="stats-category-card" onclick="openStatsCategory('number-guess')">
-                            <img src="./assets/games/one-to-ten.svg" alt="">
+                            <img src="./assets/games/one-to-ten.svg?v=45" alt="">
                             <span>1 to 10</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('word-search')">
-                            <img src="./assets/games/word-search.svg" alt="">
+                            <img src="./assets/games/word-search.svg?v=45" alt="">
                             <span>Word Search</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('battleship')">
-                            <img src="./assets/games/battleship.svg" alt="">
+                            <img src="./assets/games/battleship.svg?v=45" alt="">
                             <span>Battleship</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('connect-four')">
-                            <img src="./assets/games/connect-four.svg" alt="">
+                            <img src="./assets/games/connect-four.svg?v=45" alt="">
                             <span>Connect 4</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('sudoku')">
-                            <img src="./assets/games/sudoku.svg" alt="">
+                            <img src="./assets/games/sudoku.svg?v=45" alt="">
                             <span>Sudoku</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('tic-tac-toe')">
-                            <img src="./assets/games/tic-tac-toe.svg" alt="">
+                            <img src="./assets/games/tic-tac-toe.svg?v=45" alt="">
                             <span>Tic-Tac-Toe</span>
                         </button>
                         <button class="stats-category-card" onclick="openStatsCategory('rps')">
@@ -1035,9 +1036,10 @@
     <script src="sudoku.js"></script>
     <script src="tic-tac-toe.js"></script>
     <script src="rps.js"></script>
-    <script src="realm-hub.js"></script>
+    <script src="realm-hub.js?v=46"></script>
+    <script src="realm-planner.js?v=46"></script>
     <script src="game-pause.js?v=43"></script>
-    <script src="achievements.js?v=43"></script>
+    <script src="achievements.js?v=46"></script>
     <script src="game-history.js?v=44"></script>
 </body>
 </html>

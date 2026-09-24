@@ -529,7 +529,7 @@ button:disabled {
 .home-greeting h2 { min-width: 0; margin: 0; font-size: 27px; line-height: 1.25; overflow-wrap: anywhere; }
 .home-coin-balance { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 7px 10px; border: 1px solid #30363D; border-radius: 8px; background: #0A0F14; color: #FFF; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .home-coin-balance[hidden] { display: none; }
-.home-coin-balance img { width: 24px; height: 24px; object-fit: contain; }
+.home-coin-balance img { width: 22px; height: 22px; object-fit: contain; }
 .home-content .home-shortcut-card.realm { width: 100%; min-height: 76px; padding: 14px 18px; flex-direction: row; justify-content: flex-start; gap: 16px; background: #23132F; border-color: #81509F; color: #F2DFFF; }
 .home-content .home-shortcut-card.realm span { text-align: left; }
 .home-games-section { margin-top: 26px; }
@@ -562,37 +562,30 @@ button:disabled {
     isolation: isolate;
     overflow: hidden;
     padding: 0;
-    background: #0A0F14;
+    background: #9CADBA;
 }
 
-.game-card-art::before {
-    content: "";
-    position: absolute;
-    inset: -12px;
-    z-index: 0;
-    background-image: var(--game-art);
-    background-position: center;
-    background-size: cover;
-    filter: blur(10px);
-    transform: scale(1.12);
-}
-
-.game-card-art::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: rgba(0, 0, 0, 0.18);
-}
+.game-card-art:has(img[src*="word-search.svg"]) { background: #93AEB0; }
+.game-card-art:has(img[src*="connect-four.svg"]) { background: #CEC9DA; }
+.game-card-art:has(img[src*="sudoku.svg"]) { background: #91AFAC; }
+.game-card-art:has(img[src*="tic-tac-toe.svg"]) { background: #A9BFC7; }
 
 .game-card-image {
     position: absolute;
-    inset: 7px;
-    width: calc(100% - 14px);
-    height: calc(100% - 14px);
+    inset: 4px 4px 42px;
+    width: calc(100% - 8px);
+    height: calc(100% - 46px);
     z-index: 1;
-    border-radius: 12px;
+    border-radius: 0;
     object-fit: contain;
+}
+
+.game-card-art:has(img[src*="battleship.svg"]) .game-card-image,
+.game-card-art:has(img[src*="rps.png"]) .game-card-image {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .game-card-art span {

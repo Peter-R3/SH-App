@@ -13,7 +13,8 @@ const root = path.resolve(__dirname, '..');
         const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
         await page.route('**/*', route => {
             const asset = new URL(route.request().url()).pathname;
-            if (/^\/assets\/(achievements|currency)\/[A-Za-z_]+\.svg$/.test(asset)) return route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, asset.slice(1))) });
+            if (/^\/assets\/(achievements|currency|games)\/[A-Za-z_-]+\.svg$/.test(asset)) return route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, asset.slice(1))) });
+            if (asset === '/assets/games/rps.png') return route.fulfill({ contentType: 'image/png', body: fs.readFileSync(path.join(root, asset.slice(1))) });
             return route.fulfill({ contentType: 'text/html', body: html });
         });
         await page.goto('http://achievements.test/');
@@ -35,6 +36,7 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.locator('#home-coin-preview').isVisible(), true);
         assert.equal(await page.locator('#home-coin-preview span').textContent(), '0');
         await page.waitForFunction(() => document.querySelector('#home-coin-preview img').naturalWidth > 0);
+        assert.deepEqual(await page.locator('#home-coin-preview img').evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height })), { width: 22, height: 22 });
         await page.evaluate(() => { localPlayer = 'Jadey'; initialiseHomeScreen(); });
         assert.equal(await page.locator('#home-coin-preview').isVisible(), true);
         assert.equal(await page.locator('#home-coin-preview span').textContent(), '0');
@@ -55,6 +57,11 @@ const root = path.resolve(__dirname, '..');
                 return title.right <= coin.left && coin.right <= el.getBoundingClientRect().right && el.scrollWidth <= el.clientWidth;
             }), 'Greeting and coin preview do not overlap');
             await page.screenshot({ path: path.join(os.tmpdir(), `achievement-home-${width}.png`) });
+            await page.evaluate(() => switchTab('games'));
+            await page.waitForFunction(() => [...document.querySelectorAll('.game-card-image')].every(img => img.complete && img.naturalWidth > 0));
+            assert.equal(await page.locator('.game-card-image').count(), 7);
+            await page.screenshot({ path: path.join(os.tmpdir(), `updated-game-art-${width}.png`) });
+            await page.evaluate(() => switchTab('home'));
         }
         await page.setViewportSize({ width: 390, height: 844 });
         await page.locator('.home-shortcut-card.achievements').click();
@@ -119,6 +126,7 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => {
             switchTab('home');
             achievementState = awardAchievementTiers({ totals: { number_ten: 750, ws_solo_5_completed: 500 } }, Date.now());
+            Object.values(achievementState.unlocked).forEach(item => { item.seenAt = 1; });
             window.fixtureAchievements = achievementState;
             openAchievements();
         });
@@ -154,6 +162,38 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.locator('.history-player-heading').count(), 0);
         assert.equal(await page.locator('#number-guess-history-list time').count(), 1);
         await page.screenshot({ path: path.join(os.tmpdir(), 'number-history-refined.png') });
+        await page.evaluate(() => {
+            switchTab('home'); openAchievements();
+            achievementState = awardAchievementTiers({ totals: { number_ten: 7 } }, 1);
+            Object.values(achievementState.unlocked).forEach(value => { value.seenAt = 1; });
+            const ref = database.ref.bind(database);
+            window.comparisonFixture = awardAchievementTiers({ totals: { number_ten: 12 } }, 1);
+            window.comparisonBefore = JSON.stringify(window.comparisonFixture);
+            database.ref = path => path === 'achievements/Jadey' ? {
+                on(event, listener) { window.comparisonListener = listener; listener({ val: () => window.comparisonFixture }); },
+                off() { window.comparisonListener = null; }
+            } : ref(path);
+            renderAchievements();
+        });
+        assert.match(await page.locator('[data-track=number-total] .achievement-next').textContent(), /Bronze III/);
+        assert.equal(await page.locator('[data-track=number-total] .achievement-remaining').textContent(), '3 left');
+        await page.locator('#achievement-compare').check();
+        assert.equal(await page.locator('[data-track=number-total] progress').count(), 2);
+        for (const width of [320,390,1280]) {
+            await page.setViewportSize({ width, height: 844 });
+            assert.ok(await page.locator('.achievements-content').evaluate(el => el.scrollWidth <= el.clientWidth));
+            await page.screenshot({ path: path.join(os.tmpdir(), `achievement-compare-${width}.png`) });
+        }
+        await page.evaluate(() => {
+            comparisonFixture = awardAchievementTiers({ totals: { number_ten: 15 } }, 1);
+            comparisonListener({ val: () => comparisonFixture });
+        });
+        assert.match(await page.locator('[data-track=number-total] .achievement-comparison-player').last().textContent(), /Bronze V/);
+        await page.locator('[data-track=number-total]').click();
+        assert.equal(await page.locator('.achievement-tier progress').count(),50);
+        await page.locator('#achievement-back').click();
+        await page.locator('#achievement-compare').uncheck();
+        assert.equal(await page.evaluate(() => comparisonListener),null);
         assert.deepEqual(errors, []);
         console.log('PASS: three-column Home, real badge loading, progress bars, all tier details, safe competitive queues, persistent reveal acknowledgement and solo pause/resume.');
     } finally { await browser.close(); }

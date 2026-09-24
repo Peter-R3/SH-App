@@ -1,16 +1,18 @@
-const CACHE_NAME = 'sweethearts-app-v44';
+const CACHE_NAME = 'sweethearts-app-v46';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=43',
+  './styles.css?v=45',
   './app.js?v=44',
-  './achievements.js?v=43',
-  './achievements.css?v=43',
+  './achievements.js?v=46',
+  './achievements.css?v=46',
   './game-history.js?v=44',
   './game-history.css?v=43',
-  './assets/currency/Coin.svg',
+  './assets/currency/Coin.svg?v=45',
   ...['Bronze','Silver','Gold','Osmium','Pink'].flatMap(tier => ['I','II','III','IV','V','Star'].map(rank => `./assets/achievements/${tier}_${rank}.svg`)),
-  './realm-hub.js',
+  './realm-hub.js?v=46',
+  './realm-planner.js?v=46',
+  './realm-planner.css?v=46',
   './realm-hub.css',
   './game-pause.js?v=43',
   './game-pause.css?v=43',
@@ -27,12 +29,12 @@ const APP_SHELL = [
   './icon-180.png',
   './icon-192.png',
   './icon-512.png',
-  './assets/games/one-to-ten.svg',
-  './assets/games/word-search.svg',
-  './assets/games/battleship.svg',
-  './assets/games/connect-four.svg',
-  './assets/games/sudoku.svg',
-  './assets/games/tic-tac-toe.svg',
+  './assets/games/one-to-ten.svg?v=45',
+  './assets/games/word-search.svg?v=45',
+  './assets/games/battleship.svg?v=45',
+  './assets/games/connect-four.svg?v=45',
+  './assets/games/sudoku.svg?v=45',
+  './assets/games/tic-tac-toe.svg?v=45',
   './assets/games/rps.png'
 ];
 

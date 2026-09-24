@@ -132,6 +132,7 @@ function validateRealmLocation(location) {
 // This runs again on Firebase transaction retries, keeping simultaneous saves unique.
 function updateRealmLocations(current, id, location, revision) {
     const locations = current || {};
+    if (!locations[id] && Object.keys(locations).length >= 300) return;
     if (revision !== null && (!locations[id] || locations[id].revision !== revision)) return;
     if (Object.entries(locations).some(([key, value]) => key !== id && realmCoordinateKey(value) === realmCoordinateKey(location))) return;
     return { ...locations, [id]: location };
@@ -180,6 +181,7 @@ function mountRealmHub() {
     for (const id of ['realm-editor', 'realm-code-dialog']) {
         document.getElementById(id).addEventListener('cancel', event => { if (realmBusy) event.preventDefault(); });
     }
+    if (typeof mountRealmPlanner === 'function') mountRealmPlanner();
 }
 
 function openRealmHub() {
@@ -200,6 +202,7 @@ function showRealmHub() {
     if (!history.state?.realmHub) history.pushState({ realmHub: true }, '');
     realmUnsubscribe.forEach(unsubscribe => unsubscribe());
     realmUnsubscribe = [];
+    if (typeof startRealmPlanner === 'function') startRealmPlanner();
     document.getElementById('realm-code-edit').classList.toggle('hidden', localPlayer !== 'Peter');
     setRealmStatus('Loading locations...');
     for (const key of ['code', 'locations']) {
@@ -251,18 +254,22 @@ function formatRealmUpdatedAt(timestamp) {
 function renderRealmLocations() {
     const query = document.getElementById('realm-search').value.trim().toLowerCase();
     const dimension = document.getElementById('realm-dimension-filter').value;
-    const locations = Object.entries(realmLocations).filter(([, value]) =>
+    const locations = Object.entries(realmLocations).filter(([id, value]) =>
         (dimension === 'all' || dimension === value.dimension) &&
+        (typeof matchesRealmOrganisation !== 'function' || matchesRealmOrganisation(value, id)) &&
         `${value.name} ${value.note || ''} ${value.x} ${value.y} ${value.z}`.toLowerCase().includes(query)
     ).sort((a, b) => a[1].name.localeCompare(b[1].name));
-    document.getElementById('realm-add').disabled = !realmReady;
-    document.getElementById('realm-location-count').textContent = realmReady ? String(locations.length) : '';
+    document.getElementById('realm-add').disabled = !realmReady || Object.keys(realmLocations).length >= 300;
+    document.getElementById('realm-location-count').textContent = realmReady ? `${Object.keys(realmLocations).length} / 300` : '';
+    document.getElementById('realm-location-count').classList.toggle('realm-near-limit', Object.keys(realmLocations).length >= 270);
+    if (Object.keys(realmLocations).length >= 300) setRealmStatus('Location limit reached. Delete a location to add another.');
     document.getElementById('realm-location-list').innerHTML = locations.length ? locations.map(([id, value]) => `
-        <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3><span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span></div>
+        <article class="realm-location"><div class="realm-location-heading"><h3>${escapeHtml(value.name)}</h3>${typeof realmFavouriteButton === 'function' ? realmFavouriteButton(id) : ''}<span class="realm-dimension ${Object.hasOwn(REALM_DIMENSIONS, value.dimension) ? value.dimension : ''}">${escapeHtml(REALM_DIMENSIONS[value.dimension] || value.dimension)}</span></div>
+            ${typeof realmCategoryLabel === 'function' ? realmCategoryLabel(value.category) : ''}
             <p class="realm-coordinates">${['x', 'y', 'z'].map(axis => `<span><b class="realm-axis-${axis}">${axis.toUpperCase()}</b> ${escapeHtml(value[axis])}</span>`).join('')}</p>
             ${value.note ? `<p class="realm-note">${escapeHtml(value.note)}</p>` : ''}
             <p class="realm-metadata">Added by ${escapeHtml(playerProfiles[value.createdBy]?.nickname || value.createdBy || 'Unknown')}<br>Updated by ${escapeHtml(playerProfiles[value.updatedBy]?.nickname || value.updatedBy || 'Unknown')}:<br>${escapeHtml(formatRealmUpdatedAt(value.updatedAt))}</p>
-            <div class="realm-actions"><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
+            <div class="realm-actions"><button data-realm-action="copy-coordinates" data-id="${escapeHtml(id)}">Copy coordinates</button><button data-realm-action="edit" data-id="${escapeHtml(id)}">Edit</button><button data-realm-action="delete" data-id="${escapeHtml(id)}" class="realm-danger">Delete</button></div>
         </article>`).join('') : `<p class="realm-empty">${realmReady ? (query || dimension !== 'all' ? 'No matching locations.' : 'No locations yet.') : 'Loading...'}</p>`;
 }
 
@@ -280,6 +287,7 @@ function openRealmLocationEditor(id = null) {
     syncRealmDropdown(document.getElementById('realm-dimension'));
     closeRealmDropdowns();
     renderRealmCoordinateHelper();
+    if (typeof prepareRealmCategoryEditor === 'function') prepareRealmCategoryEditor(location);
     document.getElementById('realm-editor').showModal();
 }
 
@@ -288,8 +296,8 @@ function renderRealmCoordinateHelper() {
     const xInput = document.getElementById('realm-x').value;
     const zInput = document.getElementById('realm-z').value;
     const factor = dimension === 'nether' ? 8 : 1 / 8;
-    document.getElementById('realm-coordinate-helper').textContent = dimension === 'end' || !/^-?\d+$/.test(xInput) || !/^-?\d+$/.test(zInput) ? '' :
-        `${dimension === 'nether' ? 'Overworld' : 'Nether'} equivalent: X ${Math.floor(Number(xInput) * factor)}, Z ${Math.floor(Number(zInput) * factor)}`;
+    document.getElementById('realm-coordinate-helper').innerHTML = dimension === 'end' || !/^-?\d+$/.test(xInput) || !/^-?\d+$/.test(zInput) ? '' :
+        `${dimension === 'nether' ? 'Overworld' : 'Nether'} equivalent: <span class="realm-axis-x">X ${Math.floor(Number(xInput) * factor)}</span>, <span class="realm-axis-z">Z ${Math.floor(Number(zInput) * factor)}</span>`;
 }
 
 function setRealmBusy(busy) {
@@ -301,6 +309,7 @@ async function saveRealmLocation(event) {
     event.preventDefault();
     if (realmBusy || !localPlayer) return;
     const location = { name: document.getElementById('realm-name').value.trim(), dimension: document.getElementById('realm-dimension').value, note: document.getElementById('realm-note').value.trim() };
+    if (document.getElementById('realm-category')) location.category = document.getElementById('realm-category').value;
     for (const axis of ['x', 'y', 'z']) location[axis] = document.getElementById(`realm-${axis}`).value === '' ? NaN : Number(document.getElementById(`realm-${axis}`).value);
     const status = document.getElementById('realm-editor-status');
     const validation = validateRealmLocation(location);
@@ -310,8 +319,13 @@ async function saveRealmLocation(event) {
     setRealmBusy(true);
     status.textContent = 'Saving...';
     try {
-        const result = await database.ref('realmHub/locations').transaction(current => updateRealmLocations(current, id, location, realmEditingRevision), undefined, false);
-        if (!result.committed) { status.textContent = 'These coordinates already exist in this dimension, or this location changed. Close and reopen it to try again.'; return; }
+        const result = await database.ref('realmHub').transaction(current => {
+            if (!current && realmEditingRevision !== null) return current;
+            if (location.category && typeof getRealmCategories === 'function' && !getRealmCategories(current || {})[location.category]) return;
+            const locations = updateRealmLocations(current?.locations, id, location, realmEditingRevision);
+            return locations ? { ...(current || {}), locations } : undefined;
+        }, undefined, false);
+        if (!result.committed) { status.textContent = Object.keys(realmLocations).length >= 300 && !realmEditingId ? 'Location limit reached (300). Delete a location to add another.' : 'These coordinates already exist in this dimension, or this location/category changed. Close and reopen it to try again.'; return; }
         document.getElementById('realm-editor').close();
         playUiSound('confirm');
         setRealmStatus('Location saved.');
@@ -335,9 +349,13 @@ async function deleteRealmLocation(id) {
     if (!location || realmBusy) return;
     if (!await showAppConfirmation('Delete location?', `Remove "${location.name}" for both players?`)) return;
     try {
-        const result = await database.ref(`realmHub/locations/${id}`).transaction(current => {
-            if (!current || current.revision !== location.revision) return;
-            return null;
+        const result = await database.ref('realmHub').transaction(current => {
+            if (!current) return current;
+            if (!current.locations?.[id] || current.locations[id].revision !== location.revision) return;
+            delete current.locations[id];
+            for (const favourites of Object.values(current.favourites || {})) delete favourites[id];
+            for (const list of Object.values(current.lists || {})) if (list.locationId === id) delete list.locationId;
+            return current;
         }, undefined, false);
         setRealmStatus(result.committed ? 'Location deleted.' : 'The location changed. Review it before deleting.');
         if (result.committed) playUiSound('confirm');
@@ -377,6 +395,13 @@ async function handleRealmAction(event) {
         case 'add': openRealmLocationEditor(); break;
         case 'edit': openRealmLocationEditor(button.dataset.id); break;
         case 'delete': await deleteRealmLocation(button.dataset.id); break;
+        case 'copy-coordinates': {
+            const location = realmLocations[button.dataset.id];
+            if (!location) break;
+            try { await navigator.clipboard.writeText(`${location.name} (${REALM_DIMENSIONS[location.dimension]}): X ${location.x}, Y ${location.y}, Z ${location.z}`); setRealmStatus('Coordinates copied.'); playUiSound('confirm'); }
+            catch { setRealmStatus('Copy unavailable. Select the coordinates on the card to copy them.'); }
+            break;
+        }
         case 'reveal': realmCodeShown = !realmCodeShown; renderRealmCode(); break;
         case 'copy':
             try { await navigator.clipboard.writeText(realmCode); setRealmStatus('Realm code copied.'); }

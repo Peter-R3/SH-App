@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, '..');
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
         await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
-        for (const file of ['styles.css', 'realm-hub.css', 'game-pause.css', 'achievements.css', 'game-history.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'game-pause.css', 'achievements.css', 'game-history.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach: () => {} };
             const ref = {
@@ -29,7 +29,7 @@ const root = path.resolve(__dirname, '..');
             window.AudioContext = undefined;
             window.webkitAudioContext = undefined;
         });
-        for (const file of ['app.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['app.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'realm-planner.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => showAuthenticatedApp('Peter'));
         const visible = () => page.locator('.screen:not(.hidden)').evaluateAll(screens => screens.map(screen => screen.id));
         assert.deepEqual(await visible(), ['home-screen']);

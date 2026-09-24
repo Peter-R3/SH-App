@@ -39,20 +39,16 @@
     hyvector:startAngle="0"
     hyvector:transform="translate(15, 15) scale(4.7, 4.7)"
     fill="url(#lw9YZ7G0)"
-    stroke="#ffc2d1"
+    stroke="#f2b6c5"
     />
   <path
     d="M250 186c9.73-25.89 27.92-53.5 62.36-53.5 36.25 0 65.64 30.58 65.64 68.31 0 103.53-80.02 156.99-128 184.69-47.98-27.7-128-81.16-128-184.69 0-37.73 29.39-68.31 65.64-68.31 34.44 0 52.63 27.61 62.36 53.5z"
-    stroke-width="0.01"
-    stroke-linecap="round"
-    stroke-linejoin="round"
     hyvector:pathType="shape"
     hyvector:shapeType="heart"
     hyvector:cleftDepth="0.27970734168699"
     hyvector:tipAngle="1"
     hyvector:lobeFullness="0.5211744776962165"
     hyvector:transform="translate(122, 132.5) scale(2.53, 2.53)"
-    fill="#ffc2d1"
-    stroke="#ffc2d1"
+    fill="#f2b6c5"
     />
 </svg>
