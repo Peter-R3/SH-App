@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, '..');
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
         await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''));
-        for (const file of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'game-pause.css', 'achievements.css', 'game-history.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'game-pause.css', 'achievements.css', 'game-history.css', 'store.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach: () => {} };
             const ref = {
@@ -29,7 +29,7 @@ const root = path.resolve(__dirname, '..');
             window.AudioContext = undefined;
             window.webkitAudioContext = undefined;
         });
-        for (const file of ['app.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'realm-planner.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['app.js', 'store.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'realm-planner.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => showAuthenticatedApp('Peter'));
         const visible = () => page.locator('.screen:not(.hidden)').evaluateAll(screens => screens.map(screen => screen.id));
         assert.deepEqual(await visible(), ['home-screen']);
@@ -40,11 +40,47 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.locator('.home-greeting h2').textContent(), greeting, 'Nickname sync does not overwrite the greeting');
         await page.evaluate(() => switchTab('home'));
         assert.notEqual(await page.locator('.home-greeting h2').textContent(), greeting);
-        for (const [tab, id] of [['games', 'main-dashboard'], ['messages', 'messages-screen'], ['alerts', 'notifications-screen'], ['profile', 'profile-screen'], ['home', 'home-screen']]) {
+        for (const [tab, id] of [['games', 'main-dashboard'], ['store', 'store-screen'], ['messages', 'messages-screen'], ['alerts', 'notifications-screen'], ['profile', 'profile-screen'], ['home', 'home-screen']]) {
             await page.evaluate(tab => switchTab(tab), tab);
             assert.deepEqual(await visible(), [id]);
         }
         assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => !bar.textContent.includes('Stats'))));
+        assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => Array.from(bar.querySelectorAll('.nav-tab-btn > span:not(.notification-badge)')).slice(0,4).map(el => el.textContent.trim()).join(',') === 'Home,Store,Messages,Alerts')));
+        await page.locator('#home-nav-shell [onclick="switchTab(\'store\')"]').click();
+        assert.equal(await page.locator('.store-item').count(), 4);
+        const beforePreview = await page.evaluate(() => JSON.stringify({ profiles: playerProfiles, photos: profilePhotos }));
+        for (const width of [320,390,1280]) {
+            await page.setViewportSize({ width, height: 844 });
+            await page.evaluate(() => calculateRealVh(true));
+            await page.screenshot({ path: path.join(os.tmpdir(), `store-${width}.png`) });
+            assert.ok(await page.locator('.store-content').evaluate(el => el.scrollWidth <= el.clientWidth));
+            for (const id of ['sweetheart','pearl','love-note','cloud']) {
+                await page.locator(`[data-store-item="${id}"]`).click();
+                assert.equal(await page.locator('#store-preview').isVisible(), true);
+                await page.locator('#store-preview').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
+                assert.ok(await page.locator('#store-preview').evaluate(el => el.scrollWidth <= el.clientWidth));
+                await page.screenshot({ path: path.join(os.tmpdir(), `store-${id}-${width}.png`) });
+                await page.keyboard.press('Escape');
+            }
+        }
+        await page.locator('[data-store-category=messages]').click();
+        assert.equal(await page.locator('.store-item').count(), 2);
+        await page.locator('[data-store-category=frames]').click();
+        assert.equal(await page.locator('.store-item').count(), 2);
+        assert.equal(await page.evaluate(() => JSON.stringify({ profiles: playerProfiles, photos: profilePhotos })), beforePreview, 'Preview does not equip cosmetics or alter profiles');
+        assert.equal(await page.locator('#store-screen button, #store-preview button').evaluateAll(buttons => buttons.some(b => /buy|purchase|equip/i.test(b.textContent))), false);
+        await page.evaluate(() => { localPlayer = 'Jadey'; switchTab('store'); });
+        assert.equal(await page.locator('#store-top-nickname').textContent(), await page.evaluate(() => playerProfiles.Jadey.nickname));
+        await page.locator('[data-store-item=sweetheart]').click();
+        await page.locator('#store-preview [aria-label="Close preview"]').click();
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.locator('[data-store-item=pearl]').click();
+        assert.equal(await page.locator('#store-preview').evaluate(el => el.getAnimations({ subtree: true }).length), 0);
+        await page.keyboard.press('Escape');
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.evaluate(() => { localPlayer = 'Peter'; switchTab('home'); });
+        await page.locator('.home-shortcut-card.games').click();
+        assert.deepEqual(await visible(), ['main-dashboard']);
         await page.evaluate(() => openStatsScreen());
         for (const game of ['number-guess', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps']) {
             await page.evaluate(game => openStatsCategory(game), game);
@@ -56,7 +92,7 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.locator('#number-guess-pause-peter-total').textContent(), '9');
         await page.evaluate(() => exitGame());
         assert.deepEqual(await visible(), ['main-dashboard']);
-        assert.equal(await page.locator('#dashboard-nav-shell .active-tab span').textContent(), 'Games');
+        assert.equal(await page.locator('#dashboard-nav-shell .active-tab span').textContent(), 'Home');
         await page.evaluate(() => openNumberGuessPause());
         const numberTab = page.locator('[onclick="toggleNumberGuessPause()"]');
         assert.equal(await numberTab.locator('span').textContent(), 'Play');

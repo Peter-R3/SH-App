@@ -657,12 +657,22 @@ function normaliseBottomNavigation() {
         button.innerHTML = homeNavigationMarkup();
         button.classList.remove('active-tab');
     });
+    document.querySelectorAll('.bottom-nav-bar').forEach(nav => {
+        nav.querySelectorAll('.nav-tab-btn').forEach(button => {
+            if (button.querySelector('span')?.textContent.trim() !== 'Games') return;
+            button.setAttribute('onclick', "switchTab('store')");
+            button.innerHTML = '<svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7V6a6 6 0 0 1 12 0v1h3l1 16H2L3 7h3zm2 0h8V6a4 4 0 0 0-8 0v1zm0 3H6v3h2v-3zm10 0h-2v3h2v-3z"/></svg><span>Store</span>';
+            button.classList.remove('active-tab');
+        });
+        const home = nav.querySelector('[onclick="switchTab(\'home\')"]');
+        if (home) nav.prepend(home);
+    });
 }
 
 function setActiveNavigationTab(tabName) {
     document.querySelectorAll('.nav-tab-btn').forEach(button => {
         const label = button.querySelector('span:not(.notification-badge)')?.textContent.trim().toLowerCase();
-        button.classList.toggle('active-tab', label === (tabName === 'stats' ? 'home' : tabName));
+        button.classList.toggle('active-tab', label === (['stats', 'games'].includes(tabName) ? 'home' : tabName));
     });
 }
 
@@ -724,7 +734,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'home', 'profile', 'stats', 'achievements', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
+    const prefixes = ['dashboard', 'home', 'store', 'profile', 'stats', 'achievements', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -734,6 +744,7 @@ function refreshVisibleProfilePhotos() {
 }
 
 function switchTab(tabName) {
+    document.getElementById('store-preview')?.close();
     const wordSearchVisible = !document.getElementById('word-search-screen')?.classList.contains('hidden');
     if (wordSearchVisible && typeof wordSearchSettings !== 'undefined' && wordSearchSettings.mode === 'versus') {
         abandonVersusMatch(true);
@@ -760,6 +771,8 @@ function switchTab(tabName) {
         const home = document.getElementById('home-screen');
         if (home) home.classList.remove('hidden');
         initialiseHomeScreen();
+    } else if (tabName === 'store') {
+        openStoreScreen();
     } else if (tabName === 'games') {
         const dash = document.getElementById('main-dashboard');
         if (dash) dash.classList.remove('hidden');
