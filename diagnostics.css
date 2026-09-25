@@ -15,7 +15,16 @@
 .management-content #diagnostic-collapse { width: auto; flex-shrink: 0; min-height: 40px; padding: 8px 12px; font-size: 13px; }
 .diagnostic-entry summary { line-height: 1.5; }
 .diagnostic-entry { padding: 12px 0; border-bottom: 1px solid #35303D; }
-.diagnostic-entry summary { cursor: pointer; overflow-wrap: anywhere; font-size: 13px; }
+.diagnostic-entry summary { cursor: pointer; overflow-wrap: anywhere; font-size: 13px; display: flex; align-items: center; gap: 12px; list-style: none; }
+.diagnostic-entry summary::-webkit-details-marker { display: none; }
+.diagnostic-entry summary::before { content: '\203A'; color: #BFB4C8; font-size: 22px; width: 12px; flex-shrink: 0; text-align: center; }
+.diagnostic-entry[open] summary::before { transform: rotate(90deg); }
+.diagnostic-heading { flex: 1; min-width: 0; }
+.diagnostic-title { display: block; font-size: 14px; font-weight: 700; }
+.diagnostic-outcome { display: block; font-size: 12px; margin-top: 4px; }
+.diagnostic-outcome-icon { width: 24px; height: 24px; flex-shrink: 0; }
+.diagnostic-attempted { color: #CFC4D7; }
+.diagnostic-description { font-size: 13px; line-height: 1.5; margin: 14px 0 10px; color: #E2DCE5; }
 .diagnostic-entry time { display: block; color: #BFB4C8; font-size: 11px; margin-top: 6px; }
 .diagnostic-entry strong { margin-left: 8px; font-size: 11px; }
 .diagnostic-failed { color: #FFB4B4; }

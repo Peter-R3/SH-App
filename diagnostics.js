@@ -210,9 +210,10 @@ async function reviewAchievementRepair() {
         recordDiagnostic('achievement-repair', { actor: 'Peter', profile, track: command.track, outcome: 'failed', actionId, errorCode: error.code });
     } finally { managedAchievementBusy = false; }
 }
-function filteredDiagnostics() {
+function filteredDiagnostics(applyFilters = true) {
     const pending = Object.fromEntries(diagnosticPending.map(item => [item.id,item.entry]));
     const entries = Object.entries(mergeDiagnosticLog(diagnosticRemote, pending));
+    if (!applyFilters) return entries;
     const profile = document.getElementById('diagnostic-profile')?.value || 'all';
     const event = document.getElementById('diagnostic-event')?.value || 'all';
     const errors = document.getElementById('diagnostic-errors')?.checked;
@@ -228,7 +229,7 @@ function describeDiagnostic(entry) {
     const repair = { progress: 'set achievement progress', grant: 'grant an achievement', revoke: 'revoke an achievement', automatic: 'restore automatic achievement tracking' }[entry.operation] || 'repair achievements';
     const actions = {
         'turn-submit': `save ${actor}'s ${entry.operation === 'pick' ? 'selection' : entry.operation === 'guess' ? 'guess' : 'turn'} in ${game}`,
-        'history-save': `save a ${game} history entry${entry.profile ? ' for ' + profile : ''}`,
+        'history-save': `save a history entry for ${game}${entry.profile ? ' for ' + profile : ''}`,
         'achievement-sync': `save achievement progress for ${profile}`,
         'achievement-repair': `${repair} for ${profile}${track ? ': ' + track.title + ', ' + tier : ''}`,
         'communication-clear': `clear ${ {messages: 'messages', notifications: 'notifications', both: 'messages and notifications'}[entry.operation] || 'messages or notifications'} for ${profile}`,
@@ -252,12 +253,29 @@ function describeDiagnostic(entry) {
     else if (['disconnected','unavailable','network-error'].includes(entry.errorCode)) description += ' Check the connection before retrying.';
     return description;
 }
+function diagnosticTitle(entry) {
+    return {
+        connection: 'Database connection', 'game-view': 'Screen changed',
+        'turn-submit': 'Turn submission', 'history-save': 'Game history',
+        'achievement-sync': 'Achievement progress', 'achievement-repair': 'Achievement repair',
+        'communication-clear': 'Messages and alerts cleanup', 'score-adjust': 'Game score adjustment',
+        'interaction-adjust': 'Interaction count adjustment', 'runtime-error': 'App error'
+    }[entry.event] || 'App activity';
+}
+function diagnosticOutcomeIcon(outcome) {
+    const path = outcome === 'confirmed' ? '<path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/>'
+        : outcome === 'failed' ? '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6m0-6 6 6"/>'
+        : '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>';
+    return `<svg class="diagnostic-outcome-icon diagnostic-${outcome}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+}
 function renderDiagnosticLog() {
     if (typeof localPlayer === 'undefined' || localPlayer !== 'Peter' || !document.getElementById('diagnostic-entries')) return;
     const entries = filteredDiagnostics();
     const expanded = new Set(Array.from(document.querySelectorAll('.diagnostic-entry[open]'), element => element.dataset.entryId));
-    document.getElementById('diagnostic-status').textContent = `${entries.length} / 500 entries · Last 7 days · ${diagnosticPending.length} pending locally${diagnosticFailure ? ' · Sync unavailable; local records retained' : ''}`;
-    document.getElementById('diagnostic-entries').innerHTML = entries.length ? entries.map(([id,entry]) => `<details class="diagnostic-entry" data-entry-id="${id}" ${expanded.has(id) ? 'open' : ''}><summary><span>${escapeHtml(describeDiagnostic(entry))}</span><strong class="diagnostic-${entry.outcome}">${entry.outcome}</strong><time>${new Date(entry.at).toLocaleString('en-GB')}</time></summary><pre>${escapeHtml(JSON.stringify({ id, ...entry }, null, 2))}</pre></details>`).join('') : '<p>No matching activity.</p>';
+    const total = filteredDiagnostics(false).length;
+    const filtering = document.getElementById('diagnostic-profile').value !== 'all' || document.getElementById('diagnostic-event').value !== 'all' || document.getElementById('diagnostic-errors').checked;
+    document.getElementById('diagnostic-status').textContent = `${total} / ${DIAGNOSTIC_LIMIT} entries${filtering ? ` · ${entries.length} matching ${entries.length === 1 ? 'entry' : 'entries'}` : ''} · Last 7 days · ${diagnosticPending.length} pending locally${diagnosticFailure ? ' · Sync unavailable; local records retained' : ''}`;
+    document.getElementById('diagnostic-entries').innerHTML = entries.length ? entries.map(([id,entry]) => `<details class="diagnostic-entry" data-entry-id="${id}" ${expanded.has(id) ? 'open' : ''}><summary><span class="diagnostic-heading"><span class="diagnostic-title">${diagnosticTitle(entry)}</span><span class="diagnostic-outcome diagnostic-${entry.outcome}">${entry.outcome[0].toUpperCase() + entry.outcome.slice(1)}</span><time>${new Date(entry.at).toLocaleString('en-GB')}</time></span>${diagnosticOutcomeIcon(entry.outcome)}</summary><p class="diagnostic-description">${escapeHtml(describeDiagnostic(entry))}</p><pre>${escapeHtml(JSON.stringify({ id, ...entry }, null, 2))}</pre></details>`).join('') : '<p>No matching activity.</p>';
 }
 function exportDiagnostics() {
     if (localPlayer !== 'Peter') return;
