@@ -1,11 +1,11 @@
-const CACHE_NAME = 'sweethearts-app-v51';
+const CACHE_NAME = 'sweethearts-app-v53';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css?v=51',
   './app.js?v=51',
-  './store.js?v=51',
-  './store.css?v=51',
+  './store.js?v=53',
+  './store.css?v=53',
   './achievements.js?v=48',
   './achievements.css?v=48',
   './game-history.js?v=44',

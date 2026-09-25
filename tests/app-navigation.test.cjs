@@ -48,7 +48,9 @@ const root = path.resolve(__dirname, '..');
         assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => !bar.textContent.includes('Stats'))));
         assert.ok(await page.locator('.bottom-nav-bar').evaluateAll(bars => bars.every(bar => Array.from(bar.querySelectorAll('.nav-tab-btn > span:not(.notification-badge)')).slice(0,4).map(el => el.textContent.trim()).join(',') === 'Home,Store,Messages,Alerts')));
         await page.locator('#home-nav-shell [onclick="switchTab(\'store\')"]').click();
-        assert.equal(await page.locator('.store-item').count(), 8);
+        assert.equal(await page.locator('.store-category').count(), 2);
+        assert.equal(await page.locator('[data-store-item]').count(), 0);
+        assert.equal(await page.locator('.store-palette').isVisible(), false);
         assert.equal(await page.locator('#store-coin-balance span').textContent(), '0');
         await page.waitForFunction(() => document.querySelector('#store-coin-balance img').naturalWidth > 0);
         assert.equal(await page.locator('#store-screen .store-heading h2').textContent(), 'Browse the collection');
@@ -56,24 +58,43 @@ const root = path.resolve(__dirname, '..');
         for (const width of [320,390,1280]) {
             await page.setViewportSize({ width, height: 844 });
             await page.evaluate(() => calculateRealVh(true));
-            await page.screenshot({ path: path.join(os.tmpdir(), `store-${width}.png`) });
+            await page.screenshot({ path: path.join(os.tmpdir(), `store-categories-${width}.png`) });
             assert.ok(await page.locator('.store-content').evaluate(el => el.scrollWidth <= el.clientWidth));
-            for (const id of ['sweetheart','pearl','love-note','cloud','ribbon','starlight','postage','gingham']) {
+            for (const [category, ids] of [['frames', ['sweetheart','pearl','double','glow','stitched','satin']], ['messages', ['love-note']]]) {
+                await page.locator(`[data-store-category="${category}"]`).click();
+                assert.equal(await page.locator('[data-store-item]').count(), ids.length);
+                await page.locator('.store-grid').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(a => a.finished)));
+                await page.screenshot({ path: path.join(os.tmpdir(), `store-${category}-${width}.png`) });
+                for (const id of ids) {
                 await page.locator(`[data-store-item="${id}"]`).click();
                 assert.equal(await page.locator('#store-preview').isVisible(), true);
                 await page.locator('#store-preview').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(animation => animation.finished)));
                 assert.ok(await page.locator('#store-preview').evaluate(el => el.scrollWidth <= el.clientWidth));
                 await page.screenshot({ path: path.join(os.tmpdir(), `store-${id}-${width}.png`) });
+                const control = page.locator('#store-adjustment');
+                if (await control.getAttribute('type') === 'checkbox') {
+                    await control.uncheck();
+                    assert.equal(await page.locator('#store-preview .store-hide-detail').count(), 1);
+                } else {
+                    await control.fill(await control.getAttribute('max'));
+                    assert.equal(await page.locator('#store-adjustment-value').textContent(), (await control.getAttribute('max')) + (['pearl','double','stitched'].includes(id) ? 'px' : '%'));
+                }
+                await page.locator('[data-store-reset]').click();
+                if (await control.getAttribute('type') === 'checkbox') assert.equal(await control.isChecked(), true);
+                else assert.equal(Number(await control.inputValue()), await page.evaluate(id => storeConcepts.find(item => item.id === id).adjustment.default, id));
                 await page.keyboard.press('Escape');
+                }
+                await page.locator('[data-store-category=""]').click();
             }
         }
         await page.locator('[data-store-category=messages]').click();
-        assert.equal(await page.locator('.store-item').count(), 4);
+        assert.equal(await page.locator('.store-item').count(), 1);
+        await page.locator('[data-store-category=""]').click();
         await page.locator('[data-store-category=frames]').click();
-        assert.equal(await page.locator('.store-item').count(), 4);
+        assert.equal(await page.locator('.store-item').count(), 6);
         const originalThemes = await page.evaluate(() => JSON.stringify(playerThemes));
         await page.locator('#store-screen [data-store-colour="#FFD1DC"]').click();
-        await page.locator('[data-store-item=ribbon]').click();
+        await page.locator('[data-store-item=sweetheart]').click();
         assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#FFD1DC');
         await page.locator('#store-preview [data-store-colour="#15AFD1"]').click();
         assert.equal(await page.locator('#store-screen').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#15AFD1');
@@ -91,6 +112,8 @@ const root = path.resolve(__dirname, '..');
         assert.equal(await page.locator('#store-screen button, #store-preview button').evaluateAll(buttons => buttons.some(b => /buy|purchase|equip/i.test(b.textContent))), false);
         await page.evaluate(() => { localPlayer = 'Jadey'; switchTab('store'); });
         assert.equal(await page.locator('#store-top-nickname').textContent(), await page.evaluate(() => playerProfiles.Jadey.nickname));
+        assert.equal(await page.locator('.store-category').count(), 2);
+        await page.locator('[data-store-category=frames]').click();
         await page.locator('[data-store-item=sweetheart]').click();
         await page.locator('#store-preview [aria-label="Close preview"]').click();
         await page.emulateMedia({ reducedMotion: 'reduce' });
