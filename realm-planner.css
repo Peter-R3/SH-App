@@ -50,3 +50,4 @@
 .realm-coordinates { user-select: text; -webkit-user-select: text; }
 .realm-organisation select[hidden], #realm-lists-panel[hidden], #realm-locations-panel[hidden], #realm-plan-quantities[hidden] { display: none; }
 #realm-plan-status { color: #F1C478; font-size: 13px; margin-top: 12px; }
+#realm-categories-content [data-plan-action="category-delete"] { color: #FF7B72; background: #342023; border: 1px solid #694349; }

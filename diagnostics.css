@@ -5,6 +5,15 @@
 .diagnostic-filters label { display: block; margin: 12px 0 6px; font-size: 13px; }
 .diagnostic-filters .diagnostic-errors { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 #management-log .management-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#management-controls .management-group { margin-bottom: 16px; }
+#repair-preview { margin-top: 12px; }
+#repair-status:empty { display: none; }
+#management-log h2 { margin-bottom: 8px; }
+#management-log .management-actions { margin: 12px 0; }
+.diagnostic-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.diagnostic-toolbar .diagnostic-errors { margin: 0; }
+.management-content #diagnostic-collapse { width: auto; flex-shrink: 0; min-height: 40px; padding: 8px 12px; font-size: 13px; }
+.diagnostic-entry summary { line-height: 1.5; }
 .diagnostic-entry { padding: 12px 0; border-bottom: 1px solid #35303D; }
 .diagnostic-entry summary { cursor: pointer; overflow-wrap: anywhere; font-size: 13px; }
 .diagnostic-entry time { display: block; color: #BFB4C8; font-size: 11px; margin-top: 6px; }

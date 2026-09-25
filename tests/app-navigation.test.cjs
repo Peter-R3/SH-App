@@ -72,7 +72,10 @@ const root = path.resolve(__dirname, '..');
                 assert.ok(await page.locator('#store-preview').evaluate(el => el.scrollWidth <= el.clientWidth));
                 await page.screenshot({ path: path.join(os.tmpdir(), `store-${id}-${width}.png`) });
                 const control = page.locator('#store-adjustment');
-                if (await control.getAttribute('type') === 'checkbox') {
+                if (id === 'sweetheart') {
+                    await page.locator('[data-store-choice=heart][data-value=none]').click();
+                    assert.equal(await page.locator('#store-preview .store-charm').isVisible(), false);
+                } else if (await control.getAttribute('type') === 'checkbox') {
                     await control.uncheck();
                     assert.equal(await page.locator('#store-preview .store-hide-detail').count(), 1);
                 } else {
@@ -80,7 +83,8 @@ const root = path.resolve(__dirname, '..');
                     assert.equal(await page.locator('#store-adjustment-value').textContent(), (await control.getAttribute('max')) + (['pearl','double','stitched'].includes(id) ? 'px' : '%'));
                 }
                 await page.locator('[data-store-reset]').click();
-                if (await control.getAttribute('type') === 'checkbox') assert.equal(await control.isChecked(), true);
+                if (id === 'sweetheart') assert.equal(await page.locator('#store-preview .store-charm').isVisible(), true);
+                else if (await control.getAttribute('type') === 'checkbox') assert.equal(await control.isChecked(), true);
                 else assert.equal(Number(await control.inputValue()), await page.evaluate(id => storeConcepts.find(item => item.id === id).adjustment.default, id));
                 await page.keyboard.press('Escape');
                 }
@@ -96,9 +100,9 @@ const root = path.resolve(__dirname, '..');
         await page.locator('#store-screen [data-store-colour="#FFD1DC"]').click();
         await page.locator('[data-store-item=sweetheart]').click();
         assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#FFD1DC');
-        await page.locator('#store-preview [data-store-colour="#15AFD1"]').click();
+        await page.locator('#store-preview [data-store-slot=primary] [data-store-colour="#15AFD1"]').click();
         assert.equal(await page.locator('#store-screen').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#15AFD1');
-        await page.locator('.store-custom-colour summary').click();
+        await page.locator('#store-preview [data-store-custom=primary]').click();
         await page.locator('#store-colour-hex').fill('#ABCDEF');
         assert.equal(await page.locator('#store-preview').evaluate(el => el.style.getPropertyValue('--decor-accent')), '#ABCDEF');
         await page.locator('#store-colour-hex').fill('invalid');

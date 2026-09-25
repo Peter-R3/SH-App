@@ -237,6 +237,7 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    if (activeAppView === 'store' && view !== 'store' && typeof resetStorePreviews === 'function') resetStorePreviews();
     const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps)/;
     if (typeof recordDiagnostic === 'function' && view !== activeAppView && (gameViewPattern.test(view) || gameViewPattern.test(activeAppView))) recordDiagnostic('game-view', { mode: view, operation: 'view-changed', outcome: 'confirmed' });
     if (typeof restoreGameAchievements === 'function') restoreGameAchievements();

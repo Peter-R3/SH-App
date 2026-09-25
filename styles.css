@@ -565,7 +565,7 @@ button:disabled {
     background: #9CADBA;
 }
 
-.game-card-art:has(img[src*="word-search.svg"]) { background: #D9B8C6; }
+.game-card-art:has(img[src*="word-search.svg"]) { background: #F3E4A9; }
 .home-presence { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #C8C6CE; margin: -2px 0 16px; min-height: 24px; }
 .home-presence i { flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #85818D; }
 .home-presence[data-status=online] i { background: #9EDCB0; }

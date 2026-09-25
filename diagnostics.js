@@ -143,6 +143,16 @@ function mountManagementTools() {
         document.getElementById('repair-operation').onchange = () => { document.getElementById('repair-value').disabled = document.getElementById('repair-operation').value !== 'progress'; };
         document.getElementById('repair-preview').onclick = reviewAchievementRepair;
         for (const id of ['diagnostic-profile','diagnostic-event','diagnostic-errors']) document.getElementById(id).onchange = renderDiagnosticLog;
+        const errorsLabel = document.getElementById('diagnostic-errors').closest('label');
+        const logToolbar = document.createElement('div');
+        logToolbar.className = 'diagnostic-toolbar';
+        errorsLabel.before(logToolbar);
+        logToolbar.append(errorsLabel);
+        logToolbar.insertAdjacentHTML('beforeend', '<button id="diagnostic-collapse" type="button">Collapse all</button>');
+        document.getElementById('diagnostic-collapse').onclick = () => {
+            document.querySelectorAll('.diagnostic-entry[open]').forEach(entry => { entry.open = false; });
+            playUiSound('tap');
+        };
         document.getElementById('diagnostic-retry').onclick = () => { void flushDiagnostics(); playUiSound('tap'); };
         document.getElementById('diagnostic-export').onclick = exportDiagnostics;
         refreshRepairOptions(true);
@@ -208,11 +218,46 @@ function filteredDiagnostics() {
     const errors = document.getElementById('diagnostic-errors')?.checked;
     return entries.filter(([,entry]) => (profile === 'all' || (entry.profile || entry.actor) === profile || entry.profile === 'both') && (event === 'all' || entry.event === event) && (!errors || entry.outcome === 'failed'));
 }
+function describeDiagnostic(entry) {
+    const actor = entry.actor;
+    const profile = entry.profile === 'both' ? 'both profiles' : entry.profile || actor;
+    const games = { 'number-guess': '1 to 10', 'word-search': 'Word Search', sudoku: 'Sudoku', battleship: 'Battleship', 'connect-four': 'Connect 4', 'tic-tac-toe': 'Tic-Tac-Toe', rps: 'Rock, Paper, Scissors' };
+    const game = games[entry.game] || 'the game';
+    const track = typeof ACHIEVEMENT_TRACKS !== 'undefined' && ACHIEVEMENT_TRACKS.find(track => track.id === entry.track);
+    const tier = track && Number.isInteger(entry.tier) && entry.tier >= 0 && entry.tier < track.thresholds.length ? achievementBadge(track, entry.tier).name : 'the selected tier';
+    const repair = { progress: 'set achievement progress', grant: 'grant an achievement', revoke: 'revoke an achievement', automatic: 'restore automatic achievement tracking' }[entry.operation] || 'repair achievements';
+    const actions = {
+        'turn-submit': `save ${actor}'s ${entry.operation === 'pick' ? 'selection' : entry.operation === 'guess' ? 'guess' : 'turn'} in ${game}`,
+        'history-save': `save a ${game} history entry${entry.profile ? ' for ' + profile : ''}`,
+        'achievement-sync': `save achievement progress for ${profile}`,
+        'achievement-repair': `${repair} for ${profile}${track ? ': ' + track.title + ', ' + tier : ''}`,
+        'communication-clear': `clear ${ {messages: 'messages', notifications: 'notifications', both: 'messages and notifications'}[entry.operation] || 'messages or notifications'} for ${profile}`,
+        'score-adjust': `adjust game statistics for ${profile}`,
+        'interaction-adjust': `adjust interaction counts for ${profile}`
+    };
+    if (entry.event === 'connection') return entry.operation === 'restored' ? `${actor}'s app connected to the database.` : `${actor}'s app lost its database connection. Pending log entries will retry when connected.`;
+    if (entry.event === 'game-view') {
+        const view = entry.mode || '';
+        const gameKey = Object.keys(games).find(key => view === key || view.startsWith(key + '-'));
+        const section = gameKey ? view.slice(gameKey.length + 1) : view;
+        const label = { home: 'Home', games: 'Games', store: 'Store', profile: 'Profile', messages: 'Messages', alerts: 'Alerts', stats: 'Statistics', settings: 'Game Settings', modes: 'Modes', pause: 'Pause', history: 'History', achievements: 'Achievements', management: 'App Management' }[section];
+        return `${actor} opened ${gameKey ? games[gameKey] + (section ? ' - ' + (label || 'a game menu') : '') : label || 'another screen'}.`;
+    }
+    if (entry.event === 'runtime-error') return `${actor}'s app encountered an unexpected ${entry.operation === 'promise' ? 'background task failure' : 'error'}${entry.source ? ' in ' + entry.source + (entry.line ? ' at line ' + entry.line : '') : ''}. Private error text was not recorded.`;
+    const action = actions[entry.event] || 'complete an app operation';
+    let description = entry.outcome === 'failed' ? `The app could not confirm the request to ${action}.` : entry.outcome === 'attempted' ? `${actor} requested to ${action}.` : `The app successfully completed the request to ${action}.`;
+    if (entry.outcome === 'confirmed' && Number.isFinite(entry.before) && Number.isFinite(entry.after)) description += ` Value: ${entry.before} to ${entry.after}.`;
+    if (entry.errorCode === 'conflict') description += ' The data changed during review; review the latest values and try again.';
+    else if (['PERMISSION_DENIED','permission-denied'].includes(entry.errorCode)) description += ' Database access was denied.';
+    else if (['disconnected','unavailable','network-error'].includes(entry.errorCode)) description += ' Check the connection before retrying.';
+    return description;
+}
 function renderDiagnosticLog() {
     if (typeof localPlayer === 'undefined' || localPlayer !== 'Peter' || !document.getElementById('diagnostic-entries')) return;
     const entries = filteredDiagnostics();
+    const expanded = new Set(Array.from(document.querySelectorAll('.diagnostic-entry[open]'), element => element.dataset.entryId));
     document.getElementById('diagnostic-status').textContent = `${entries.length} / 500 entries · Last 7 days · ${diagnosticPending.length} pending locally${diagnosticFailure ? ' · Sync unavailable; local records retained' : ''}`;
-    document.getElementById('diagnostic-entries').innerHTML = entries.length ? entries.map(([id,entry]) => `<details class="diagnostic-entry"><summary><span>${escapeHtml(entry.event)} · ${escapeHtml(entry.profile || entry.actor)}</span><strong class="diagnostic-${entry.outcome}">${entry.outcome}</strong><time>${new Date(entry.at).toLocaleString('en-GB')}</time></summary><pre>${escapeHtml(JSON.stringify({ id, ...entry }, null, 2))}</pre></details>`).join('') : '<p>No matching activity.</p>';
+    document.getElementById('diagnostic-entries').innerHTML = entries.length ? entries.map(([id,entry]) => `<details class="diagnostic-entry" data-entry-id="${id}" ${expanded.has(id) ? 'open' : ''}><summary><span>${escapeHtml(describeDiagnostic(entry))}</span><strong class="diagnostic-${entry.outcome}">${entry.outcome}</strong><time>${new Date(entry.at).toLocaleString('en-GB')}</time></summary><pre>${escapeHtml(JSON.stringify({ id, ...entry }, null, 2))}</pre></details>`).join('') : '<p>No matching activity.</p>';
 }
 function exportDiagnostics() {
     if (localPlayer !== 'Peter') return;
