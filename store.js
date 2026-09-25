@@ -14,7 +14,7 @@ let storeAdjustments = {};
 let storeActiveItem = null;
 let storeExtras = {};
 let storeColourSlot = 'primary';
-const storeHeartChoices = [['none','No charm','&times;'],['outline','Outline heart','&#9825;'],['filled','Solid heart','&#9829;'],['pair','Double heart','&#9825;&#9825;']];
+const storeHeartChoices = [['none','No charm','&times;'],['outline','Outline heart','&#9825;'],['filled','Solid heart','&#9829;'],['pair','Double heart','&#9825;&#9825;'],['filled-pair','Solid double heart','&#9829;&#9829;']];
 
 function resetStorePreviews() {
     storeAdjustments = {};
@@ -38,14 +38,14 @@ function applyStoreAdjustments() {
         sample.style.setProperty('--glow-radius', `${value * .24}px`);
         sample.style.setProperty('--glow-colour', `${storePreviewColour}${Math.round(Number(value) * 2).toString(16).padStart(2, '0')}`);
         sample.style.setProperty('--satin-sheen', Number(value) / 100);
-        sample.style.setProperty('--satin-weight', `${extra.thickness ?? 2}px`);
-        sample.style.setProperty('--sweet-secondary', extra.secondary || storePalette(storePreviewColour).light);
+        sample.style.setProperty('--satin-weight', `${extra.thickness ?? 8}px`);
+        sample.style.setProperty('--sweet-secondary', extra.secondary || storePalette(storePreviewColour).dark);
         const charm = sample.querySelector('.store-charm');
         if (charm) {
             const heart = storeHeartChoices.find(choice => choice[0] === (extra.heart || 'outline'));
             charm.innerHTML = heart[2];
             charm.hidden = heart[0] === 'none';
-            charm.classList.toggle('store-pair-charm', heart[0] === 'pair');
+            charm.classList.toggle('store-pair-charm', heart[0] === 'pair' || heart[0] === 'filled-pair');
         }
         const pearls = sample.querySelector('.store-pearls');
         if (pearls) {
@@ -90,7 +90,7 @@ function applyStorePreviewColour(colour, syncSliders = true) {
     const palette = storePalette(normalized);
     document.querySelectorAll('#store-screen, #store-preview').forEach(host => {
         Object.entries(palette).forEach(([key, value]) => host.style.setProperty(`--decor-${key}`, value));
-        host.querySelectorAll('[data-store-colour]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.storeColour === (button.closest('[data-store-slot]').dataset.storeSlot === 'secondary' ? storeExtras.sweetheart?.secondary || storePalette(normalized).light : normalized))));
+        host.querySelectorAll('[data-store-colour]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.storeColour === (button.closest('[data-store-slot]').dataset.storeSlot === 'secondary' ? storeExtras.sweetheart?.secondary || storePalette(normalized).dark : normalized))));
     });
     const hex = document.getElementById('store-colour-hex');
     if (hex) { hex.value = normalized; hex.removeAttribute('aria-invalid'); }
@@ -103,7 +103,7 @@ function applyStorePreviewColour(colour, syncSliders = true) {
             if (slider) slider.value = Math.round(hsv[key]);
         }
     }
-    document.querySelectorAll('.store-colour-readout').forEach(el => { el.textContent = el.dataset.secondary ? storeExtras.sweetheart?.secondary || palette.light : normalized; });
+    document.querySelectorAll('.store-colour-readout').forEach(el => { el.textContent = el.dataset.secondary ? storeExtras.sweetheart?.secondary || palette.dark : normalized; });
     applyStoreAdjustments();
     return true;
 }
@@ -111,7 +111,7 @@ function storeSample(item) {
     const name = escapeHtml(playerProfiles[localPlayer]?.nickname || localPlayer || 'Player');
     return `<div class="store-sample ${item.style}" data-store-design="${item.id}" aria-hidden="true">${item.category === 'frames'
         ? `<div class="store-frame">${item.id === 'pearl' ? '<span class="store-pearls"></span>' : ''}<div class="store-avatar"></div>${['sweetheart','pearl'].includes(item.id) ? '<span class="store-charm">&#9825;</span>' : ''}</div>`
-        : `<div class="store-message"><span class="store-message-name">${name}</span><div class="store-bubble">Good game! <span>&#9825;</span></div></div>`}</div>`;
+        : `<div class="store-message"><span class="store-message-name">${name}</span><div class="store-bubble">Good game!<span class="store-message-charm">&#9825;</span></div></div>`}</div>`;
 }
 function mountStore() {
     if (document.getElementById('store-screen')) return;
@@ -137,9 +137,13 @@ function mountStore() {
     const chooseColour = event => {
         const custom = event.target.closest('[data-store-custom]');
         if (custom) {
-            if (!dialog.open) previewStoreItem('palette');
+            const wasOpen = dialog.open;
+            if (!wasOpen) previewStoreItem('palette');
+            const panel = dialog.querySelector('.store-custom-colour');
+            const collapse = wasOpen && !panel.hidden && storeColourSlot === custom.dataset.storeCustom;
             storeColourSlot = custom.dataset.storeCustom;
-            document.querySelector('.store-custom-colour').hidden = false;
+            panel.hidden = collapse;
+            dialog.querySelectorAll('[data-store-custom]').forEach(button => button.setAttribute('aria-expanded', String(!collapse && button.dataset.storeCustom === storeColourSlot)));
             syncStoreCustomEditor();
             playUiSound('tap');
         }
@@ -242,11 +246,11 @@ function storeExtraControls(item) {
     let html = '';
     if (['sweetheart','pearl'].includes(item.id)) html += `<div class="store-adjustment"><h3>Heart charm</h3><div class="store-choices" role="group" aria-label="Heart charm">${storeHeartChoices.map(([value,label,icon]) => `<button data-store-choice="heart" data-value="${value}" title="${label}" aria-label="${label}" aria-pressed="${(extra.heart || 'outline') === value}">${icon}</button>`).join('')}</div></div>`;
     if (item.id === 'pearl') html += `<div class="store-adjustment"><h3>Ring style</h3><div class="store-choices" role="group" aria-label="Ring style">${[[20,'Spaced'],[32,'Classic'],[44,'Fine']].map(([count,label]) => `<button data-store-choice="pearls" data-value="${count}" aria-pressed="${Number(extra.pearls || 32) === count}">${label}</button>`).join('')}</div></div>`;
-    if (item.id === 'satin') html += `<div class="store-adjustment"><div class="store-adjustment-heading"><label for="store-thickness">Ring thickness</label><output data-thickness-value>${extra.thickness ?? 2}px</output></div><input id="store-thickness" type="range" min="1" max="5" step="0.5" value="${extra.thickness ?? 2}" data-store-extra="thickness"></div>`;
+    if (item.id === 'satin') html += `<div class="store-adjustment"><div class="store-adjustment-heading"><label for="store-thickness">Ring thickness</label><output data-thickness-value>${extra.thickness ?? 8}px</output></div><input id="store-thickness" type="range" min="4" max="12" step="0.5" value="${extra.thickness ?? 8}" data-store-extra="thickness"></div>`;
     return html;
 }
 function syncStoreCustomEditor() {
-    const colour = storeColourSlot === 'secondary' ? storeExtras.sweetheart?.secondary || storePalette(storePreviewColour).light : storePreviewColour;
+    const colour = storeColourSlot === 'secondary' ? storeExtras.sweetheart?.secondary || storePalette(storePreviewColour).dark : storePreviewColour;
     const hex = document.getElementById('store-colour-hex');
     if (!hex) return;
     hex.value = colour;
