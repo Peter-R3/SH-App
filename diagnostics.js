@@ -223,7 +223,8 @@ function describeDiagnostic(entry) {
     const actor = entry.actor;
     const profile = entry.profile === 'both' ? 'both profiles' : entry.profile || actor;
     const games = { 'number-guess': '1 to 10', 'word-search': 'Word Search', sudoku: 'Sudoku', battleship: 'Battleship', 'connect-four': 'Connect 4', 'tic-tac-toe': 'Tic-Tac-Toe', rps: 'Rock, Paper, Scissors' };
-    const game = games[entry.game] || 'the game';
+    const historyAliases = { number: 'number-guess', ws: 'word-search', connect: 'connect-four', ttt: 'tic-tac-toe' };
+    const game = games[historyAliases[entry.game] || entry.game] || 'the game';
     const track = typeof ACHIEVEMENT_TRACKS !== 'undefined' && ACHIEVEMENT_TRACKS.find(track => track.id === entry.track);
     const tier = track && Number.isInteger(entry.tier) && entry.tier >= 0 && entry.tier < track.thresholds.length ? achievementBadge(track, entry.tier).name : 'the selected tier';
     const repair = { progress: 'set achievement progress', grant: 'grant an achievement', revoke: 'revoke an achievement', automatic: 'restore automatic achievement tracking' }[entry.operation] || 'repair achievements';

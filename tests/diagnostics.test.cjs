@@ -15,6 +15,18 @@ vm.runInContext(achievements.slice(0, achievements.indexOf('function initialiseA
 vm.runInContext(fs.readFileSync(path.join(root,'diagnostics.js'),'utf8'),context);
 const run = code => vm.runInContext(code,context);
 (async () => {
+    for (const [id, name] of Object.entries({
+        'number-guess': '1 to 10', number: '1 to 10',
+        'word-search': 'Word Search', ws: 'Word Search', sudoku: 'Sudoku',
+        battleship: 'Battleship', 'connect-four': 'Connect 4', connect: 'Connect 4',
+        'tic-tac-toe': 'Tic-Tac-Toe', ttt: 'Tic-Tac-Toe', rps: 'Rock, Paper, Scissors'
+    })) {
+        for (const outcome of ['confirmed', 'failed']) {
+            const description = run(`describeDiagnostic(${JSON.stringify({event:'history-save',actor:'Peter',game:id,outcome})})`);
+            assert.ok(description.includes(name), `${id} history logs must name ${name}`);
+            assert.ok(!description.includes('for the game'));
+        }
+    }
     run(`let state = { totals: { number_ten: 10 } }; awardAchievementTiers(state,1);`);
     run(`state = repairAchievementState(state, { track:'number-total', tier:0, operation:'revoke' },2); awardAchievementTiers(state,3);`);
     assert.equal(run('state.unlocked["number-total_0"]'), undefined);
