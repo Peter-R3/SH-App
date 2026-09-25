@@ -16,7 +16,9 @@ function addAchievementTrack(game, id, title, thresholds, value, requirement, st
     }
     const singular = { 'correct guesses': 'correct guess', 'co-op grids': 'co-op grid', 'co-op puzzles': 'co-op puzzle', grids: 'grid', puzzles: 'puzzle', matches: 'match', rounds: 'round', 'enemy ships': 'enemy ship' };
     const readableRequirement = (goal, index) => requirement(goal, index).replace(/\b1 (correct guesses|co-op grids|co-op puzzles|grids|puzzles|matches|rounds|enemy ships)\b/g, (_, noun) => `1 ${singular[noun]}`);
-    ACHIEVEMENT_TRACKS.push({ game, id, title, thresholds, value, requirement: readableRequirement, stars, checklist });
+    ACHIEVEMENT_TRACKS.push({ game, id, title, thresholds, rawValue: value,
+        value: (state, index = 0) => Math.max(0, value(state, index) + (Number(state.progressAdjustments?.[stars ? `${id}_${index}` : id]) || 0)),
+        requirement: readableRequirement, stars, checklist });
 }
 const numberSteps = [1,5,10,15,25,40,60,85,115,150,200,275,375,500,750];
 addAchievementTrack('number', 'number-total', 'Correct guesses', numberSteps, s => achievementSum(s, k => k.startsWith('number_')), n => `Make ${n} correct guesses across all modes.`);
@@ -74,7 +76,8 @@ function awardAchievementTiers(state, now) {
     state.unlocked ||= {};
     for (const track of ACHIEVEMENT_TRACKS) track.thresholds.forEach((goal, index) => {
         const key = `${track.id}_${index}`;
-        if (!state.unlocked[key] && track.value(state, index) >= goal) state.unlocked[key] = { at: now };
+        if (state.tierOverrides?.[key] === 'revoked') { delete state.unlocked[key]; return; }
+        if (!state.unlocked[key] && (state.tierOverrides?.[key] === 'granted' || track.value(state, index) >= goal)) state.unlocked[key] = { at: now };
     });
     return state;
 }
@@ -163,8 +166,18 @@ function noteAchievementPuzzleState(state) { achievementWordSearchState = state;
 const achievementQueues = new Map();
 const achievementSourceSignatures = new Map();
 function queueAchievementWrite(player, update) {
+    let before = 0;
     const task = (achievementQueues.get(player) || Promise.resolve()).catch(() => {}).then(() =>
-        database.ref(`achievements/${player}`).transaction(update, undefined, false));
+        database.ref(`achievements/${player}`).transaction(current => {
+            before = Object.keys(current?.unlocked || {}).length;
+            return update(current);
+        }, undefined, false)).then(result => {
+            if (result.committed && typeof recordDiagnostic === 'function') recordDiagnostic('achievement-sync', { profile: player, outcome: 'confirmed', before, after: Object.keys(result.snapshot.val()?.unlocked || {}).length });
+            return result;
+        }).catch(error => {
+            if (typeof recordDiagnostic === 'function') recordDiagnostic('achievement-sync', { profile: player, outcome: 'failed', errorCode: error.code });
+            throw error;
+        });
     achievementQueues.set(player, task);
     return task;
 }
@@ -408,7 +421,8 @@ function renderAchievements() {
             if (achievementCompare) return `<article class="achievement-tier achievement-comparison"><h3>${achievementBadge(track, index).name}</h3>${achievementComparisonRow(track, localPlayer, achievementState, achievementReady, index)}${achievementComparisonRow(track, otherPlayer(localPlayer), achievementOtherState, achievementOtherReady, index)}</article>`;
             const unlocked = achievementState.unlocked?.[`${track.id}_${index}`];
             const badge = achievementBadge(track, index);
-            const checklist = track.checklist?.(achievementState, index);
+            const adjusted = Object.hasOwn(achievementState.progressAdjustments || {}, track.stars ? `${track.id}_${index}` : track.id);
+            const checklist = adjusted ? null : track.checklist?.(achievementState, index);
             const target = index < 3 && (track.id.endsWith('lines') || track.id.startsWith('ttt-')) ? 1 : goal;
             return `<article class="achievement-tier"><img src="${badge.path}" alt="${badge.name}" class="${unlocked ? '' : 'locked'}"><div><h3>${badge.name}</h3><p>${escapeHtml(track.requirement(goal, index))}</p><strong class="achievement-earned">${unlocked ? 'Unlocked' : 'Locked'}</strong>${achievementProgress(track, index, achievementState)}${checklist ? `<ul class="achievement-checklist">${checklist.map(item => `<li class="${item.value >= target ? 'done' : ''}">${escapeHtml(item.label)} <span>${Math.min(item.value, target)} / ${target}</span></li>`).join('')}</ul>` : ''}</div></article>`;
         }).join('');

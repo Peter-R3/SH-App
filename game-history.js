@@ -78,7 +78,11 @@ function recordGameHistory(game, state, mode, player = localPlayer) {
         if (historyWrites.has(key)) continue;
         historyWrites.set(key, true);
         database.ref(`history/games/${game}/${owner}`).transaction(current => mergeGameHistory(current, record), undefined, false)
-            .catch(() => { historyWrites.delete(key); });
+            .then(result => { if (typeof recordDiagnostic === 'function') recordDiagnostic('history-save', { profile: owner, game, actionId: record.id, outcome: result?.committed ? 'confirmed' : 'failed' }); })
+            .catch(error => {
+                historyWrites.delete(key);
+                if (typeof recordDiagnostic === 'function') recordDiagnostic('history-save', { profile: owner, game, actionId: record.id, outcome: 'failed', errorCode: error.code });
+            });
     }
 }
 let puzzleHistorySubscriptions = [];

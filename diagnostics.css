@@ -1,0 +1,16 @@
+#management-controls[hidden], #management-log[hidden] { display: none; }
+#management-tabs { position: sticky; top: 0; z-index: 2; padding: 8px 0; margin: 0 0 12px; background: #000; }
+#management-tabs button { flex: 1; min-height: 44px; background: #17151D; color: #DDD; border: 1px solid #51445E; border-radius: 6px; }
+#management-tabs [aria-selected=true] { background: var(--theme-color); color: var(--theme-text-color); border-color: transparent; }
+.diagnostic-filters label { display: block; margin: 12px 0 6px; font-size: 13px; }
+.diagnostic-filters .diagnostic-errors { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+#management-log .management-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.diagnostic-entry { padding: 12px 0; border-bottom: 1px solid #35303D; }
+.diagnostic-entry summary { cursor: pointer; overflow-wrap: anywhere; font-size: 13px; }
+.diagnostic-entry time { display: block; color: #BFB4C8; font-size: 11px; margin-top: 6px; }
+.diagnostic-entry strong { margin-left: 8px; font-size: 11px; }
+.diagnostic-failed { color: #FFB4B4; }
+.diagnostic-confirmed { color: #9EDCB0; }
+.diagnostic-entry pre { overflow-wrap: anywhere; white-space: pre-wrap; font-size: 12px; margin-top: 12px; }
+#diagnostic-status, #repair-status { font-size: 13px; line-height: 1.5; margin: 12px 0; color: #CFC4D7; }
+#repair-value { width: 100%; min-height: 44px; box-sizing: border-box; background: #111; color: #FFF; border: 1px solid #51445E; border-radius: 6px; padding: 10px; font-size: 16px; }

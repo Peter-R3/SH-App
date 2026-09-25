@@ -237,6 +237,8 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps)/;
+    if (typeof recordDiagnostic === 'function' && view !== activeAppView && (gameViewPattern.test(view) || gameViewPattern.test(activeAppView))) recordDiagnostic('game-view', { mode: view, operation: 'view-changed', outcome: 'confirmed' });
     if (typeof restoreGameAchievements === 'function') restoreGameAchievements();
     if (typeof sharedPauseSession !== 'undefined' && sharedPauseSession && view !== `${sharedPauseSession.id}-menu`) closeSharedGameMenu();
     activeAppView = view;
@@ -574,6 +576,7 @@ function setAuthBusy(busy) {
 }
 
 function showAuthScreen(message = 'Sign in with your approved account.', isError = false) {
+    if (typeof stopDiagnostics === 'function') stopDiagnostics();
     stopHomePresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const loginScreen = document.getElementById('login-screen');
@@ -587,6 +590,7 @@ function showAuthScreen(message = 'Sign in with your approved account.', isError
 
 function showAuthenticatedApp(playerName) {
     localPlayer = playerName;
+    if (typeof startDiagnostics === 'function') startDiagnostics();
     loadSoundEffectsPreference(playerName);
     normaliseBottomNavigation();
     if (typeof initialiseGamePauseMenus === 'function') initialiseGamePauseMenus();
@@ -2074,6 +2078,8 @@ function respondToWordSearchGridRequest(notificationId, requestId, approved) {
 
 function openManagementScreen() {
     if (localPlayer !== 'Peter') return;
+    setActiveAppView('management');
+    if (typeof mountManagementTools === 'function') mountManagementTools();
 
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('management-screen');
@@ -2131,18 +2137,31 @@ async function clearManagedCommunication(kind) {
     }
 
     Promise.all(tasks)
-        .then(() => setManagementStatus(`Deleted ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}.`))
-        .catch(error => setManagementStatus(`Could not delete data: ${error.message}`));
+        .then(() => {
+            setManagementStatus(`Deleted ${kind === 'both' ? 'messages and notifications' : kind} for ${targetLabel}.`);
+            if (typeof recordDiagnostic === 'function') recordDiagnostic('communication-clear', { profile: profiles.length === 2 ? 'both' : profiles[0], operation: kind, outcome: 'confirmed' });
+        }).catch(error => {
+            setManagementStatus(`Could not delete data: ${error.message}`);
+            if (typeof recordDiagnostic === 'function') recordDiagnostic('communication-clear', { outcome: 'failed', errorCode: error.code });
+        });
 }
 
 function adjustCounter(path, operation) {
+    let before = 0;
     return database.ref(path).transaction(current => {
         const value = Number(current) || 0;
+        before = value;
         if (operation === 'reset') return 0;
         if (operation === 'increment-time') return value + 1000;
         if (operation === 'decrement-time') return Math.max(0, value - 1000);
         if (operation === 'increment') return value + 1;
         return Math.max(0, value - 1);
+    }).then(result => {
+        if (typeof recordDiagnostic === 'function') recordDiagnostic(path.startsWith('interactions/') ? 'interaction-adjust' : 'score-adjust', { profile: path.split('/').find(part => ['Peter','Jadey'].includes(part)), operation, outcome: result.committed ? 'confirmed' : 'failed', before, after: Number(result.snapshot?.val()) || 0, mode: path.split('/').at(-1) });
+        return result;
+    }).catch(error => {
+        if (typeof recordDiagnostic === 'function') recordDiagnostic(path.startsWith('interactions/') ? 'interaction-adjust' : 'score-adjust', { operation, outcome: 'failed', errorCode: error.code });
+        throw error;
     });
 }
 
@@ -2257,8 +2276,13 @@ async function adjustManagedScores(operation) {
             updates[`stats/_achievementEpochs/${target.path.slice(6).replaceAll('/', '_')}`] = firebase.database.ServerValue.TIMESTAMP;
         }
         return database.ref().update(updates)
-            .then(() => setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`))
-            .catch(error => setManagementStatus(`Could not adjust scores: ${error.message}`));
+            .then(() => {
+                setManagementStatus(`Score operation completed for ${profiles.length === 2 ? 'both profiles' : profiles[0]}.`);
+                if (typeof recordDiagnostic === 'function') recordDiagnostic('score-adjust', { operation, game, profile: profiles.length === 2 ? 'both' : profiles[0], count: scoreTargets.length, outcome: 'confirmed' });
+            }).catch(error => {
+                setManagementStatus(`Could not adjust scores: ${error.message}`);
+                if (typeof recordDiagnostic === 'function') recordDiagnostic('score-adjust', { operation, game, outcome: 'failed', errorCode: error.code });
+            });
     }
     Promise.all(scoreTargets.map(target => {
         const targetOperation = target.isTime
@@ -2511,8 +2535,9 @@ function recordNumberGuessHistory(round, wasCorrect) {
     const historyRef = database.ref('history/numberGuess');
     const recordRef = round.roundId ? historyRef.child(round.roundId) : historyRef.push();
     // Retried submissions must never rewrite a completed round or its timestamp.
-    return recordRef.transaction(current => current || record, undefined, false).then(() =>
-        historyRef.orderByChild('completedAt').once('value').then(snapshot => {
+    return recordRef.transaction(current => current || record, undefined, false).then(() => {
+        if (typeof recordDiagnostic === 'function') recordDiagnostic('history-save', { game: 'number-guess', actionId: round.roundId, outcome: 'confirmed' });
+        return historyRef.orderByChild('completedAt').once('value').then(snapshot => {
             const removals = [];
             snapshot.forEach(child => { removals.push(child.key); });
             const extra = removals.length - 7;
@@ -2520,8 +2545,11 @@ function recordNumberGuessHistory(round, wasCorrect) {
             const updates = {};
             removals.slice(0, extra).forEach(key => { updates[`history/numberGuess/${key}`] = null; });
             return database.ref().update(updates);
-        })
-    );
+        });
+    }).catch(error => {
+        if (typeof recordDiagnostic === 'function') recordDiagnostic('history-save', { game: 'number-guess', actionId: round.roundId, outcome: 'failed', errorCode: error.code });
+        throw error;
+    });
 }
 
 function showNumberGuessRoundSummary(round, wasCorrect) {
@@ -2695,6 +2723,7 @@ async function processPadSubmission() {
                 ...(picking ? { chosenTargetValue: choice, currentGuessValue: null } : { currentGuessValue: choice }) };
         }, undefined, false);
         const completedRound = result.snapshot.val();
+        if (typeof recordDiagnostic === 'function') recordDiagnostic('turn-submit', { actor, game: 'number-guess', actionId: roundId, mode: expected.mode, outcome: result.committed && completedRound?.roundId === roundId ? 'confirmed' : 'failed', operation: picking ? 'pick' : 'guess' });
         if (!result.committed || !completedRound || completedRound.roundId !== roundId) return;
         currentSelectedGuess = null;
         playUiSound('confirm');
@@ -2712,6 +2741,7 @@ async function processPadSubmission() {
         }, 'number-guess');
     } catch (error) {
         console.log('Round submission or history save failed:', error);
+        if (typeof recordDiagnostic === 'function') recordDiagnostic('turn-submit', { actor, game: 'number-guess', actionId: roundId, outcome: 'failed', errorCode: error.code });
         playUiSound('error');
     } finally {
         numberGuessSubmissionPending = false;
