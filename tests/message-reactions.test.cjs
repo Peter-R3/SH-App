@@ -56,7 +56,7 @@ const root = path.resolve(__dirname,'..');
         assert.equal(await other.evaluate(el=>el.getBoundingClientRect().width),originalWidth);
         const badgeBox=await page.locator('.message-reaction-badge').boundingBox();
         const reactedBubbleBox=await other.boundingBox();
-        assert.equal(badgeBox.height,23);
+        assert.equal(badgeBox.height,21);
         assert.ok(badgeBox.y<reactedBubbleBox.y+reactedBubbleBox.height && badgeBox.y+badgeBox.height>reactedBubbleBox.y+reactedBubbleBox.height,'Badge must overlap the bottom edge');
         await page.evaluate(()=>openMessageActionMenu('other'));
         assert.equal(await page.locator('[data-own-message]').first().isVisible(),false);
