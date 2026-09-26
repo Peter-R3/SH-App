@@ -56,6 +56,7 @@ const root = path.resolve(__dirname,'..');
         assert.equal(await other.evaluate(el=>el.getBoundingClientRect().width),originalWidth);
         const badgeBox=await page.locator('.message-reaction-badge').boundingBox();
         const reactedBubbleBox=await other.boundingBox();
+        assert.equal(badgeBox.height,23);
         assert.ok(badgeBox.y<reactedBubbleBox.y+reactedBubbleBox.height && badgeBox.y+badgeBox.height>reactedBubbleBox.y+reactedBubbleBox.height,'Badge must overlap the bottom edge');
         await page.evaluate(()=>openMessageActionMenu('other'));
         assert.equal(await page.locator('[data-own-message]').first().isVisible(),false);
@@ -95,10 +96,22 @@ const root = path.resolve(__dirname,'..');
             await page.evaluate(()=>openMessageActionMenu('other',innerWidth-1,100));
             const bounds=await page.locator('#message-action-menu').boundingBox();
             assert.ok(bounds.x>=0 && bounds.x+bounds.width<=width);
+            assert.ok(bounds.height<=120,'Menu should use only two compact rows');
             await page.screenshot({path:path.join(os.tmpdir(),`message-reactions-${width}.png`)});
         }
         await page.evaluate(async()=>{delete messageFixture.other;await setMessageReaction('other','heart');});
         assert.equal(await page.evaluate(()=>messageFixture.other),undefined);
+        await page.evaluate(()=>{
+            closeMessageActionMenu();
+            for(let i=0;i<40;i++)messageFixture['history'+i]={sender:i%2?'Peter':'Jadey',text:'Earlier message '+i,createdAt:i+10};
+            refreshMessageFixture();switchTab('home');switchTab('messages');
+        });
+        await page.waitForFunction(()=>{
+            const thread=document.getElementById('messages-thread');
+            return thread.scrollHeight-thread.clientHeight-thread.scrollTop<2;
+        });
+        await page.evaluate(()=>{document.getElementById('messages-thread').scrollTop=0;refreshMessageFixture();});
+        assert.equal(await page.locator('#messages-thread').evaluate(el=>el.scrollTop),0,'Live updates preserve an older reading position');
         assert.deepEqual(errors,[]);
         console.log('PASS: double-tap hearts, profile colours, own-only editing, replace/remove/group, unchanged bubble size, super hold and burst, remote deduplication, reduced motion, responsive picker and no deleted-message resurrection.');
     } finally { await browser.close(); }

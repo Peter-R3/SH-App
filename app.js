@@ -1615,7 +1615,13 @@ function openMessagesScreen() {
     if (screen) screen.classList.remove('hidden');
     applyThemeToScreen('messages-screen', 'messages-header-shell', 'messages-nav-shell');
     refreshSharedHeader('messages');
-    renderMessages();
+    renderMessages(true);
+    requestAnimationFrame(() => {
+        if (activeAppView === 'messages') {
+            const thread = document.getElementById('messages-thread');
+            thread.scrollTop = thread.scrollHeight;
+        }
+    });
 }
 
 function openNotificationsScreen() {
@@ -1722,7 +1728,7 @@ function sendMessage(event) {
     input.value = '';
 }
 
-function renderMessages() {
+function renderMessages(scrollToLatest = false) {
     const thread = document.getElementById('messages-thread');
     if (!thread || !localPlayer) return;
     observeMessageSuperReactions();
@@ -1765,7 +1771,7 @@ function renderMessages() {
         return `${divider}<div class="message-row ${mine ? 'mine' : ''}">${mine ? `${bubble}${avatar}` : `${avatar}${bubble}`}</div>`;
     }).join('');
 
-    thread.scrollTop = nearBottom ? thread.scrollHeight : previousScroll;
+    thread.scrollTop = scrollToLatest || nearBottom ? thread.scrollHeight : previousScroll;
 }
 
 function renderNotifications() {
@@ -2002,6 +2008,7 @@ function openMessageActionMenu(messageId, x, y) {
     selectedMessageActionId = messageId;
     const menu = document.getElementById('message-action-menu');
     if (!menu) return;
+    menu.classList.toggle('received-message', message.sender !== localPlayer);
     menu.querySelectorAll('[data-own-message]').forEach(button => { button.hidden = message.sender !== localPlayer; });
     menu.querySelector('.message-reaction-picker').innerHTML = MESSAGE_REACTIONS.map(([type,label]) => `<button type="button" aria-label="${label}" title="${label}" aria-pressed="${message.reactions?.[localPlayer]?.type === type}" onpointerdown="startReactionHold(event,'${type}')" onpointerup="finishReactionHold(event)" onpointercancel="cancelReactionHold()" onpointerleave="cancelReactionHold()" onpointermove="if(reactionHold && Math.hypot(event.clientX-reactionHold.x,event.clientY-reactionHold.y)>10)cancelReactionHold()" oncontextmenu="event.preventDefault()" onclick="if(event.detail===0)setMessageReaction('${messageId}','${type}',event.shiftKey)">${messageReactionEmoji(type,localPlayer)}</button>`).join('');
     menu.classList.remove('hidden');
