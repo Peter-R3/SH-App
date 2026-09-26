@@ -27,6 +27,8 @@ const root = path.resolve(__dirname,'..');
         });
         for(const file of ['app.js','store.js','wordsearch.js','battleship.js','connect-four.js','sudoku.js','tic-tac-toe.js','rps.js','realm-hub.js','realm-planner.js','game-pause.js','achievements.js','game-history.js','diagnostics.js']) await page.addScriptTag({content:fs.readFileSync(path.join(root,file),'utf8')});
         await page.evaluate(()=>{showAuthenticatedApp('Peter');switchTab('store');});
+        assert.equal(await page.locator('[data-store-category=messages] small').textContent(),'4 designs');
+        assert.equal(await page.locator('[data-store-category=frames] small').textContent(),'6 designs');
         await page.locator('[data-store-category=frames]').click();
         await page.locator('[data-store-item=sweetheart]').click();
         await page.locator('#store-preview [data-store-choice=heart][data-value=pair]').click();

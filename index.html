@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-title" content="Sweetheart's App">
     <meta name="format-detection" content="telephone=no">
     <title>Sweetheart's App</title>
-    <link rel="stylesheet" href="styles.css?v=55">
+    <link rel="stylesheet" href="styles.css?v=62">
     <link rel="stylesheet" href="realm-hub.css">
     <link rel="stylesheet" href="realm-planner.css?v=55">
     <link rel="stylesheet" href="game-pause.css?v=43">
@@ -1020,9 +1020,10 @@
                 </div>
             </div>
 
-            <div id="message-action-menu" class="message-action-menu hidden" role="menu" aria-label="Message actions">
-                <button onclick="editSelectedMessage()">Edit</button>
-                <button class="danger-action" onclick="deleteSelectedMessage()">Delete</button>
+            <div id="message-action-menu" class="message-action-menu hidden" role="group" aria-label="Message actions">
+                <div class="message-reaction-picker" role="group" aria-label="Reactions"></div>
+                <button data-own-message onclick="editSelectedMessage()">Edit</button>
+                <button data-own-message class="danger-action" onclick="deleteSelectedMessage()">Delete</button>
                 <button onclick="closeMessageActionMenu()">Cancel</button>
             </div>
         </main>
@@ -1032,8 +1033,8 @@
     <script src="./vendor/firebase/firebase-auth-compat.js"></script>
     <script src="./vendor/firebase/firebase-database-compat.js"></script>
 
-    <script src="app.js?v=60"></script>
-    <script src="store.js?v=60"></script>
+    <script src="app.js?v=62"></script>
+    <script src="store.js?v=61"></script>
     <script src="wordsearch.js"></script>
     <script src="battleship.js"></script>
     <script src="connect-four.js"></script>

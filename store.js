@@ -210,7 +210,10 @@ function renderStore() {
     screen.querySelector('.store-grid').classList.toggle('store-category-grid', !category);
     screen.querySelector('.store-grid').innerHTML = category
         ? storeConcepts.filter(item => item.category === storeCategory).map(item => `<button class="store-item" data-store-item="${item.id}" aria-label="Preview ${item.name}">${storeSample(item)}<span class="store-item-info"><strong>${item.name}</strong><small>${item.category === 'frames' ? 'Profile frame' : 'Message style'}</small></span></button>`).join('')
-        : storeCategories.map(category => `<button class="store-item store-category" data-store-category="${category.id}">${storeSample(storeConcepts.find(item => item.id === category.sample))}<span class="store-item-info"><strong>${category.name}</strong><small>${storeConcepts.filter(item => item.category === category.id).length} ${category.id === 'frames' ? 'designs' : 'design'}</small></span></button>`).join('');
+        : storeCategories.map(category => {
+            const count = storeConcepts.filter(item => item.category === category.id).length;
+            return `<button class="store-item store-category" data-store-category="${category.id}">${storeSample(storeConcepts.find(item => item.id === category.sample))}<span class="store-item-info"><strong>${category.name}</strong><small>${count} ${count === 1 ? 'design' : 'designs'}</small></span></button>`;
+        }).join('');
     screen.querySelectorAll('.store-avatar').forEach(el => renderProfileAvatar(el, localPlayer));
     screen.querySelector('#store-palette-options').innerHTML = storeSwatches();
     const balance = document.getElementById('home-coin-preview')?.querySelector('span')?.textContent || '0';

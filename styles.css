@@ -863,7 +863,10 @@ input[type=checkbox].app-checkbox:disabled { opacity: .45; cursor: default; }
 .message-action-menu {
     position: fixed;
     z-index: 2500;
-    width: 144px;
+    width: min(304px, calc(100vw - 24px));
+    box-sizing: border-box;
+    max-height: calc(var(--vh, 1vh) * 100 - 24px);
+    overflow-y: auto;
     display: grid;
     gap: 6px;
     padding: 8px;
@@ -890,6 +893,22 @@ input[type=checkbox].app-checkbox:disabled { opacity: .45; cursor: default; }
 .message-action-menu .danger-action {
     color: #FFB4B4;
 }
+.message-action-menu button[hidden] { display: none; }
+.message-reaction-picker { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 3px; padding-bottom: 6px; border-bottom: 1px solid #30363D; }
+.message-reaction-picker button { font-size: 23px; height: 44px; min-width: 0; padding: 0; border: 1px solid transparent; touch-action: none; }
+.message-reaction-picker button[aria-pressed=true], .message-reaction-picker button.super-ready { border-color: var(--theme-color); background: #27333A; }
+.message-reaction-picker button.super-ready { box-shadow: inset 0 0 0 2px var(--theme-color); }
+.message-reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; max-width: 100%; }
+.message-reaction-badge { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 32px; min-width: 36px; padding: 3px 6px; background: #161B22; color: #FFF; border: 1px solid #44505C; border-radius: 14px; font-size: 18px; }
+.message-reaction-badge[aria-pressed=true] { border-color: var(--theme-color); }
+.message-reaction-badge small { font-size: 10px; }
+.message-bubble { -webkit-touch-callout: none; }
+#message-reaction-status { color: #FFB4B4; font-size: 12px; padding: 6px 12px; }
+#message-reaction-status:empty { display: none; }
+.message-reaction-burst { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 4000; }
+.message-reaction-burst span { position: absolute; top: 50%; left: 50%; font-size: 32px; animation: reaction-burst 900ms ease-out both; }
+@keyframes reaction-burst { from { transform: translate(-50%,-50%) scale(.4); opacity: 0; } 12% { opacity: 1; } 75% { opacity: 1; } to { transform: translate(calc(-50% + var(--burst-x)),calc(-50% + var(--burst-y))) rotate(var(--burst-rotation)) scale(.8); opacity: 0; } }
+@media(prefers-reduced-motion:reduce) { .message-reaction-burst { display: none; } }
 
 .notification-card {
     display: grid;

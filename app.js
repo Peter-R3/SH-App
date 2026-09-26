@@ -34,6 +34,7 @@ function restoreViewportAfterKeyboard() {
 
 document.addEventListener('visibilitychange', () => {
     updateAppPresence();
+    if (document.hidden) { closeMessageActionMenu(); document.querySelector('.message-reaction-burst')?.remove(); }
     if (!document.hidden) restoreViewportAfterKeyboard();
     if (!document.hidden && localPlayer) runRetentionCleanup();
 });
@@ -238,6 +239,7 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    if (view !== 'messages') closeMessageActionMenu();
     if (activeAppView === 'store' && view !== 'store' && typeof resetStorePreviews === 'function') resetStorePreviews();
     const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps)/;
     if (typeof recordDiagnostic === 'function' && view !== activeAppView && (gameViewPattern.test(view) || gameViewPattern.test(activeAppView))) recordDiagnostic('game-view', { mode: view, operation: 'view-changed', outcome: 'confirmed' });
@@ -1723,6 +1725,10 @@ function sendMessage(event) {
 function renderMessages() {
     const thread = document.getElementById('messages-thread');
     if (!thread || !localPlayer) return;
+    observeMessageSuperReactions();
+    const previousScroll = thread.scrollTop;
+    const nearBottom = thread.scrollHeight - thread.clientHeight - previousScroll < 72;
+    if (selectedMessageActionId && !latestMessages.some(message => message.id === selectedMessageActionId)) closeMessageActionMenu();
 
     if (!latestMessages.length) {
         thread.innerHTML = '<div class="empty-state">No messages yet.</div>';
@@ -1744,20 +1750,19 @@ function renderMessages() {
         const meta = mine
             ? `<time>${timeLabel}</time><span>${escapeHtml(senderProfile.nickname)}</span>`
             : `<span>${escapeHtml(senderProfile.nickname)}</span><time>${timeLabel}</time>`;
-        const bubbleActions = mine
-            ? `onpointerdown="startMessageHold(event, '${message.id}')" onpointerup="cancelMessageHold()" onpointercancel="cancelMessageHold()" onpointerleave="cancelMessageHold()"`
-            : '';
+        const bubbleActions = `tabindex="0" role="button" aria-label="${escapeHtml(message.text || '')}. Message actions" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMessageActionMenu('${message.id}');}" oncontextmenu="event.preventDefault()" onpointerdown="startMessageHold(event, '${message.id}')" onpointermove="moveMessageGesture(event)" onpointerup="finishMessageGesture(event)" onpointercancel="cancelMessageHold()" onpointerleave="cancelMessageHold()"`;
         const bubble = `
             <div class="message-stack">
                 <div class="message-meta">${meta}</div>
                 <div class="message-bubble" ${bubbleActions} style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
+                ${renderMessageReactions(message)}
             </div>
         `;
 
         return `${divider}<div class="message-row ${mine ? 'mine' : ''}">${mine ? `${bubble}${avatar}` : `${avatar}${bubble}`}</div>`;
     }).join('');
 
-    thread.scrollTop = thread.scrollHeight;
+    thread.scrollTop = nearBottom ? thread.scrollHeight : previousScroll;
 }
 
 function renderNotifications() {
@@ -1834,13 +1839,147 @@ function renderNotifications() {
     }).join('');
 }
 
+const MESSAGE_REACTIONS = [
+    ['heart', 'Heart', null], ['laugh', 'Laugh', '\uD83D\uDE02'], ['surprise', 'Surprised', '\uD83D\uDE2E'],
+    ['sad', 'Sad', '\uD83D\uDE22'], ['up', 'Thumbs up', '\uD83D\uDC4D'], ['down', 'Thumbs down', '\uD83D\uDC4E']
+];
+let messageGesture = null;
+let lastMessageTap = null;
+let reactionHold = null;
+let reactionSaving = false;
+let reactionSeenPlayer = null;
+let reactionSeen = new Map();
+function burstMessageReaction(type, actor) {
+    if (activeAppView !== 'messages' || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const emoji = messageReactionEmoji(type, actor);
+    if (!emoji) return;
+    document.querySelector('.message-reaction-burst')?.remove();
+    const burst = document.createElement('div');
+    burst.className = 'message-reaction-burst';
+    burst.setAttribute('aria-hidden','true');
+    for (let index = 0; index < 18; index++) {
+        const particle = document.createElement('span');
+        particle.textContent = emoji;
+        const angle = index / 18 * Math.PI * 2;
+        particle.style.setProperty('--burst-x', `${Math.cos(angle) * innerWidth * (.28 + Math.random() * .2)}px`);
+        particle.style.setProperty('--burst-y', `${Math.sin(angle) * innerHeight * (.25 + Math.random() * .2)}px`);
+        particle.style.setProperty('--burst-rotation', `${Math.random() * 80 - 40}deg`);
+        burst.append(particle);
+    }
+    document.body.append(burst);
+    setTimeout(() => burst.remove(), 950);
+}
+function observeMessageSuperReactions() {
+    const samePlayer = reactionSeenPlayer === localPlayer;
+    const next = new Map();
+    for (const message of latestMessages) {
+        for (const actor of ['Peter','Jadey']) {
+            const key = `${message.id}/${actor}`;
+            const reaction = message.reactions?.[actor];
+            const signature = reaction?.burstId || '';
+            if (samePlayer && actor !== localPlayer && reactionSeen.has(key) && signature && signature !== reactionSeen.get(key) && reaction.super) burstMessageReaction(reaction.type,actor);
+            next.set(key, signature);
+        }
+    }
+    reactionSeenPlayer = localPlayer;
+    reactionSeen = next;
+}
+function messageReactionEmoji(type, player) {
+    return type === 'heart' ? (player === 'Peter' ? '\uD83E\uDE75' : '\uD83E\uDD0D') : MESSAGE_REACTIONS.find(item => item[0] === type)?.[2] || '';
+}
+function updateMessageReaction(current, actor, type, superReaction = false, addOnly = false) {
+    if (!current || !['Peter','Jadey'].includes(actor) || !MESSAGE_REACTIONS.some(item => item[0] === type)) return;
+    const next = { ...current, reactions: { ...(current.reactions || {}) } };
+    const previous = next.reactions[actor];
+    if (!addOnly && previous?.type === type && Boolean(previous.super) === superReaction) delete next.reactions[actor];
+    else if (!(addOnly && previous?.type === type)) next.reactions[actor] = { type, super: superReaction };
+    if (!Object.keys(next.reactions).length) delete next.reactions;
+    return next;
+}
+function renderMessageReactions(message) {
+    const groups = new Map();
+    for (const player of ['Peter','Jadey']) {
+        const reaction = message.reactions?.[player];
+        const emoji = messageReactionEmoji(reaction?.type, player);
+        if (!emoji) continue;
+        const key = `${emoji}_${Boolean(reaction.super)}`;
+        if (!groups.has(key)) groups.set(key, { ...reaction, emoji, players: [] });
+        groups.get(key).players.push(player);
+    }
+    if (!groups.size) return '';
+    return `<div class="message-reactions">${[...groups.values()].map(group => `<button class="message-reaction-badge" aria-pressed="${group.players.includes(localPlayer)}" title="${group.players.join(' and ')}${group.super ? ' (super reaction)' : ''}" aria-label="${escapeHtml(group.players.join(' and ') + ': ' + (group.super ? 'Super ' : '') + MESSAGE_REACTIONS.find(item => item[0] === group.type)[1])}" onclick="setMessageReaction('${message.id}','${group.type}',${Boolean(group.super)})"><span>${group.emoji}</span>${group.super ? '<small aria-hidden="true">&#9733;</small>' : ''}${group.players.length > 1 ? '<small>2</small>' : ''}</button>`).join('')}</div>`;
+}
+async function setMessageReaction(messageId, type, superReaction = false, addOnly = false) {
+    const actor = localPlayer;
+    if (!actor || reactionSaving || !latestMessages.some(message => message.id === messageId)) return;
+    reactionSaving = true;
+    let status = document.getElementById('message-reaction-status');
+    if (!status) {
+        status = document.createElement('p'); status.id = 'message-reaction-status'; status.setAttribute('role','status');
+        document.getElementById('messages-thread').after(status);
+    }
+    const burstId = superReaction ? `${Date.now()}-${Math.random().toString(36).slice(2)}` : null;
+    if (status) status.textContent = '';
+    try {
+        const result = await database.ref(`messages/${messageId}`).transaction(current => {
+            if (localPlayer !== actor) return;
+            // A null initial cache must retry, but must never recreate a deleted message.
+            if (!current) return null;
+            const next = updateMessageReaction(current, actor, type, superReaction, addOnly);
+            if (next?.reactions?.[actor] && superReaction) next.reactions[actor] = {type, super:true, burstId};
+            return next;
+        }, undefined, false);
+        if (!result.committed || !result.snapshot.val()) throw new Error('Message unavailable');
+        closeMessageActionMenu();
+        playUiSound('tap');
+        if (superReaction && result.snapshot.val().reactions?.[actor]?.burstId === burstId) burstMessageReaction(type,actor);
+    } catch {
+        if (status && localPlayer === actor) status.textContent = 'Could not save the reaction. Please try again.';
+    } finally { reactionSaving = false; }
+}
+function startReactionHold(event, type) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    cancelReactionHold();
+    const button = event.currentTarget;
+    reactionHold = { type, button, x: event.clientX, y: event.clientY, super: false };
+    reactionHold.timer = setTimeout(() => {
+        if (!reactionHold) return;
+        reactionHold.super = true;
+        button.classList.add('super-ready');
+    }, 520);
+}
+function cancelReactionHold() {
+    if (reactionHold) { clearTimeout(reactionHold.timer); reactionHold.button.classList.remove('super-ready'); }
+    reactionHold = null;
+}
+function finishReactionHold(event) {
+    if (!reactionHold) return;
+    const {type, super: superReaction} = reactionHold;
+    cancelReactionHold();
+    event.preventDefault();
+    void setMessageReaction(selectedMessageActionId, type, superReaction, superReaction);
+}
+function moveMessageGesture(event) {
+    if (messageGesture && Math.hypot(event.clientX-messageGesture.x, event.clientY-messageGesture.y)>10) cancelMessageHold();
+}
+function finishMessageGesture(event) {
+    const gesture = messageGesture;
+    cancelMessageHold();
+    if (!gesture || gesture.held) { lastMessageTap = null; return; }
+    const now = Date.now();
+    if (lastMessageTap?.id === gesture.id && now-lastMessageTap.at < 350 && Math.hypot(event.clientX-lastMessageTap.x,event.clientY-lastMessageTap.y)<24) {
+        lastMessageTap = null;
+        void setMessageReaction(gesture.id,'heart',false,true);
+    } else lastMessageTap = {id:gesture.id,at:now,x:event.clientX,y:event.clientY};
+}
 function startMessageHold(event, messageId) {
     const message = latestMessages.find(item => item.id === messageId);
-    if (!message || message.sender !== localPlayer) return;
-    event.preventDefault();
+    if (!message || !localPlayer || event.button !== 0 || !event.isPrimary) return;
     window.getSelection?.()?.removeAllRanges?.();
     cancelMessageHold();
+    messageGesture = {id:messageId,x:event.clientX,y:event.clientY,held:false};
     messageHoldTimer = window.setTimeout(() => {
+        if (messageGesture) messageGesture.held = true;
         window.getSelection?.()?.removeAllRanges?.();
         openMessageActionMenu(messageId, event.clientX, event.clientY);
     }, 520);
@@ -1849,26 +1988,34 @@ function startMessageHold(event, messageId) {
 function cancelMessageHold() {
     if (messageHoldTimer) window.clearTimeout(messageHoldTimer);
     messageHoldTimer = null;
+    messageGesture = null;
 }
 
 function openMessageActionMenu(messageId, x, y) {
     const message = latestMessages.find(item => item.id === messageId);
-    if (!message || message.sender !== localPlayer) return;
+    if (!message || !localPlayer) return;
     selectedMessageActionId = messageId;
     const menu = document.getElementById('message-action-menu');
     if (!menu) return;
+    menu.querySelectorAll('[data-own-message]').forEach(button => { button.hidden = message.sender !== localPlayer; });
+    menu.querySelector('.message-reaction-picker').innerHTML = MESSAGE_REACTIONS.map(([type,label]) => `<button type="button" aria-label="${label}" title="${label}" aria-pressed="${message.reactions?.[localPlayer]?.type === type}" onpointerdown="startReactionHold(event,'${type}')" onpointerup="finishReactionHold(event)" onpointercancel="cancelReactionHold()" onpointerleave="cancelReactionHold()" onpointermove="if(reactionHold && Math.hypot(event.clientX-reactionHold.x,event.clientY-reactionHold.y)>10)cancelReactionHold()" oncontextmenu="event.preventDefault()" onclick="if(event.detail===0)setMessageReaction('${messageId}','${type}',event.shiftKey)">${messageReactionEmoji(type,localPlayer)}</button>`).join('');
     menu.classList.remove('hidden');
-    const left = Math.min(Math.max(12, (x || window.innerWidth / 2) - 72), window.innerWidth - 156);
-    const preferredTop = (y || window.innerHeight / 2) - 164;
+    const bounds = menu.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const minTop = (viewport?.offsetTop || 0) + 12;
+    const bottom = minTop + (viewport?.height || window.innerHeight) - 24;
+    const left = Math.max(12, Math.min((x || window.innerWidth / 2) - bounds.width / 2, window.innerWidth - bounds.width - 12));
+    const preferredTop = (y || window.innerHeight / 2) - bounds.height - 12;
     const fallbackTop = (y || window.innerHeight / 2) + 22;
-    const top = preferredTop >= 12
-        ? preferredTop
-        : Math.min(fallbackTop, window.innerHeight - 154);
+    const top = Math.max(minTop, Math.min(preferredTop >= minTop ? preferredTop : fallbackTop, bottom - bounds.height));
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
 }
 
 function closeMessageActionMenu() {
+    cancelMessageHold();
+    cancelReactionHold();
+    lastMessageTap = null;
     selectedMessageActionId = null;
     document.getElementById('message-action-menu')?.classList.add('hidden');
 }
@@ -1879,6 +2026,7 @@ document.addEventListener('pointerdown', event => {
     if (menu.contains(event.target)) return;
     closeMessageActionMenu();
 });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMessageActionMenu(); });
 
 function editSelectedMessage() {
     openMessageDialog('edit');
