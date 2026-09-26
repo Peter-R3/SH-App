@@ -1750,12 +1750,15 @@ function renderMessages() {
         const meta = mine
             ? `<time>${timeLabel}</time><span>${escapeHtml(senderProfile.nickname)}</span>`
             : `<span>${escapeHtml(senderProfile.nickname)}</span><time>${timeLabel}</time>`;
-        const bubbleActions = `tabindex="0" role="button" aria-label="${escapeHtml(message.text || '')}. Message actions" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMessageActionMenu('${message.id}');}" oncontextmenu="event.preventDefault()" onpointerdown="startMessageHold(event, '${message.id}')" onpointermove="moveMessageGesture(event)" onpointerup="finishMessageGesture(event)" onpointercancel="cancelMessageHold()" onpointerleave="cancelMessageHold()"`;
+        const reactions = renderMessageReactions(message);
+        const bubbleActions = `tabindex="0" role="button" aria-label="${escapeHtml(message.text || '')}. Message actions" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openMessageActionMenu('${message.id}');}" oncontextmenu="event.preventDefault();cancelMessageHold();openMessageActionMenu('${message.id}',event.clientX,event.clientY)" onpointerdown="startMessageHold(event, '${message.id}')" onpointermove="moveMessageGesture(event)" onpointerup="finishMessageGesture(event)" onpointercancel="cancelMessageHold()"`;
         const bubble = `
             <div class="message-stack">
                 <div class="message-meta">${meta}</div>
-                <div class="message-bubble" ${bubbleActions} style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
-                ${renderMessageReactions(message)}
+                <div class="message-bubble-shell ${reactions ? 'has-reactions' : ''}">
+                    <div class="message-bubble" ${bubbleActions} style="background-color: ${themeColorFor(message.sender)}; color: ${textColorFor(themeColorFor(message.sender))};">${escapeHtml(message.text || '')}</div>
+                    ${reactions}
+                </div>
             </div>
         `;
 
@@ -1907,7 +1910,7 @@ function renderMessageReactions(message) {
         groups.get(key).players.push(player);
     }
     if (!groups.size) return '';
-    return `<div class="message-reactions">${[...groups.values()].map(group => `<button class="message-reaction-badge" aria-pressed="${group.players.includes(localPlayer)}" title="${group.players.join(' and ')}${group.super ? ' (super reaction)' : ''}" aria-label="${escapeHtml(group.players.join(' and ') + ': ' + (group.super ? 'Super ' : '') + MESSAGE_REACTIONS.find(item => item[0] === group.type)[1])}" onclick="setMessageReaction('${message.id}','${group.type}',${Boolean(group.super)})"><span>${group.emoji}</span>${group.super ? '<small aria-hidden="true">&#9733;</small>' : ''}${group.players.length > 1 ? '<small>2</small>' : ''}</button>`).join('')}</div>`;
+    return `<div class="message-reactions">${[...groups.values()].map(group => `<button class="message-reaction-badge ${group.super ? 'super-reaction' : ''}" aria-pressed="${group.players.includes(localPlayer)}" title="${group.players.join(' and ')}${group.super ? ' (super reaction)' : ''}" aria-label="${escapeHtml(group.players.join(' and ') + ': ' + (group.super ? 'Super ' : '') + MESSAGE_REACTIONS.find(item => item[0] === group.type)[1])}" onclick="setMessageReaction('${message.id}','${group.type}',${Boolean(group.super)})"><span>${group.emoji}</span>${group.players.length > 1 ? '<small>2</small>' : ''}</button>`).join('')}</div>`;
 }
 async function setMessageReaction(messageId, type, superReaction = false, addOnly = false) {
     const actor = localPlayer;
@@ -1960,7 +1963,7 @@ function finishReactionHold(event) {
     void setMessageReaction(selectedMessageActionId, type, superReaction, superReaction);
 }
 function moveMessageGesture(event) {
-    if (messageGesture && Math.hypot(event.clientX-messageGesture.x, event.clientY-messageGesture.y)>10) cancelMessageHold();
+    if (messageGesture && Math.hypot(event.clientX-messageGesture.x, event.clientY-messageGesture.y)>14) cancelMessageHold();
 }
 function finishMessageGesture(event) {
     const gesture = messageGesture;
@@ -1974,15 +1977,17 @@ function finishMessageGesture(event) {
 }
 function startMessageHold(event, messageId) {
     const message = latestMessages.find(item => item.id === messageId);
-    if (!message || !localPlayer || event.button !== 0 || !event.isPrimary) return;
+    if (!message || !localPlayer || (event.pointerType === 'mouse' && event.button !== 0) || event.isPrimary === false) return;
+    if (!document.getElementById('message-action-menu')?.classList.contains('hidden')) closeMessageActionMenu();
     window.getSelection?.()?.removeAllRanges?.();
     cancelMessageHold();
     messageGesture = {id:messageId,x:event.clientX,y:event.clientY,held:false};
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     messageHoldTimer = window.setTimeout(() => {
         if (messageGesture) messageGesture.held = true;
         window.getSelection?.()?.removeAllRanges?.();
         openMessageActionMenu(messageId, event.clientX, event.clientY);
-    }, 520);
+    }, 450);
 }
 
 function cancelMessageHold() {
