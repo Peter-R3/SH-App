@@ -35,6 +35,7 @@ function restoreViewportAfterKeyboard() {
 document.addEventListener('visibilitychange', () => {
     updateAppPresence();
     if (!document.hidden) restoreViewportAfterKeyboard();
+    if (!document.hidden && localPlayer) runRetentionCleanup();
 });
 
 if (navigator.serviceWorker?.register) {
@@ -1503,11 +1504,11 @@ function initialiseRealtimeFeeds() {
         handleGameStateUpdate();
     });
 
-    window.setInterval(runRetentionCleanup, 5 * 60 * 1000);
+    window.setInterval(runRetentionCleanup, 60 * 1000);
 }
 
 function runRetentionCleanup() {
-    if (retentionCleanupRunning) return;
+    if (!localPlayer || retentionCleanupRunning) return;
     retentionCleanupRunning = true;
 
     Promise.all([
@@ -1541,6 +1542,20 @@ function pruneCollectionToLimit(path, limit) {
     });
 }
 
+function notificationRetentionRemovals(notifications, now) {
+    const removals = {};
+    const remaining = notifications.filter(notification => {
+        const readAt = notification.readAt?.[notification.recipient];
+        const expired = notification.readBy?.[notification.recipient] === true &&
+            Number.isFinite(readAt) && readAt > 0 && now - readAt >= READ_NOTIFICATION_RETENTION_MS;
+        if (expired) removals[`notifications/${notification.id}`] = null;
+        return !expired;
+    });
+    remaining.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0) || a.id.localeCompare(b.id))
+        .slice(0, Math.max(0, remaining.length - RETENTION_LIMIT))
+        .forEach(notification => { removals[`notifications/${notification.id}`] = null; });
+    return removals;
+}
 function pruneNotifications() {
     return database.ref('notifications').orderByChild('createdAt').once('value').then(snapshot => {
         const notifications = [];
@@ -1549,17 +1564,7 @@ function pruneNotifications() {
             notifications.push({ id: child.key, ...child.val() });
         });
 
-        const removals = {};
-        const sortedNotifications = notifications
-            .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
-
-        if (sortedNotifications.length > RETENTION_LIMIT) {
-            sortedNotifications
-                .slice(0, sortedNotifications.length - RETENTION_LIMIT)
-                .forEach(notification => {
-                    removals[`notifications/${notification.id}`] = null;
-                });
-        }
+        const removals = notificationRetentionRemovals(notifications, Date.now() + homePresenceOffset);
 
         return Object.keys(removals).length ? database.ref().update(removals) : null;
     });
@@ -2044,7 +2049,7 @@ function updateNotificationBadges() {
 }
 
 function markNotificationsRead() {
-    const readTimestamp = Date.now();
+    const readTimestamp = Date.now() + homePresenceOffset;
     const updates = {};
 
     latestNotifications.forEach(notification => {

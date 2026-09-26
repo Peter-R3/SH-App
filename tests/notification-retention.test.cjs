@@ -1,0 +1,18 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const source = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const context = vm.createContext({ RETENTION_LIMIT: 50, READ_NOTIFICATION_RETENTION_MS: 3600000 });
+vm.runInContext(source.slice(source.indexOf('function notificationRetentionRemovals('), source.indexOf('function pruneNotifications(')), context);
+const now = 10000000;
+const entry = (id, readAt, recipient = 'Peter') => ({ id, recipient, createdAt: Number(id) || 1, readBy: { [recipient]: true }, readAt: { [recipient]: readAt } });
+const remove = entries => context.notificationRetentionRemovals(entries, now);
+assert.deepEqual(Object.keys(remove([entry('old', now-3600000), entry('new', now-3599999)])), ['notifications/old']);
+assert.equal(Object.keys(remove([entry('jadey',now-3600001,'Jadey')])).length,1);
+assert.equal(Object.keys(remove([{id:'unread',recipient:'Peter',createdAt:1}, entry('future',now+1), entry('missing',undefined), {...entry('wrong',1),readAt:{Jadey:1}}, {...entry('not-read',1),readBy:{Peter:false}}])).length,0);
+const fifty = Array.from({length:50},(_,i)=>({id:String(i),createdAt:i,recipient:'Peter'}));
+assert.equal(Object.keys(remove(fifty)).length,0);
+assert.deepEqual(Object.keys(remove([...fifty,{id:'50',createdAt:50,recipient:'Jadey'}])),['notifications/0']);
+assert.deepEqual(Object.keys(remove([...fifty,entry('expired',1)])),['notifications/expired']);
+console.log('PASS: one-hour boundary, recipient read times, unread preservation, missing/future timestamps, 50-entry cap and expiry before cap.');

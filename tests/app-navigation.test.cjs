@@ -60,7 +60,7 @@ const root = path.resolve(__dirname, '..');
             await page.evaluate(() => calculateRealVh(true));
             await page.screenshot({ path: path.join(os.tmpdir(), `store-categories-${width}.png`) });
             assert.ok(await page.locator('.store-content').evaluate(el => el.scrollWidth <= el.clientWidth));
-            for (const [category, ids] of [['frames', ['sweetheart','pearl','double','glow','stitched','satin']], ['messages', ['love-note']]]) {
+            for (const [category, ids] of [['frames', ['sweetheart','pearl','double','glow','stitched','satin']], ['messages', ['love-note','fine-line','stitched-note','soft-paper']]]) {
                 await page.locator(`[data-store-category="${category}"]`).click();
                 assert.equal(await page.locator('[data-store-item]').count(), ids.length);
                 await page.locator('.store-grid').evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(a => a.finished)));
@@ -80,7 +80,7 @@ const root = path.resolve(__dirname, '..');
                     assert.equal(await page.locator('#store-preview .store-hide-detail').count(), 1);
                 } else {
                     await control.fill(await control.getAttribute('max'));
-                    assert.equal(await page.locator('#store-adjustment-value').textContent(), (await control.getAttribute('max')) + (['pearl','double','stitched'].includes(id) ? 'px' : '%'));
+                    assert.equal(await page.locator('#store-adjustment-value').textContent(), (await control.getAttribute('max')) + (['pearl','double','stitched','fine-line','stitched-note','soft-paper'].includes(id) ? 'px' : '%'));
                 }
                 await page.locator('[data-store-reset]').click();
                 if (id === 'sweetheart') assert.equal(await page.locator('#store-preview .store-charm').isVisible(), true);
@@ -92,7 +92,7 @@ const root = path.resolve(__dirname, '..');
             }
         }
         await page.locator('[data-store-category=messages]').click();
-        assert.equal(await page.locator('.store-item').count(), 1);
+        assert.equal(await page.locator('.store-item').count(), 4);
         await page.locator('[data-store-category=""]').click();
         await page.locator('[data-store-category=frames]').click();
         assert.equal(await page.locator('.store-item').count(), 6);

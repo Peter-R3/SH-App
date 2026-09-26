@@ -1,13 +1,13 @@
-const CACHE_NAME = 'sweethearts-app-v59';
+const CACHE_NAME = 'sweethearts-app-v60';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css?v=55',
-  './app.js?v=55',
+  './app.js?v=60',
   './diagnostics.js?v=58',
   './diagnostics.css?v=56',
-  './store.js?v=59',
-  './store.css?v=59',
+  './store.js?v=60',
+  './store.css?v=60',
   './achievements.js?v=54',
   './achievements.css?v=48',
   './game-history.js?v=54',
@@ -40,7 +40,7 @@ const APP_SHELL = [
   './assets/games/connect-four.svg?v=45',
   './assets/games/sudoku.svg?v=45',
   './assets/games/tic-tac-toe.svg?v=45',
-  './assets/games/rps.png'
+  './assets/games/rps.svg'
 ];
 
 self.addEventListener('install', event => {

@@ -6,7 +6,10 @@ const storeConcepts = [
     { id: 'glow', name: 'Soft Glow', category: 'frames', style: 'glow', adjustment: { label: 'Glow intensity', min: 0, max: 100, step: 1, default: 45, unit: '%' } },
     { id: 'stitched', name: 'Stitched', category: 'frames', style: 'stitched', adjustment: { label: 'Stitch weight', min: 1, max: 3, step: .5, default: 1.5, unit: 'px' } },
     { id: 'satin', name: 'Satin', category: 'frames', style: 'satin', adjustment: { label: 'Sheen', min: 0, max: 70, step: 1, default: 35, unit: '%' } },
-    { id: 'love-note', name: 'Love Note', category: 'messages', style: 'love-note', adjustment: { label: 'Heart detail', type: 'toggle', default: true } }
+    { id: 'love-note', name: 'Love Note', category: 'messages', style: 'love-note', adjustment: { label: 'Heart detail', type: 'toggle', default: true } },
+    { id: 'fine-line', name: 'Fine Line', category: 'messages', style: 'fine-line', adjustment: { label: 'Outline weight', min: 1, max: 3, step: .5, default: 1.5, unit: 'px' } },
+    { id: 'stitched-note', name: 'Stitched Note', category: 'messages', style: 'stitched-note', adjustment: { label: 'Stitch weight', min: 1, max: 3, step: .5, default: 1.5, unit: 'px' } },
+    { id: 'soft-paper', name: 'Soft Paper', category: 'messages', style: 'soft-paper', adjustment: { label: 'Lift', min: 0, max: 4, step: .5, default: 2, unit: 'px' } }
 ];
 const storeCategories = [{ id: 'frames', name: 'Profile frames', sample: 'sweetheart' }, { id: 'messages', name: 'Message styles', sample: 'love-note' }];
 let storeCategory = null;
@@ -34,6 +37,7 @@ function applyStoreAdjustments() {
         const extra = storeExtras[item.id] || {};
         sample.classList.toggle('store-hide-detail', item.adjustment.type === 'toggle' && !value);
         sample.style.setProperty('--frame-weight', `${value}px`);
+        sample.style.setProperty('--message-lift', `${value}px`);
         sample.style.setProperty('--pearl-gap', `${value}px`);
         sample.style.setProperty('--glow-radius', `${value * .24}px`);
         sample.style.setProperty('--glow-colour', `${storePreviewColour}${Math.round(Number(value) * 2).toString(16).padStart(2, '0')}`);
@@ -111,7 +115,7 @@ function storeSample(item) {
     const name = escapeHtml(playerProfiles[localPlayer]?.nickname || localPlayer || 'Player');
     return `<div class="store-sample ${item.style}" data-store-design="${item.id}" aria-hidden="true">${item.category === 'frames'
         ? `<div class="store-frame">${item.id === 'pearl' ? '<span class="store-pearls"></span>' : ''}<div class="store-avatar"></div>${['sweetheart','pearl'].includes(item.id) ? '<span class="store-charm">&#9825;</span>' : ''}</div>`
-        : `<div class="store-message"><span class="store-message-name">${name}</span><div class="store-bubble">Good game!<span class="store-message-charm">&#9825;</span></div></div>`}</div>`;
+        : `<div class="store-message"><span class="store-message-name">${name}</span><div class="store-bubble">Good game!${item.id === 'love-note' ? '<span class="store-message-charm">&#9825;</span>' : ''}</div></div>`}</div>`;
 }
 function mountStore() {
     if (document.getElementById('store-screen')) return;

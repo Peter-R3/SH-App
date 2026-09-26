@@ -98,3 +98,8 @@
 .satin .store-frame .store-avatar { width: calc(100% - 2 * var(--satin-weight,8px)); height: calc(100% - 2 * var(--satin-weight,8px)); max-width: none; max-height: none; }
 .store-message-charm { position: absolute; right: -7px; bottom: -11px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--decor-light); border: 1px solid var(--decor-border); color: var(--decor-dark); font-size: 20px; line-height: 1; }
 .store-message { padding: 0 8px 12px; box-sizing: border-box; }
+.fine-line .store-bubble { background: var(--decor-stage); color: var(--decor-light); border-color: transparent; box-shadow: none; }
+.fine-line .store-bubble::before, .stitched-note .store-bubble::before { content: ''; position: absolute; inset: -2px; border: var(--frame-weight,1.5px) solid var(--decor-accent); border-radius: inherit; pointer-events: none; }
+.stitched-note .store-bubble { background: var(--decor-light); border-color: transparent; box-shadow: none; }
+.stitched-note .store-bubble::before { inset: 3px; border-style: dashed; border-color: var(--decor-accent); }
+.soft-paper .store-bubble { background: var(--decor-light); border-color: var(--decor-border); box-shadow: 0 var(--message-lift,2px) 0 var(--decor-accent); }
