@@ -1,9 +1,9 @@
-const CACHE_NAME = 'sweethearts-app-v66';
+const CACHE_NAME = 'sweethearts-app-v68';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css?v=66',
-  './app.js?v=66',
+  './app.js?v=68',
   './diagnostics.js?v=58',
   './diagnostics.css?v=56',
   './store.js?v=61',
@@ -19,9 +19,12 @@ const APP_SHELL = [
   './realm-planner.css?v=55',
   './assets/icons/copy.svg',
   './realm-hub.css',
-  './game-pause.js?v=43',
+  './game-pause.js?v=68',
+  './focus-mode.js?v=68',
+  './focus-mode.css?v=68',
   './game-pause.css?v=43',
-  './wordsearch.js',
+  './minecraft-words.js?v=67',
+  './wordsearch.js?v=67',
   './battleship.js',
   './connect-four.js',
   './sudoku.js',

@@ -259,6 +259,7 @@ function setActiveAppView(view) {
     if (typeof restoreGameAchievements === 'function') restoreGameAchievements();
     if (typeof sharedPauseSession !== 'undefined' && sharedPauseSession && view !== `${sharedPauseSession.id}-menu`) closeSharedGameMenu();
     activeAppView = view;
+    if (typeof updateFocusModeControls === 'function') requestAnimationFrame(updateFocusModeControls);
     updateAppPresence();
 }
 
@@ -612,6 +613,7 @@ function showAuthenticatedApp(playerName) {
     localPlayer = playerName;
     if (typeof startDiagnostics === 'function') startDiagnostics();
     loadSoundEffectsPreference(playerName);
+    if (typeof loadFocusModePreference === 'function') loadFocusModePreference(playerName);
     normaliseBottomNavigation();
     if (typeof initialiseGamePauseMenus === 'function') initialiseGamePauseMenus();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));

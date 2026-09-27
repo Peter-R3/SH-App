@@ -12,6 +12,8 @@ const root = path.resolve(__dirname, '..');
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.route('**/*', route => route.abort());
+        await page.route('https://app.test/', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><head></head><body></body></html>' }));
+        await page.goto('https://app.test/');
         await page.route('**/assets/currency/Coin.svg*', route => route.fulfill({ contentType: 'image/svg+xml', body: fs.readFileSync(path.join(root, 'assets/currency/Coin.svg')) }));
         await page.setContent(fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace('<head>', '<head><base href="https://app.test/">'));
         for (const file of ['styles.css', 'realm-hub.css', 'realm-planner.css', 'game-pause.css', 'achievements.css', 'game-history.css', 'store.css']) await page.addStyleTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
@@ -30,7 +32,7 @@ const root = path.resolve(__dirname, '..');
             window.AudioContext = undefined;
             window.webkitAudioContext = undefined;
         });
-        for (const file of ['app.js', 'store.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'realm-planner.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
+        for (const file of ['app.js', 'store.js', 'minecraft-words.js', 'wordsearch.js', 'battleship.js', 'connect-four.js', 'sudoku.js', 'tic-tac-toe.js', 'rps.js', 'realm-hub.js', 'realm-planner.js', 'game-pause.js', 'achievements.js', 'game-history.js']) await page.addScriptTag({ content: fs.readFileSync(path.join(root, file), 'utf8') });
         await page.evaluate(() => showAuthenticatedApp('Peter'));
         const visible = () => page.locator('.screen:not(.hidden)').evaluateAll(screens => screens.map(screen => screen.id));
         assert.deepEqual(await visible(), ['home-screen']);
@@ -212,7 +214,17 @@ const root = path.resolve(__dirname, '..');
                     const modesOnly = ['tic-tac-toe', 'rps'].includes(game);
                     assert.equal(await screen.locator('.shared-submenu h2').textContent(), modesOnly ? 'Modes' : 'Game Settings');
                     assert.equal(await screen.locator(modesOnly ? '.mode-option-btn' : '.game-custom-select').count() > 0, true);
-                    if (game === 'word-search' && width === 390) await page.screenshot({ path: path.join(os.tmpdir(), 'word-search-settings.png') });
+                    if (game === 'word-search') {
+                        await page.locator('#word-search-bank-custom-button').click();
+                        await page.locator('#word-search-bank-custom-options [data-value="minecraft"]').click();
+                        assert.equal(await page.evaluate(() => wordSearchSettings.wordBank), 'minecraft');
+                        assert.equal(await page.evaluate(() => createWordSearchPuzzle(5).wordBank), 'minecraft');
+                        assert.ok(await screen.locator('.shared-submenu-content').evaluate(el => el.scrollWidth <= el.clientWidth));
+                        await page.screenshot({ path: path.join(os.tmpdir(), `word-search-settings-${width}.png`) });
+                        await page.locator('#word-search-bank-custom-button').click();
+                        await page.locator('#word-search-bank-custom-options [data-value="default"]').click();
+                        assert.equal(await page.evaluate(() => wordSearchSettings.wordBank), 'default');
+                    }
                 }
                 await tab.click();
                 assert.equal(await tab.textContent(), 'Pause');

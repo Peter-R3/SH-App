@@ -80,7 +80,9 @@ const WORD_SEARCH_BANK = [
     'SUNLIGHT', 'TOOLBOX', 'TREELINE', 'WILDFIRE'
 ];
 
-let wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium' };
+let wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium', wordBank: 'default' };
+function normaliseWordBank(value) { return value === 'minecraft' ? 'minecraft' : 'default'; }
+function wordBankTitle(value) { return normaliseWordBank(value) === 'minecraft' ? 'Minecraft' : 'Default'; }
 let wordSearchPuzzle = null;
 let wordSearchFound = {};
 let wordSearchSelection = [];
@@ -128,10 +130,11 @@ function loadWordSearchSettings() {
         wordSearchSettings = {
             mode: ['solo', 'coop', 'versus', 'versus-ai'].includes(saved.mode) ? saved.mode : 'solo',
             difficulty: WORD_SEARCH_DIFFICULTIES.includes(Number(saved.difficulty)) ? Number(saved.difficulty) : 7,
-            aiDifficulty: WORD_SEARCH_AI_LEVELS[saved.aiDifficulty] ? saved.aiDifficulty : 'medium'
+            aiDifficulty: WORD_SEARCH_AI_LEVELS[saved.aiDifficulty] ? saved.aiDifficulty : 'medium',
+            wordBank: normaliseWordBank(saved.wordBank)
         };
     } catch {
-        wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium' };
+        wordSearchSettings = { mode: 'solo', difficulty: 7, aiDifficulty: 'medium', wordBank: 'default' };
     }
 }
 
@@ -170,6 +173,7 @@ function openWordSearchSettings() {
     openSharedGameMenu('word-search', 'modes');
     document.getElementById('word-search-mode').value = wordSearchSettings.mode;
     document.getElementById('word-search-difficulty').value = String(wordSearchSettings.difficulty);
+    document.getElementById('word-search-bank').value = normaliseWordBank(wordSearchSettings.wordBank);
     document.getElementById('word-search-ai-difficulty').value = wordSearchSettings.aiDifficulty;
     syncWordSearchModeControls();
     updateWordSearchSettingsNote();
@@ -183,6 +187,7 @@ function updateWordSearchSetting(key, value) {
         if (previousMode === 'versus' && value !== 'versus') abandonVersusMatch(true);
     }
     if (key === 'difficulty') wordSearchSettings.difficulty = Number(value);
+    if (key === 'wordBank') wordSearchSettings.wordBank = normaliseWordBank(value);
     if (key === 'aiDifficulty' && WORD_SEARCH_AI_LEVELS[value]) wordSearchSettings.aiDifficulty = value;
     saveWordSearchSettings();
     syncWordSearchModeControls();
@@ -214,7 +219,7 @@ function showWordSearchLobby(options = {}) {
     const detail = document.getElementById('word-search-lobby-detail');
     const status = document.getElementById('word-search-lobby-status');
     const primary = document.getElementById('word-search-lobby-primary');
-    document.getElementById('word-search-lobby-mode').textContent = `${modeTitle(mode)} - ${wordSearchSettings.difficulty}x${wordSearchSettings.difficulty}`;
+    document.getElementById('word-search-lobby-mode').textContent = `${modeTitle(mode)} - ${wordSearchSettings.difficulty}x${wordSearchSettings.difficulty} - ${wordBankTitle(wordSearchLobbyState?.puzzle?.wordBank ?? wordSearchSettings.wordBank)}`;
     title.textContent = options.title || (mode === 'coop' ? 'Play together' : mode === 'versus' ? 'Ready room' : mode === 'versus-ai' ? `Race ${WORD_SEARCH_AI_NAME}` : 'Ready to play?');
     detail.textContent = options.detail || (mode === 'coop'
         ? 'Work together on one shared grid.'
@@ -263,7 +268,7 @@ function updateWordSearchSettingsNote(message) {
     const note = document.getElementById('word-search-settings-note');
     if (!note) return;
     note.innerText = message || (
-        wordSearchSettings.mode === 'solo' ? 'Solo progress is saved separately for each profile and difficulty.' :
+        wordSearchSettings.mode === 'solo' ? 'Solo progress is saved separately for each profile, difficulty and word bank.' :
         wordSearchSettings.mode === 'coop' ? 'A new Co-op grid requires approval from the other player.' :
         wordSearchSettings.mode === 'versus-ai' ? 'Race an AI opponent on your own grid.' :
         'Leaving a Versus match abandons it and discards the match.'
@@ -281,6 +286,7 @@ async function requestNewWordSearchGrid() {
             requester: localPlayer,
             recipient: otherPlayer(localPlayer),
             difficulty,
+            wordBank: normaliseWordBank(wordSearchSettings.wordBank),
             status: 'pending',
             createdAt: Date.now()
         });
@@ -290,7 +296,7 @@ async function requestNewWordSearchGrid() {
             requestId,
             sender: localPlayer,
             recipient: otherPlayer(localPlayer),
-            body: `${playerProfiles[localPlayer]?.nickname || localPlayer} wants a new ${difficulty}×${difficulty} Co-op grid`,
+            body: `${playerProfiles[localPlayer]?.nickname || localPlayer} wants a new ${difficulty}×${difficulty} ${wordBankTitle(wordSearchSettings.wordBank)} Co-op grid`,
             createdAt: Date.now(),
             readBy: {}
         });
@@ -310,7 +316,7 @@ async function requestNewWordSearchGrid() {
 }
 
 function soloWordSearchPath() {
-    return `wordSearch/solo/${localPlayer}/${wordSearchSettings.difficulty}`;
+    return `wordSearch/solo/${localPlayer}/${wordSearchSettings.difficulty}${normaliseWordBank(wordSearchSettings.wordBank) === 'minecraft' ? '-minecraft' : ''}`;
 }
 
 function coopWordSearchPath() {
@@ -318,7 +324,7 @@ function coopWordSearchPath() {
 }
 
 function aiWordSearchPath() {
-    return `wordSearch/ai/${localPlayer}/${wordSearchSettings.difficulty}/${wordSearchSettings.aiDifficulty}`;
+    return `wordSearch/ai/${localPlayer}/${wordSearchSettings.difficulty}${normaliseWordBank(wordSearchSettings.wordBank) === 'minecraft' ? '-minecraft' : ''}/${wordSearchSettings.aiDifficulty}`;
 }
 
 function createWordSearchState(puzzle) {
@@ -448,6 +454,7 @@ function createOrJoinVersusMatch(forceNew) {
         const state = result.snapshot?.val?.();
         if (state?.difficulty) {
             wordSearchSettings.difficulty = Number(state.difficulty);
+            wordSearchSettings.wordBank = normaliseWordBank(state.puzzle?.wordBank);
             saveWordSearchSettings();
         }
         if (
@@ -467,7 +474,7 @@ function createOrJoinVersusMatch(forceNew) {
                         difficulty: state.difficulty,
                         sender: localPlayer,
                         recipient: otherPlayer(localPlayer),
-                        body: `${playerProfiles[localPlayer]?.nickname || localPlayer} is waiting for a ${state.difficulty}×${state.difficulty} match`,
+                        body: `${playerProfiles[localPlayer]?.nickname || localPlayer} is waiting for a ${state.difficulty}×${state.difficulty} ${wordBankTitle(state.puzzle?.wordBank)} match`,
                         createdAt: Date.now(),
                         readBy: {}
                     });
@@ -478,7 +485,7 @@ function createOrJoinVersusMatch(forceNew) {
 }
 
 function joinWordSearchVersus(difficulty) {
-    wordSearchSettings = { mode: 'versus', difficulty: Number(difficulty) || 7 };
+    wordSearchSettings = { ...wordSearchSettings, mode: 'versus', difficulty: Number(difficulty) || 7 };
     saveWordSearchSettings();
     launchWordSearch();
 }
@@ -492,6 +499,8 @@ function renderVersusState(state) {
         setWordSearchStatus('Creating match...');
         return;
     }
+    if (wordSearchPuzzle?.id !== state.puzzle.id || activeAppView !== 'word-search-menu') wordSearchSettings.wordBank = normaliseWordBank(state.puzzle.wordBank);
+    saveWordSearchSettings();
     wordSearchPuzzle = state.puzzle;
     wordSearchFound = state.foundBy?.[localPlayer] || {};
     wordSearchStartedAt = state.startsAt || null;
@@ -632,6 +641,7 @@ function applyWordSearchState(state) {
     concealWordSearchGrid(false);
     if (wordSearchSettings.mode === 'coop' && WORD_SEARCH_DIFFICULTIES.includes(Number(state.puzzle.size))) {
         wordSearchSettings.difficulty = Number(state.puzzle.size);
+        if (wordSearchPuzzle?.id !== state.puzzle.id || activeAppView !== 'word-search-menu') wordSearchSettings.wordBank = normaliseWordBank(state.puzzle.wordBank);
         saveWordSearchSettings();
     }
     wordSearchPuzzle = state.puzzle;
@@ -664,7 +674,7 @@ function renderWordSearchBoard() {
         )
     ).join('');
     words.innerHTML = wordSearchPuzzle.words.map((word, index) =>
-        `<span class="${wordSearchFound[index] ? 'found' : ''}" data-word-index="${index}">${word}</span>`
+        `<span class="${wordSearchFound[index] ? 'found' : ''}" data-word-index="${index}">${escapeHtml(wordSearchPuzzle.wordLabels?.[index] || word)}</span>`
     ).join('');
     paintFoundWords();
     bindWordSearchPointerEvents();
@@ -1104,7 +1114,7 @@ function approveCoopWordSearchRequest(requestId) {
     return requestRef.once('value').then(snapshot => {
         const request = snapshot.val();
         if (!request || request.recipient !== localPlayer || request.status !== 'pending') return;
-        const puzzle = createWordSearchState(createWordSearchPuzzle(Number(request.difficulty)));
+        const puzzle = createWordSearchState(createWordSearchPuzzle(Number(request.difficulty), normaliseWordBank(request.wordBank)));
         return Promise.all([
             database.ref(coopWordSearchPath()).set(puzzle),
             requestRef.update({ status: 'approved', approvedBy: localPlayer, approvedAt: Date.now() })
@@ -1154,9 +1164,13 @@ function abandonVersusMatch(notifyOpponent) {
     });
 }
 
-function createWordSearchPuzzle(size) {
+function createWordSearchPuzzle(size, selectedBank = wordSearchSettings.wordBank) {
+    const wordBank = normaliseWordBank(selectedBank);
     const count = WORD_SEARCH_COUNTS[size];
-    const candidates = shuffle(WORD_SEARCH_BANK.filter(word => word.length <= size));
+    if (!count) throw new Error('Unsupported Word Search size.');
+    const labels = wordBank === 'minecraft' ? WORD_SEARCH_MINECRAFT_LABELS : WORD_SEARCH_BANK;
+    const labelByWord = new Map(labels.map(label => [label.replace(/\s/g, '').toUpperCase(), label]));
+    const candidates = shuffle([...labelByWord.keys()].filter(word => word.length <= size));
     for (let attempt = 0; attempt < 80; attempt += 1) {
         const grid = Array.from({ length: size }, () => Array(size).fill(''));
         const words = [];
@@ -1171,7 +1185,7 @@ function createWordSearchPuzzle(size) {
         }
         if (words.length === count) {
             fillGrid(grid);
-            return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, size, grid, words, paths };
+            return { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, size, wordBank, grid, words, wordLabels: words.map(word => labelByWord.get(word)), paths };
         }
     }
     throw new Error('Could not generate a Word Search grid.');

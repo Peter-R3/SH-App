@@ -137,7 +137,7 @@ const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8').replace(/<
             await page.screenshot({ path: path.join(os.tmpdir(), `sound-${id}.png`) });
         }
         await page.emulateMedia({ reducedMotion: 'reduce' });
-        assert.ok(await page.locator('.profile-sound-setting input').evaluate(input => parseFloat(getComputedStyle(input, '::after').transitionDuration) < .01));
+        assert.ok(await page.locator('#profile-sound-enabled').evaluate(input => parseFloat(getComputedStyle(input, '::after').transitionDuration) < .01));
         assert.deepEqual(errors, []);
         console.log('PASS: profile/menu sync, persistence, per-profile isolation, cross-tab sync, no duplicate taps, immediate mute, pending audio cancellation, narrow layouts and reduced motion.');
     } finally { await browser.close(); }

@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="store.css?v=60">
     <link rel="stylesheet" href="diagnostics.css?v=56">
     <link rel="stylesheet" href="game-history.css?v=43">
+    <link rel="stylesheet" href="focus-mode.css?v=68">
     <!-- Progressive Web App Metadata -->
     <link rel="manifest" href="./manifest.json">
     <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png">
@@ -231,6 +232,10 @@
                         <div id="profile-theme-block" style="width: 32px; height: 32px; border-radius: 8px;"></div>
                     </button>
 
+                    <label class="profile-sound-setting" for="profile-focus-enabled">
+                        <span>Focus Mode <small id="profile-focus-status">Off</small></span>
+                        <input id="profile-focus-enabled" type="checkbox" role="switch" onchange="toggleFocusMode()">
+                    </label>
                     <label class="profile-sound-setting" for="profile-sound-enabled">
                         <span>Sound effects <small id="profile-sound-status">On</small></span>
                         <input id="profile-sound-enabled" type="checkbox" role="switch" checked onchange="toggleSoundEffects()">
@@ -663,6 +668,10 @@
                         <option value="5">5 × 5</option><option value="6">6 × 6</option><option value="7">7 × 7</option>
                         <option value="8">8 × 8</option><option value="9">9 × 9</option>
                     </select>
+                    <label for="word-search-bank">Word bank</label>
+                    <select id="word-search-bank" onchange="updateWordSearchSetting('wordBank', this.value)">
+                        <option value="default">Default</option><option value="minecraft">Minecraft</option>
+                    </select>
                     <button onclick="requestNewWordSearchGrid()">New grid</button>
                     <p id="word-search-settings-note" class="management-status"></p>
                 </div>
@@ -1035,9 +1044,10 @@
     <script src="./vendor/firebase/firebase-auth-compat.js"></script>
     <script src="./vendor/firebase/firebase-database-compat.js"></script>
 
-    <script src="app.js?v=66"></script>
+    <script src="app.js?v=68"></script>
     <script src="store.js?v=61"></script>
-    <script src="wordsearch.js"></script>
+    <script src="minecraft-words.js?v=67"></script>
+    <script src="wordsearch.js?v=67"></script>
     <script src="battleship.js"></script>
     <script src="connect-four.js"></script>
     <script src="sudoku.js"></script>
@@ -1045,7 +1055,8 @@
     <script src="rps.js"></script>
     <script src="realm-hub.js?v=47"></script>
     <script src="realm-planner.js?v=47"></script>
-    <script src="game-pause.js?v=43"></script>
+    <script src="game-pause.js?v=68"></script>
+    <script src="focus-mode.js?v=68"></script>
     <script src="achievements.js?v=54"></script>
     <script src="game-history.js?v=54"></script>
     <script src="diagnostics.js?v=58"></script>

@@ -231,7 +231,7 @@ function openSharedGameMenu(id, view = 'pause') {
     const mode = sharedPauseSession.mode;
     menu.querySelector('.shared-pause-note').textContent = mode === 'solo' ? 'Game paused. Your timer is stopped.' : mode === 'versus-ai' ? 'Game paused. Jaylin waits for you.' : 'Multiplayer keeps syncing while this menu is open.';
     for (const child of screen.children) {
-        if (!child.matches('.dashboard-header, .bottom-nav-bar, .shared-game-menu')) child.inert = true;
+        if (!child.matches('.dashboard-header, .bottom-nav-bar, .shared-game-menu, .focus-game-controls')) child.inert = true;
     }
     if (view !== 'pause') {
         menu.querySelector('.shared-submenu h2').textContent = view === 'stats' ? 'Statistics' : view === 'history' ? 'History' : view === 'achievements' ? 'Achievements' : config.settingsLabel;
