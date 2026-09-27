@@ -140,10 +140,15 @@ const root = path.resolve(__dirname, '..');
         await page.screenshot({ path: path.join(os.tmpdir(), 'home-presence.png') });
         await page.evaluate(() => { homePresenceData.visible = false; renderHomePresence(); });
         assert.equal(await page.locator('#home-presence').getAttribute('data-status'), 'offline');
+        assert.match(await page.locator('#home-presence').textContent(),/Last online:.*just now/);
+        await page.evaluate(() => { homePresenceData.lastOnlineAt=Date.now()-7200000;renderHomePresence(); });
+        assert.match(await page.locator('#home-presence').textContent(),/2 hours ago/);
+        await page.screenshot({ path: path.join(os.tmpdir(), 'home-last-online.png') });
         await page.evaluate(() => { homePresenceData.visible = true; homePresenceData.updatedAt -= 121000; renderHomePresence(); });
         assert.equal(await page.locator('#home-presence').getAttribute('data-status'), 'offline');
         await page.evaluate(() => { homePresenceConnected = false; renderHomePresence(); });
         assert.match(await page.locator('#home-presence').textContent(), /Status unavailable/);
+        assert.equal(await page.locator('.home-last-online').count(),0);
         await page.evaluate(() => openStatsScreen());
         for (const game of ['number-guess', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps']) {
             await page.evaluate(game => openStatsCategory(game), game);
@@ -358,6 +363,7 @@ const root = path.resolve(__dirname, '..');
             database.ref = path => ({
                 once: async () => ({ val: () => window.puzzleData[path] || null }),
                 set: async value => { if (/^(wordSearch|sudoku)\/solo\//.test(path)) window.puzzleWrites++; window.puzzleData[path] = value; },
+                update: async value => { window.puzzleData[path] = { ...(window.puzzleData[path] || {}), ...value }; },
                 transaction: async update => {
                     const value = update(window.puzzleData[path] || null);
                     if (value !== undefined) window.puzzleData[path] = value;
@@ -520,7 +526,7 @@ const root = path.resolve(__dirname, '..');
             database.ref = path => ({
                 ...window.originalPuzzleRef(path),
                 once: async () => ({ forEach: callback => callback({ key: 'test', val: () => ({ recipient: 'Peter' }) }) }),
-                update: async values => { window.managementWrites.push(values); },
+                update: async values => { if (!path?.startsWith('presence/')) window.managementWrites.push(values); },
                 transaction: async update => { window.managementWrites.push({ path, value: update(5) }); return { committed: true }; }
             });
             openManagementScreen();

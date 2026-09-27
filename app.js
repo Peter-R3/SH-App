@@ -217,9 +217,21 @@ function startHomePresence() {
         homePresenceUnsubscribe.push(() => ref.off('value', callback));
     };
     watch(`presence/${otherPlayer(player)}`, value => { homePresenceData = value; homePresenceReady = true; });
-    watch('.info/connected', value => { homePresenceConnected = value === true; });
+    watch('.info/connected', value => {
+        homePresenceConnected = value === true;
+        if (homePresenceConnected) { presenceDisconnectHandle = null; updateAppPresence(); }
+    });
     watch('.info/serverTimeOffset', value => { homePresenceOffset = Number(value) || 0; });
     renderHomePresence();
+}
+function lastOnlineDescription(timestamp, now = Date.now()) {
+    if (!Number.isFinite(timestamp) || timestamp <= 0 || timestamp > now + 30000) return '';
+    const minutes = Math.floor(Math.max(0, now - timestamp) / 60000);
+    const amount = minutes < 60 ? minutes : minutes < 1440 ? Math.floor(minutes / 60) : Math.floor(minutes / 1440);
+    const unit = minutes < 60 ? 'minute' : minutes < 1440 ? 'hour' : 'day';
+    const ago = minutes === 0 ? 'just now' : `${amount} ${unit}${amount === 1 ? '' : 's'} ago`;
+    const date = new Date(timestamp).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    return `Last online: ${date} (${ago})`;
 }
 function renderHomePresence() {
     const host = document.getElementById('home-presence');
@@ -230,7 +242,8 @@ function renderHomePresence() {
     const online = homePresenceData?.visible === true && homePresenceData?.view !== 'signed-out' && age >= -30000 && age < 120000;
     const known = homePresenceReady && homePresenceConnected;
     host.dataset.status = known ? (online ? 'online' : 'offline') : 'unknown';
-    host.querySelector('span').textContent = `${name} · ${known ? online ? 'Online' : 'Offline' : 'Status unavailable'}`;
+    const lastOnline = known && !online ? lastOnlineDescription(homePresenceData?.lastOnlineAt ?? homePresenceData?.updatedAt, Date.now() + homePresenceOffset) : '';
+    host.querySelector('span').innerHTML = `${escapeHtml(name)} · ${known ? online ? 'Online' : 'Offline' : 'Status unavailable'}${lastOnline ? `<small class="home-last-online">${escapeHtml(lastOnline)}</small>` : ''}`;
 }
 let messageHoldTimer = null;
 let selectedMessageActionId = null;
@@ -456,15 +469,17 @@ function scheduleUiSound(context, kind) {
 function updateAppPresence() {
     if (!localPlayer || !auth.currentUser) return;
     const ref = database.ref(`presence/${localPlayer}`);
-    ref.set({
+    const presence = {
         view: activeAppView,
         visible: !document.hidden,
         updatedAt: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+    if (!document.hidden && activeAppView !== 'signed-out') presence.lastOnlineAt = firebase.database.ServerValue.TIMESTAMP;
     if (!presenceDisconnectHandle && ref.onDisconnect) {
         presenceDisconnectHandle = ref.onDisconnect();
-        presenceDisconnectHandle.remove();
+        presenceDisconnectHandle.update({ visible: false, updatedAt: firebase.database.ServerValue.TIMESTAMP });
     }
+    ref.update(presence).catch(error => console.warn('Presence update unavailable', error.code));
     if (!document.hidden) refreshActiveMultiplayerSession();
 }
 
@@ -580,6 +595,7 @@ function setAuthBusy(busy) {
 }
 
 function showAuthScreen(message = 'Sign in with your approved account.', isError = false) {
+    if (localPlayer && auth.currentUser) database.ref(`presence/${localPlayer}`).update({ visible: false, view: 'signed-out', updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
     if (typeof stopDiagnostics === 'function') stopDiagnostics();
     stopHomePresence();
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
