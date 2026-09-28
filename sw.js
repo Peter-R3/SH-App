@@ -1,12 +1,12 @@
-const CACHE_NAME = 'sweethearts-app-v69';
+const CACHE_NAME = 'sweethearts-app-v70';
 const APP_SHELL = [
   './',
   './index.html',
   './styles.css?v=66',
   './app.js?v=69',
-  './jigsaw.js?v=69',
+  './jigsaw.js?v=70',
   './jigsaw-model.js?v=69',
-  './jigsaw.css?v=69',
+  './jigsaw.css?v=70',
   './assets/games/jigsaw.svg',
   ...['Me_and_SH','SH_and_Her_Cats','SH_and_The_Heart','SH_and_The_Panda','SH_and_The_Slime','SH_Cats_and_The_Spider','SH_Caving','SH_Caving_2','SH_Eating','SH_Farming_Trees','SH_in_a_Bookshelf','SH_in_Her_World','SH_in_Our_House','SH_Looking_at_the_Ravine','The_Big_Bunny'].map(name => `./assets/jigsaw/${name}.png`),
   './diagnostics.js?v=69',

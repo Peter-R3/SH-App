@@ -194,6 +194,7 @@ function renderJigsaw() {
         button.type = 'button'; button.className = `jigsaw-piece${piece.locked ? ' locked' : ''}`; button.dataset.piece = id;
         button.setAttribute('aria-label', `Piece ${Number(id) + 1}${piece.locked ? ', placed' : ''}`);
         button.innerHTML = pieceMarkup(state, Number(id), edges);
+        if (piece.locked) button.style.setProperty('--piece-owner', themeColorFor(piece.owner || localPlayer));
         button.disabled = Boolean(piece.locked || state.completedAt);
         if (piece.tray) tray.append(button);
         else {
@@ -329,12 +330,27 @@ function showJigsawReference() {
 function renderJigsawStats() {
     const host = document.getElementById('jigsaw-stats-content');
     if (!host) return;
+    const expanded = new Set([...host.querySelectorAll('details[open]')].map(el => el.dataset.times));
+    const count = value => Math.max(0, Math.floor(Number(value) || 0));
     host.innerHTML = ['Peter','Jadey'].map(player => {
         const data = latestStats?.jigsaw?.[player] || {};
-        return `<section class="stats-player-card"><h3 style="color:${themeColorFor(player)}">${escapeHtml(playerProfiles[player].nickname)}</h3><p>${Object.keys(data.pictures || {}).length} / 15 pictures completed</p>${['solo','coop'].map(mode => `<h4>${mode === 'solo' ? 'Solo' : 'Co-op'}</h4>${JigsawModel.sizes.map(n => {
-            const stats = data[mode]?.[n] || {};
-            return `<details><summary>${n*n} pieces · ${stats.completed || 0} ${stats.completed === 1 ? 'puzzle' : 'puzzles'} · ${stats.pieces || 0} pieces placed</summary>${Object.entries(stats.times || {}).map(([key,time]) => `<p>${escapeHtml(jigsawTitle(key.replace(/_(guided|regular)$/,'')))}${key.endsWith('_guided') ? ' (guided)' : ''}: ${jigsawTime(time)}</p>`).join('') || '<p>No times yet</p>'}</details>`;
-        }).join('')}`).join('')}</section>`;
+        const sections = ['solo','coop'].map(mode => {
+            const rows = JigsawModel.sizes.map(n => {
+                const stats = data[mode]?.[n] || {}, completed = count(stats.completed), pieces = count(stats.pieces);
+                return `<div class="word-stats-row jigsaw-stats-row"><strong>${n*n} pieces</strong><span>${completed} ${completed === 1 ? 'puzzle' : 'puzzles'}</span><span>${pieces} ${pieces === 1 ? 'piece' : 'pieces'}</span></div>`;
+            }).join('');
+            const times = ['regular','guided'].map(category => {
+                const entries = JIGSAW_PICTURES.flatMap(([image,title]) => JigsawModel.sizes.flatMap(n => {
+                    const time = data[mode]?.[n]?.times?.[`${image}_${category}`];
+                    if (time == null || !Number.isFinite(Number(time)) || Number(time) < 0) return [];
+                    return [`<div class="word-stats-row jigsaw-time-row"><strong>${escapeHtml(title)}</strong><span>${n*n}</span><span>${jigsawTime(Number(time))}</span></div>`];
+                }));
+                return entries.length ? `<h5>${category === 'guided' ? 'Guided' : 'Unguided'}</h5><div class="word-stats-row word-stats-head jigsaw-time-row"><strong>Picture</strong><span>Pieces</span><span>Best</span></div>${entries.join('')}` : '';
+            }).join('');
+            const id = `${player}-${mode}`;
+            return `<div class="word-stats-mode"><h4>${mode === 'solo' ? 'Solo' : 'Co-op'}</h4><div class="word-stats-row word-stats-head jigsaw-stats-row"><strong>Difficulty</strong><span>Completed</span><span>Placed</span></div>${rows}<details class="jigsaw-best-times" data-times="${id}" ${expanded.has(id) ? 'open' : ''}><summary>Best times</summary>${times || '<p>No completed puzzles yet.</p>'}</details></div>`;
+        }).join('');
+        return `<section class="word-stats-player ${player.toLowerCase()}"><h3>${escapeHtml(playerProfiles[player]?.nickname || player)}</h3><p class="jigsaw-picture-count">${Object.keys(data.pictures || {}).length} / ${JIGSAW_PICTURES.length} pictures completed</p>${sections}</section>`;
     }).join('');
 }
 

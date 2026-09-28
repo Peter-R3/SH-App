@@ -43,6 +43,10 @@ const root=path.resolve(__dirname,'..');
  await page.waitForFunction(()=>jigsawState.pieces[0].tray);
  await drag(0,.125,.125);
  await page.waitForFunction(()=>jigsawState.pieces[0].locked);
+ const lockedStroke = await page.locator('#jigsaw-board [data-piece="0"] svg > path').evaluate(el=>getComputedStyle(el).stroke);
+ const looseStroke = await page.locator('#jigsaw-tray .jigsaw-piece svg > path').first().evaluate(el=>getComputedStyle(el).stroke);
+ assert.notEqual(lockedStroke,looseStroke,'locked pieces have a distinct theme outline');
+ assert.equal(await page.locator('#jigsaw-board [data-piece="0"] svg > path').evaluate(el=>getComputedStyle(el).vectorEffect),'non-scaling-stroke');
  await page.evaluate(()=>{switchTab('home');launchJigsaw();});
  await page.waitForFunction(()=>document.getElementById('jigsaw-ready').textContent==='Resume puzzle');
  await page.locator('#jigsaw-ready').click();
@@ -68,7 +72,26 @@ const root=path.resolve(__dirname,'..');
  assert.equal(await page.evaluate(()=>testData.stats.jigsaw.Peter.solo[4].completed),1);
  await page.waitForFunction(()=>Object.keys(testData.history?.games?.jigsaw?.Peter||{}).length===1);
  assert.equal(await page.locator('#jigsaw-finished').isVisible(),true);
- await page.evaluate(()=>{latestStats=testData.stats;renderJigsawStats();openManagementScreen();});
+ await page.evaluate(()=>{
+  latestStats=testData.stats;
+  latestStats.jigsaw.Jadey={pictures:{Me_and_SH:true},coop:{4:{completed:1,pieces:1,times:{Me_and_SH_regular:61000,Me_and_SH_guided:45000}}}};
+  openStatsScreen();openStatsCategory('jigsaw');
+ });
+ assert.equal(await page.locator('#jigsaw-stats-content > .word-stats-player').count(),2);
+ assert.equal(await page.locator('#jigsaw-stats-content .jigsaw-stats-row:not(.word-stats-head)').count(),20);
+ assert.match(await page.locator('#jigsaw-stats-content .jadey').textContent(),/1 puzzle1 piece/);
+ await page.locator('[data-times="Jadey-coop"] summary').click();
+ await page.evaluate(()=>renderJigsawStats());
+ assert.equal(await page.locator('[data-times="Jadey-coop"]').getAttribute('open'),'');
+ assert.match(await page.locator('[data-times="Jadey-coop"]').textContent(),/Unguided.*Guided/);
+ for(const width of [320,390,1280]){
+  await page.setViewportSize({width,height:844});await page.evaluate(()=>calculateRealVh(true));
+  assert.ok(await page.locator('#jigsaw-stats-content').evaluate(el=>el.scrollWidth<=el.clientWidth));
+  await page.locator('#jigsaw-stats-content').evaluate(el=>Promise.all(el.getAnimations({subtree:true}).map(animation=>animation.finished)));
+  await page.locator('#stats-jigsaw-detail').evaluate(el=>el.scrollIntoView({block:'start'}));
+  await page.screenshot({path:path.join(os.tmpdir(),`jigsaw-stats-${width}.png`)});
+ }
+ await page.evaluate(()=>openManagementScreen());
  assert.equal(await page.locator('#jigsaw-management').isVisible(),true);
  assert.ok(await page.evaluate(()=>ACHIEVEMENT_TRACKS.filter(t=>t.game==='jigsaw').length===5));
  await page.evaluate(()=>{jigsawSettings.mode='coop';jigsawSaveSettings();launchJigsaw();});
