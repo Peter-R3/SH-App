@@ -222,7 +222,7 @@ function filteredDiagnostics(applyFilters = true) {
 function describeDiagnostic(entry) {
     const actor = entry.actor;
     const profile = entry.profile === 'both' ? 'both profiles' : entry.profile || actor;
-    const games = { 'number-guess': '1 to 10', 'word-search': 'Word Search', sudoku: 'Sudoku', battleship: 'Battleship', 'connect-four': 'Connect 4', 'tic-tac-toe': 'Tic-Tac-Toe', rps: 'Rock, Paper, Scissors' };
+    const games = { 'number-guess': '1 to 10', 'word-search': 'Word Search', sudoku: 'Sudoku', battleship: 'Battleship', 'connect-four': 'Connect 4', 'tic-tac-toe': 'Tic-Tac-Toe', rps: 'Rock, Paper, Scissors', jigsaw: 'Jigsaw' };
     const historyAliases = { number: 'number-guess', ws: 'word-search', connect: 'connect-four', ttt: 'tic-tac-toe' };
     const game = games[historyAliases[entry.game] || entry.game] || 'the game';
     const track = typeof ACHIEVEMENT_TRACKS !== 'undefined' && ACHIEVEMENT_TRACKS.find(track => track.id === entry.track);

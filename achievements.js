@@ -103,6 +103,7 @@ function achievementStatSources(stats, player) {
             }
         }
     }
+    if (typeof jigsawAchievementSources === 'function') Object.assign(sources, jigsawAchievementSources(stats, player, source));
     return sources;
 }
 function mergeAchievementStats(state, sources, now) {
@@ -449,6 +450,7 @@ function achievementRevealPolicy(view) {
         if (sudokuSettings.mode === 'solo') return view === 'sudoku' ? 'pause-sudoku' : 'safe';
         return sudokuState?.completedAt || sudokuState?.status === 'finished' ? 'safe' : 'wait';
     }
+    if (view.startsWith('jigsaw')) return view === 'jigsaw' && !(typeof jigsawState !== 'undefined' && jigsawState?.completedAt && document.getElementById('jigsaw-complete-cue')?.classList.contains('hidden')) ? 'wait' : 'safe';
     if (view.startsWith('number-guess')) return 'wait';
     for (const [id, state] of [['battleship', battleshipState],['connect-four', connectFourState],['tic-tac-toe', ticTacToeState],['rps', rpsState]]) {
         if (view.startsWith(id)) return state?.status === 'finished' ? 'safe' : 'wait';

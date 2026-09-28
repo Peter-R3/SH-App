@@ -254,11 +254,12 @@ window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 function setActiveAppView(view) {
     if (view !== 'messages') closeMessageActionMenu();
     if (activeAppView === 'store' && view !== 'store' && typeof resetStorePreviews === 'function') resetStorePreviews();
-    const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps)/;
+    const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps|jigsaw)/;
     if (typeof recordDiagnostic === 'function' && view !== activeAppView && (gameViewPattern.test(view) || gameViewPattern.test(activeAppView))) recordDiagnostic('game-view', { mode: view, operation: 'view-changed', outcome: 'confirmed' });
     if (typeof restoreGameAchievements === 'function') restoreGameAchievements();
     if (typeof sharedPauseSession !== 'undefined' && sharedPauseSession && view !== `${sharedPauseSession.id}-menu`) closeSharedGameMenu();
     activeAppView = view;
+    if (typeof jigsawViewChanged === 'function') jigsawViewChanged(view);
     if (typeof updateFocusModeControls === 'function') requestAnimationFrame(updateFocusModeControls);
     updateAppPresence();
 }
@@ -814,7 +815,7 @@ function renderProfileAvatar(element, player) {
 }
 
 function refreshVisibleProfilePhotos() {
-    const prefixes = ['dashboard', 'home', 'store', 'profile', 'stats', 'achievements', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps'];
+    const prefixes = ['dashboard', 'home', 'store', 'profile', 'stats', 'achievements', 'messages', 'notifications', 'game', 'word-search', 'battleship', 'connect-four', 'sudoku', 'tic-tac-toe', 'rps', 'jigsaw'];
     prefixes.forEach(prefix => renderProfileAvatar(
         document.getElementById(prefix === 'dashboard' ? 'header-initial-circle' : `${prefix}-top-initial`),
         localPlayer
@@ -1665,6 +1666,8 @@ function openStatsScreen() {
 }
 
 function openStatsCategory(gameId) {
+    document.getElementById('stats-jigsaw-detail')?.classList.toggle('hidden', gameId !== 'jigsaw');
+    if (gameId === 'jigsaw' && typeof renderJigsawStats === 'function') renderJigsawStats();
     document.getElementById('stats-categories')?.classList.add('hidden');
     document.getElementById('stats-number-guess-detail')?.classList.toggle('hidden', gameId !== 'number-guess');
     document.getElementById('stats-word-search-detail')?.classList.toggle('hidden', gameId !== 'word-search');
@@ -1682,6 +1685,7 @@ function openStatsCategory(gameId) {
 }
 
 function closeStatsCategory() {
+    document.getElementById('stats-jigsaw-detail')?.classList.add('hidden');
     document.getElementById('stats-categories')?.classList.remove('hidden');
     document.getElementById('stats-number-guess-detail')?.classList.add('hidden');
     document.getElementById('stats-word-search-detail')?.classList.add('hidden');
@@ -1693,6 +1697,7 @@ function closeStatsCategory() {
 }
 
 function renderStats() {
+    if (typeof renderJigsawStats === 'function') renderJigsawStats();
     ['Peter', 'Jadey'].forEach(player => {
         const key = player.toLowerCase();
         const ten = latestStats?.[player]?.ten || 0;
@@ -1820,6 +1825,8 @@ function renderNotifications() {
             action = !responded && pending
                 ? `<div class="notification-actions"><button onclick="respondToNicknameProposal('${notification.id}', true)">Accept</button><button class="secondary-action" onclick="respondToNicknameProposal('${notification.id}', false)">Decline</button></div>`
                 : `<button disabled>${answer === true ? 'Accepted' : answer === false ? 'Declined' : 'Replaced'}</button>`;
+        } else if (notification.action === 'jigsaw-request' && isRecipient) {
+            action = navigationButton('Review', 'game', 'jigsaw');
         } else if (notification.action === 'send-back' && isRecipient) {
             action = `<button ${responded ? 'disabled' : ''} onclick="sendInteractionBack('${notification.id}', '${notification.interactionType}')">${responded ? 'Sent' : 'Send back'}</button>`;
         } else if (notification.action === 'reply' && isRecipient) {
@@ -2264,6 +2271,7 @@ function openManagementScreen() {
     if (localPlayer !== 'Peter') return;
     setActiveAppView('management');
     if (typeof mountManagementTools === 'function') mountManagementTools();
+    if (typeof mountJigsawManagement === 'function') mountJigsawManagement();
 
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     const screen = document.getElementById('management-screen');
@@ -2548,6 +2556,7 @@ async function adjustManagedInteractions(operation) {
 // 1 TO 10 MULTIPLAYER GAME WORKSPACE
 // =========================================================================
 function launchGame(gameId) {
+    if (gameId === 'jigsaw') { jigsawSettings.mode = 'coop'; jigsawSaveSettings(); launchJigsaw(); return; }
     if (gameId === 'word-search') {
         launchWordSearch();
         return;

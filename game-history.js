@@ -106,16 +106,19 @@ function initialisePuzzleHistory(player) {
 function historyPlayerName(player) { return playerProfiles[player]?.nickname || (player === 'AI' ? 'Jaylin' : player); }
 function historyPlayerColour(player) { return themeColorFor(player === 'AI' || player === 'Jaylin' ? otherPlayer(localPlayer) : player); }
 function historyPlayerResult(game, record, player, values) {
+    if (game === 'jigsaw') return `${values.pieces || 0} ${values.pieces === 1 ? 'piece' : 'pieces'} placed`;
     if (game === 'rps') return values.choice || 'Unknown';
     if (game === 'ws') return values.words == null ? 'Not finished' : `${values.words} ${values.words === 1 ? 'word' : 'words'}`;
     if (game === 'battleship') return `${values.hits}/${values.shots} hits · ${values.afloat} afloat`;
     return player === record.winner ? 'Winner' : record.winner && record.winner !== 'draw' ? 'Played' : 'Complete';
 }
 function gameHistoryCard(game, record) {
+    const picture = game === 'jigsaw' && typeof JIGSAW_PICTURES !== 'undefined' && JIGSAW_PICTURES.some(item => item[0] === record.image)
+        ? `<img class="jigsaw-history-image" src="${jigsawImage(record.image)}" alt="${escapeHtml(jigsawTitle(record.image))}"><p>${escapeHtml(jigsawTitle(record.image))}</p>` : '';
     const mode = { solo: 'Solo', coop: 'Co-op', versus: 'Player vs Player', versusAi: 'Player vs Jaylin', 'versus-ai': 'Player vs Jaylin' }[record.mode] || record.mode;
     const details = [mode, record.difficulty ? (game === 'ws' ? `${record.difficulty} x ${record.difficulty}` : record.difficulty) : '', record.aiDifficulty ? `Jaylin: ${record.aiDifficulty}` : ''].filter(Boolean).join(' · ');
-    const result = record.winner && record.winner !== 'draw' ? `${historyPlayerName(record.winner)} won` : ['ws','sudoku'].includes(game) ? 'Complete' : 'Draw';
-    const board = game === 'ttt' ? `<div class="history-ttt-board">${Array.from({ length: 9 }, (_, i) => record.board?.[i] || '').map(owner => `<span style="color:${owner ? historyPlayerColour(owner) : '#8B949E'}">${owner ? owner === localPlayer ? 'X' : 'O' : ''}</span>`).join('')}</div>` : '';
+    const result = record.winner && record.winner !== 'draw' ? `${historyPlayerName(record.winner)} won` : ['ws','sudoku','jigsaw'].includes(game) ? 'Complete' : 'Draw';
+    const board = game === 'ttt' ? `<div class="history-ttt-board">${Array.from({ length: 9 }, (_, i) => record.board?.[i] || '').map(owner => `<span style="color:${owner ? historyPlayerColour(owner) : '#8B949E'}">${owner ? owner === localPlayer ? 'X' : 'O' : ''}</span>`).join('')}</div>` : picture;
     // Older records lost empty player objects during Firebase serialization.
     const participants = record.mode === 'solo' ? [localPlayer] : ['versus-ai', 'versusAi'].includes(record.mode) ? [localPlayer, 'Jaylin'] : ['Peter', 'Jadey'];
     const players = { ...Object.fromEntries(participants.map(player => [player, {}])), ...(record.players || {}) };
