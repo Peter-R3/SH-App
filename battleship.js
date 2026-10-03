@@ -14,6 +14,70 @@ let battleshipView = 'enemy';
 let battleshipRef = null;
 let battleshipHandler = null;
 let battleshipLastStatus = null;
+let battleshipFeedbackState = null;
+let battleshipLatestShot = null;
+let battleshipCueTimer = null;
+let battleshipAutoView = false;
+
+function openBattleshipSettings() {
+    openSharedGameMenu('battleship', 'settings');
+    const host = document.querySelector('#battleship-screen .shared-submenu-content');
+    host.innerHTML = '<label class="battleship-auto-setting"><input class="app-checkbox" type="checkbox"> Automatically switch waters between turns</label>';
+    const input = host.querySelector('input');
+    input.checked = battleshipAutoView;
+    input.onchange = () => {
+        battleshipAutoView = input.checked;
+        localStorage.setItem(`battleship-auto-view-${localPlayer}`, String(battleshipAutoView));
+        if (battleshipAutoView && battleshipState?.status === 'battle') battleshipView = battleshipState.turn === localPlayer ? 'enemy' : 'own';
+        playUiSound('tap');
+        renderBattleship();
+    };
+}
+
+function updateBattleshipFeedback() {
+    const state = battleshipState;
+    if (!state) return;
+    const previous = battleshipFeedbackState;
+    const sameMatch = previous?.id === state.id;
+    if (!sameMatch) {
+        battleshipLatestShot = null;
+        const feedback = document.getElementById('battleship-shot-feedback');
+        if (feedback) feedback.textContent = '';
+    }
+    const shots = {};
+    for (const [player, board] of Object.entries(state.boards || {})) {
+        for (const [cell, shot] of Object.entries(board.shotsReceived || {})) {
+            const key = `${player}:${cell}`;
+            shots[key] = true;
+            if (sameMatch && !previous.shots[key] && activeAppView === 'battleship' && !document.hidden) {
+                battleshipLatestShot = { player, cell: Number(cell), until: Date.now() + 1400 };
+                const ship = board.ships.find(item => item.id === shot.shipId);
+                playUiSound(shot.hit ? ship && isBattleshipShipSunk(board, ship) ? 'ship-sunk' : 'shot-hit' : 'shot-miss');
+                const feedback = document.getElementById('battleship-shot-feedback');
+                if (feedback) feedback.textContent = `${player === localPlayer ? 'Your fleet' : 'Enemy waters'}: ${String.fromCharCode(65 + Number(cell) % BATTLESHIP_SIZE)}${Math.floor(Number(cell) / BATTLESHIP_SIZE) + 1} - ${shot.hit ? ship && isBattleshipShipSunk(board, ship) ? `${ship.name} sunk!` : 'Hit!' : 'Miss'}`;
+            }
+        }
+    }
+    const turnChanged = !sameMatch || previous.turn !== state.turn || previous.status !== state.status;
+    if (state.status === 'battle' && turnChanged) {
+        if (battleshipAutoView) battleshipView = state.turn === localPlayer ? 'enemy' : 'own';
+        if (activeAppView === 'battleship' && !document.hidden) {
+            const overlay = document.getElementById('battleship-turn-overlay');
+            if (overlay) {
+                const text = state.turn === localPlayer ? 'Your turn' : `${playerProfiles[state.turn]?.nickname || state.turn}'s turn`;
+                overlay.querySelector('span').textContent = text;
+                overlay.querySelector('span').dataset.text = text;
+                overlay.style.setProperty('--turn-cue-colour', themeColorFor(state.turn));
+                overlay.classList.remove('hidden', 'show-turn-cue');
+                void overlay.offsetWidth;
+                overlay.classList.add('show-turn-cue');
+                clearTimeout(battleshipCueTimer);
+                battleshipCueTimer = setTimeout(() => overlay.classList.add('hidden'), 1050);
+            }
+        }
+    }
+    battleshipFeedbackState = { id: state.id, turn: state.turn, status: state.status, shots };
+}
 let selectedBattleshipShipId = null;
 let battleshipDragShipId = null;
 let battleshipDragPointerId = null;
@@ -26,6 +90,20 @@ let battleshipDragPointer = { clientX: 0, clientY: 0 };
 
 function launchBattleship() {
     if (!localPlayer) return;
+    battleshipAutoView = localStorage.getItem(`battleship-auto-view-${localPlayer}`) === 'true';
+    const content = document.querySelector('#battleship-screen .battleship-content');
+    if (content && !document.getElementById('battleship-turn-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'battleship-turn-overlay';
+        overlay.className = 'turn-cue-overlay hidden';
+        overlay.setAttribute('role', 'status');
+        overlay.innerHTML = '<span data-text="Your turn">Your turn</span>';
+        content.append(overlay);
+        const feedback = document.createElement('p');
+        feedback.id = 'battleship-shot-feedback';
+        feedback.setAttribute('role', 'status');
+        document.getElementById('battleship-board').after(feedback);
+    }
     setActiveAppView('battleship');
     document.querySelectorAll('.screen').forEach(screen => screen.classList.add('hidden'));
     document.getElementById('battleship-screen')?.classList.remove('hidden');
@@ -113,7 +191,16 @@ function subscribeBattleship() {
     battleshipRef = database.ref('games/battleship/current');
     battleshipHandler = snapshot => {
         battleshipState = snapshot.val();
+        updateBattleshipFeedback();
         renderBattleship();
+        if (['battleship', 'battleship-menu'].includes(activeAppView) && battleshipState?.status === 'placement' && !battleshipState.players?.[localPlayer]) {
+            const id = battleshipState.id;
+            database.ref('games/battleship/current').transaction(current => {
+                if (!current || current.id !== id || current.status !== 'placement') return;
+                ensureBattleshipParticipant(current, localPlayer);
+                return current;
+            }, undefined, false).catch(() => setBattleshipStatus('Could not join. Please retry.'));
+        }
     };
     battleshipRef.on('value', battleshipHandler);
 }
@@ -125,6 +212,10 @@ function stopBattleshipSubscription() {
     battleshipRef = null;
     battleshipHandler = null;
     battleshipLastStatus = null;
+    battleshipFeedbackState = null;
+    battleshipLatestShot = null;
+    clearTimeout(battleshipCueTimer);
+    document.getElementById('battleship-turn-overlay')?.classList.add('hidden');
     selectedBattleshipShipId = null;
     removeBattleshipDragGhost();
     clearBattleshipPendingDrag();
@@ -185,7 +276,7 @@ function renderBattleship() {
 
     toggle.classList.remove('hidden');
     if (status === 'battle') {
-        if (battleshipLastStatus !== 'battle') battleshipView = 'enemy';
+        if (battleshipLastStatus !== 'battle') battleshipView = battleshipAutoView && battleshipState.turn !== localPlayer ? 'own' : 'enemy';
         battleshipLastStatus = status;
         syncBattleshipViewToggle();
         const myTurn = battleshipState.turn === localPlayer;
@@ -205,10 +296,10 @@ function renderBattleship() {
         : won
             ? 'Victory! Enemy fleet destroyed.'
             : 'Defeat. Your fleet was sunk.');
-    const finalView = battleshipState.boards?.[otherPlayer(localPlayer)] ? 'enemy' : 'own';
-    battleshipView = finalView;
+    if (battleshipLastStatus !== 'finished') battleshipView = battleshipState.boards?.[otherPlayer(localPlayer)] ? 'enemy' : 'own';
+    const finalView = battleshipView;
     battleshipLastStatus = status;
-    toggle.classList.toggle('hidden', finalView === 'own');
+    toggle.classList.toggle('hidden', !battleshipState.boards?.[otherPlayer(localPlayer)]);
     syncBattleshipViewToggle();
     renderBattleshipFleet(finalView === 'enemy' ? otherPlayer(localPlayer) : localPlayer, finalView === 'own');
     renderBattleshipBoard(finalView);
@@ -258,7 +349,8 @@ function renderBattleshipBoard(view) {
         const shot = board.shotsReceived?.[index];
         const ship = shipByCell[index];
         const classes = ['battleship-cell'];
-        if (view === 'own' && ship) classes.push('ship', `ship-${ship.id}`);
+        if ((view === 'own' || battleshipState.status === 'finished') && ship) classes.push('ship', `ship-${ship.id}`);
+        if (battleshipLatestShot?.player === targetPlayer && battleshipLatestShot.cell === index && battleshipLatestShot.until > Date.now()) classes.push('shot-impact');
         if (shot?.hit) classes.push('hit');
         if (shot && !shot.hit) classes.push('miss');
         if (shot?.hit && ship && isBattleshipShipSunk(board, ship)) classes.push('sunk-cell');
@@ -273,7 +365,7 @@ function renderBattleshipBoard(view) {
         const dragHandlers = placementMode
             ? `data-cell-index="${index}" ${ship ? `data-ship-id="${ship.id}" onpointerdown="startBattleshipBoardDrag(event, '${ship.id}')"` : ''}`
             : '';
-        return `<button type="button" class="${classes.join(' ')}" ${dragHandlers} ${action} aria-label="Grid cell ${index + 1}">${shot?.hit ? '&times;' : shot ? '&bull;' : ''}</button>`;
+        return `<button type="button" class="${classes.join(' ')}" ${dragHandlers} ${action} aria-label="${String.fromCharCode(65 + index % BATTLESHIP_SIZE)}${Math.floor(index / BATTLESHIP_SIZE) + 1}${shot ? shot.hit ? ', hit' : ', miss' : ''}">${shot?.hit ? '&times;' : shot ? '&bull;' : ''}</button>`;
     }).join('');
 }
 
@@ -282,6 +374,7 @@ function isBattleshipShipSunk(board, ship) {
 }
 
 function shuffleBattleshipFleet() {
+    playUiSound('tap');
     selectedBattleshipShipId = null;
     removeBattleshipDragGhost();
     database.ref('games/battleship/current').transaction(current => {
@@ -614,13 +707,19 @@ function recordBattleshipResult(winner, loser) {
     });
 }
 
-function startNewBattleshipMatch() {
-    if (!window.confirm('Start a new Battleship match?')) return;
+async function startNewBattleshipMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([battleshipState?.id, battleshipState?.roundId, battleshipState?.createdAt, battleshipState?.status]);
+    if (!await confirmNewPuzzle('Start a new Battleship match?', 'The current match will end.', 'New match')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([battleshipState?.id, battleshipState?.roundId, battleshipState?.createdAt, battleshipState?.status])) return;
     database.ref('games/battleship/current').set(createBattleshipMatch()).then(sendBattleshipInvite);
 }
 
-function abandonBattleshipMatch() {
-    if (!window.confirm('Abandon this Battleship match?')) return;
+async function abandonBattleshipMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([battleshipState?.id, battleshipState?.roundId, battleshipState?.createdAt, battleshipState?.status]);
+    if (!await confirmNewPuzzle('Abandon this Battleship match?', 'The current match will end.', 'Abandon')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([battleshipState?.id, battleshipState?.roundId, battleshipState?.createdAt, battleshipState?.status])) return;
     let result = null;
     database.ref('games/battleship/current').transaction(current => {
         if (!current || current.status === 'finished' || !current.players?.[localPlayer]) return;

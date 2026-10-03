@@ -256,8 +256,11 @@ function recordRpsResult(winner, mode, player, opponent) {
     }
 }
 
-function startNewRpsRound() {
-    if (!window.confirm('Start a new RPS round?')) return;
+async function startNewRpsRound() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([rpsState?.id, rpsState?.roundId, rpsState?.createdAt, rpsState?.status, rpsSettings.mode]);
+    if (!await confirmNewPuzzle('Start a new RPS round?', 'The current match will end.', 'New round')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([rpsState?.id, rpsState?.roundId, rpsState?.createdAt, rpsState?.status, rpsSettings.mode])) return;
     if (rpsSettings.mode === 'versus-ai') database.ref(rpsAiPath()).set(createRpsRound('versus-ai')).then(() => launchRps(true));
     else {
         const previousId = rpsState?.roundId || rpsState?.createdAt;
@@ -270,8 +273,11 @@ function startNewRpsRound() {
     }
 }
 
-function abandonRpsRound() {
-    if (!window.confirm('Abandon this RPS round?')) return;
+async function abandonRpsRound() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([rpsState?.id, rpsState?.roundId, rpsState?.createdAt, rpsState?.status, rpsSettings.mode]);
+    if (!await confirmNewPuzzle('Abandon this RPS round?', 'The current match will end.', 'Abandon')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([rpsState?.id, rpsState?.roundId, rpsState?.createdAt, rpsState?.status, rpsSettings.mode])) return;
     if (rpsSettings.mode === 'versus-ai') {
         if (!rpsState || rpsState.status === 'finished') return;
         rpsState = { ...rpsState, status: 'finished', winner: 'Jaylin', abandonedBy: localPlayer, completedAt: Date.now() };

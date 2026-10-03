@@ -26,7 +26,7 @@ function saveTicTacToeSettings() {
     localStorage.setItem(ticTacToeSettingsKey(), JSON.stringify(ticTacToeSettings));
 }
 
-function launchTicTacToe(ready = false) {
+function launchTicTacToe(ready = false, preserveResults = false) {
     if (!localPlayer) return;
     setActiveAppView(ready === true ? 'tic-tac-toe' : 'tic-tac-toe-lobby');
     loadTicTacToeSettings();
@@ -41,7 +41,7 @@ function launchTicTacToe(ready = false) {
         return;
     }
     if (ticTacToeSettings.mode === 'versus-ai') return loadTicTacToeAi();
-    return loadTicTacToeVersus();
+    return loadTicTacToeVersus(preserveResults);
 }
 
 function openTicTacToeSettings() {
@@ -90,9 +90,10 @@ function loadTicTacToeAi() {
     });
 }
 
-function loadTicTacToeVersus() {
+function loadTicTacToeVersus(preserveResults = false) {
     subscribeTicTacToe();
     return database.ref('games/ticTacToe/current').transaction(current => {
+        if (preserveResults && current?.status === 'finished') return;
         if (!current || current.status === 'finished') return createTicTacToeState('versus');
         current.players = current.players || {};
         current.players[localPlayer] = true;
@@ -114,6 +115,20 @@ function subscribeTicTacToe() {
     ticTacToeHandler = snapshot => {
         ticTacToeState = snapshot.val();
         renderTicTacToe();
+        if (ticTacToeSettings.mode === 'versus' && ['tic-tac-toe', 'tic-tac-toe-lobby', 'tic-tac-toe-menu'].includes(activeAppView) && ticTacToeState?.status === 'waiting' && !ticTacToeState.players?.[localPlayer]) {
+            const createdAt = ticTacToeState.createdAt;
+            database.ref('games/ticTacToe/current').transaction(current => {
+                if (!current || current.createdAt !== createdAt || current.status !== 'waiting') return;
+                current.players = current.players || {};
+                current.players[localPlayer] = true;
+                if (current.players.Peter && current.players.Jadey) {
+                    current.status = 'active';
+                    current.turn = Math.random() < 0.5 ? 'Peter' : 'Jadey';
+                    current.startedAt = Date.now();
+                }
+                return current;
+            }, undefined, false).catch(() => setTicTacToeStatus('Could not join. Please retry.'));
+        }
     };
     ticTacToeRef.on('value', ticTacToeHandler);
 }
@@ -277,14 +292,20 @@ function recordTicTacToeResult(winner, mode, player, opponent) {
     }
 }
 
-function startNewTicTacToeMatch() {
-    if (!window.confirm('Start a new Tic-Tac-Toe match?')) return;
+async function startNewTicTacToeMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([ticTacToeState?.id, ticTacToeState?.roundId, ticTacToeState?.createdAt, ticTacToeState?.status, ticTacToeSettings.mode]);
+    if (!await confirmNewPuzzle('Start a new Tic-Tac-Toe match?', 'The current match will end.', 'New match')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([ticTacToeState?.id, ticTacToeState?.roundId, ticTacToeState?.createdAt, ticTacToeState?.status, ticTacToeSettings.mode])) return;
     if (ticTacToeSettings.mode === 'versus-ai') database.ref(ticTacToeAiPath()).set(createTicTacToeState('versus-ai')).then(() => launchTicTacToe(true));
     else database.ref('games/ticTacToe/current').set(createTicTacToeState('versus')).then(sendTicTacToeInvite);
 }
 
-function abandonTicTacToeMatch() {
-    if (!window.confirm('Abandon this Tic-Tac-Toe match?')) return;
+async function abandonTicTacToeMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([ticTacToeState?.id, ticTacToeState?.roundId, ticTacToeState?.createdAt, ticTacToeState?.status, ticTacToeSettings.mode]);
+    if (!await confirmNewPuzzle('Abandon this Tic-Tac-Toe match?', 'The current match will end.', 'Abandon')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([ticTacToeState?.id, ticTacToeState?.roundId, ticTacToeState?.createdAt, ticTacToeState?.status, ticTacToeSettings.mode])) return;
     if (ticTacToeSettings.mode === 'versus-ai') {
         database.ref(ticTacToeAiPath()).set({ ...ticTacToeState, status: 'finished', winner: 'Jaylin', abandonedBy: localPlayer, completedAt: Date.now() });
         recordTicTacToeResult('Jaylin', 'versusAi', localPlayer, 'Jaylin');

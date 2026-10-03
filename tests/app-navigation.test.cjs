@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
         await page.evaluate(() => {
             const snapshot = { val: () => null, exists: () => false, forEach: () => {} };
             const ref = {
-                on() {}, off() {}, once: async (_, callback) => { callback?.(snapshot); return snapshot; },
+                on(_, callback) { queueMicrotask(() => callback(snapshot)); }, off() {}, once: async (_, callback) => { callback?.(snapshot); return snapshot; },
                 set: async () => {}, update: async () => {}, remove: async () => {},
                 push: () => ({ key: 'fixture-key', set: async () => {} }),
                 transaction: async () => ({ committed: false, snapshot }),

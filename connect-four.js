@@ -60,6 +60,20 @@ function subscribeConnectFour() {
     connectFourHandler = snapshot => {
         connectFourState = snapshot.val();
         renderConnectFour();
+        if (['connect-four', 'connect-four-lobby', 'connect-four-menu'].includes(activeAppView) && connectFourState?.status === 'waiting' && !connectFourState.players?.[localPlayer]) {
+            const id = connectFourState.id;
+            database.ref('games/connectFour/current').transaction(current => {
+                if (!current || current.id !== id || current.status !== 'waiting') return;
+                current.players = current.players || {};
+                current.players[localPlayer] = true;
+                if (current.players.Peter && current.players.Jadey) {
+                    current.status = 'active';
+                    current.turn = Math.random() < 0.5 ? 'Peter' : 'Jadey';
+                    current.startedAt = Date.now();
+                }
+                return current;
+            }, undefined, false).catch(() => setConnectFourStatus('Could not join. Please retry.'));
+        }
     };
     connectFourRef.on('value', connectFourHandler);
 }
@@ -250,8 +264,11 @@ function recordConnectFourDraw() {
     });
 }
 
-function abandonConnectFourMatch() {
-    if (!window.confirm('Abandon this Connect 4 match?')) return;
+async function abandonConnectFourMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([connectFourState?.id, connectFourState?.roundId, connectFourState?.createdAt, connectFourState?.status]);
+    if (!await confirmNewPuzzle('Abandon this Connect 4 match?', 'The current match will end.', 'Abandon')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([connectFourState?.id, connectFourState?.roundId, connectFourState?.createdAt, connectFourState?.status])) return;
     let result = null;
     database.ref('games/connectFour/current').transaction(current => {
         if (!current || current.status === 'finished' || !current.players?.[localPlayer]) return;
@@ -273,8 +290,11 @@ function abandonConnectFourMatch() {
     });
 }
 
-function startNewConnectFourMatch() {
-    if (!window.confirm('Start a new Connect 4 match?')) return;
+async function startNewConnectFourMatch() {
+    const player = localPlayer;
+    const matchKey = JSON.stringify([connectFourState?.id, connectFourState?.roundId, connectFourState?.createdAt, connectFourState?.status]);
+    if (!await confirmNewPuzzle('Start a new Connect 4 match?', 'The current match will end.', 'New match')) return;
+    if (localPlayer !== player || matchKey !== JSON.stringify([connectFourState?.id, connectFourState?.roundId, connectFourState?.createdAt, connectFourState?.status])) return;
     database.ref('games/connectFour/current').set(createConnectFourMatch()).then(sendConnectFourInvite);
 }
 

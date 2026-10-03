@@ -508,6 +508,7 @@ function renderVersusState(state) {
     renderWordSearchBoard();
 
     if (state.status === 'waiting') {
+        if (!state.players?.[localPlayer]) refreshWordSearchPresence();
         concealWordSearchGrid(true);
         enableWordSearchGrid(false);
         const bothPresent = playerRecentlyPresent(state.present?.Peter) && playerRecentlyPresent(state.present?.Jadey);

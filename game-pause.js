@@ -1,12 +1,18 @@
 const sharedPauseGames = {
     'word-search': { launch: launchWordSearch, settingsAction: openWordSearchSettings, settingsLabel: 'Game Settings', settings: () => wordSearchSettings, stats: 'word-search-stats-content', render: renderWordSearchStats },
     sudoku: { launch: launchSudoku, settingsAction: openSudokuSettings, settingsLabel: 'Game Settings', settings: () => sudokuSettings, stats: 'sudoku-stats-content', render: renderSudokuStats },
-    battleship: { launch: launchBattleship, stats: 'battleship-stats-content', render: renderBattleshipStats },
+    battleship: { launch: launchBattleship, settingsAction: openBattleshipSettings, settingsLabel: 'Game Settings', stats: 'battleship-stats-content', render: renderBattleshipStats },
     'connect-four': { launch: launchConnectFour, stats: 'connect-four-stats-content', render: renderConnectFourStats },
     'tic-tac-toe': { launch: launchTicTacToe, settingsAction: openTicTacToeSettings, settingsLabel: 'Modes', settings: () => ticTacToeSettings, stats: 'tic-tac-toe-stats-content', render: renderTicTacToeStats },
     rps: { launch: launchRps, settingsAction: openRpsSettings, settingsLabel: 'Modes', settings: () => rpsSettings, stats: 'rps-stats-content', render: renderRpsStats }
 };
 let sharedPauseSession = null;
+let quickLobbySubscription = null;
+
+function stopQuickLobbySubscription() {
+    if (quickLobbySubscription) quickLobbySubscription.ref.off('value', quickLobbySubscription.handler);
+    quickLobbySubscription = null;
+}
 
 function confirmNewPuzzle(title, body, confirmLabel) {
     let dialog = document.getElementById('game-confirm-dialog');
@@ -69,6 +75,7 @@ function renderDuelModes(id) {
 }
 
 function openQuickGameLobby(id, mode, path, begin) {
+    stopQuickLobbySubscription();
     const screen = document.getElementById(`${id}-screen`);
     const content = screen.querySelector('.duel-game-content, .connect-four-content');
     let lobby = screen.querySelector('.quick-game-lobby');
@@ -94,15 +101,19 @@ function openQuickGameLobby(id, mode, path, begin) {
     status.textContent = 'Checking for a match...';
     const token = {};
     lobby.sessionToken = token;
-    database.ref(path).once('value').then(snapshot => {
+    const ref = database.ref(path);
+    const handler = snapshot => {
         if (lobby.sessionToken !== token || ![`${id}-lobby`, `${id}-menu`].includes(activeAppView)) return;
         const state = snapshot.val();
         const ongoing = state && state.status !== 'finished';
         button.textContent = mode === 'versus-ai' ? (ongoing ? 'Resume' : 'Play') : state?.status === 'finished' && id !== 'tic-tac-toe' ? 'View results' : ongoing ? (state.players?.[localPlayer] ? 'Resume' : 'Join match') : 'Invite player';
         status.textContent = mode === 'versus-ai' ? 'Jaylin is ready when you are.' : ongoing ? 'Continue your shared match.' : 'Start a match together.';
         button.disabled = false;
-    }).catch(() => { status.textContent = 'Could not check the match. Tap to retry.'; button.textContent = 'Retry'; button.disabled = false; });
+    };
+    quickLobbySubscription = { id, ref, handler };
+    ref.on('value', handler, () => { status.textContent = 'Could not check the match. Tap to retry.'; button.textContent = 'Retry'; button.disabled = false; });
     button.onclick = async () => {
+        stopQuickLobbySubscription();
         button.disabled = true;
         playUiSound('ready');
         try {

@@ -38,7 +38,7 @@ const database = { ref(key) { return {
     }
 }; } };
 function client(player) {
-    const context = vm.createContext({ database, localPlayer: player, window: { confirm: () => true }, localStorage: { getItem: () => null, setItem() {} }, playerProfiles: { Peter: { nickname: 'Peter' }, Jadey: { nickname: 'Jadey' } }, otherPlayer: p => p === 'Peter' ? 'Jadey' : 'Peter', sendAppNotification() {}, clearGameNotifications: async () => {}, Date, Math, console });
+    const context = vm.createContext({ database, localPlayer: player, confirmNewPuzzle: async () => true, window: {}, localStorage: { getItem: () => null, setItem() {} }, playerProfiles: { Peter: { nickname: 'Peter' }, Jadey: { nickname: 'Jadey' } }, otherPlayer: p => p === 'Peter' ? 'Jadey' : 'Peter', sendAppNotification() {}, clearGameNotifications: async () => {}, Date, Math, console });
     vm.runInContext(source + '\nrenderRps = () => {}; setRpsStatus = () => {};', context);
     return code => vm.runInContext(code, context);
 }

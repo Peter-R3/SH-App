@@ -402,6 +402,7 @@ function renderSudokuVersusState(state) {
     }
     renderSudokuBoard(state.status !== 'active' && state.status !== 'finished');
     if (state.status === 'waiting') {
+        if (!state.players?.[localPlayer]) refreshSudokuPresence();
         const ready = state.readyBy?.[localPlayer];
         const bothPresent = playerRecentlyPresent(state.present?.Peter) && playerRecentlyPresent(state.present?.Jadey);
         setSudokuStatus('Versus - Ready room');
@@ -734,7 +735,10 @@ function startSudokuCountdown(startsAt) {
 function refreshSudokuPresence(timestamp = Date.now()) {
     if (sudokuSettings.mode !== 'versus') return;
     database.ref('sudoku/versus/current').transaction(current => {
-        if (!current || current.status === 'finished' || !current.players?.[localPlayer]) return current;
+        if (!current || current.status === 'finished') return;
+        if (!current.players?.[localPlayer] && current.status !== 'waiting') return;
+        current.players = current.players || {};
+        current.players[localPlayer] = true;
         current.present = current.present || {};
         current.present[localPlayer] = timestamp;
         return current;

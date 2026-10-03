@@ -252,6 +252,7 @@ window.setInterval(updateAppPresence, 30 * 1000);
 window.setInterval(refreshActiveMultiplayerSession, 10 * 1000);
 
 function setActiveAppView(view) {
+    if (typeof quickLobbySubscription !== 'undefined' && quickLobbySubscription && ![`${quickLobbySubscription.id}-lobby`, `${quickLobbySubscription.id}-menu`].includes(view)) stopQuickLobbySubscription();
     if (view !== 'messages') closeMessageActionMenu();
     if (activeAppView === 'store' && view !== 'store' && typeof resetStorePreviews === 'function') resetStorePreviews();
     const gameViewPattern = /^(number-guess|word-search|sudoku|battleship|connect-four|tic-tac-toe|rps|jigsaw)/;
@@ -425,7 +426,8 @@ function scheduleUiSound(context, kind) {
     const settings = {
         tap: [0, 90], confirm: [1, 210], success: [2, 320], error: [1, 190],
         ready: [2, 300], complete: [3, 650], 'word-drag': [0, 65], 'realm-enter': [2, 620],
-        'realm-exit': [2, 450], sent: [1, 140], notification: [1, 380]
+        'realm-exit': [2, 450], sent: [1, 140], notification: [1, 380],
+        'shot-hit': [2, 220], 'shot-miss': [1, 220], 'ship-sunk': [2, 420]
     }[kind];
     if (!settings) return;
     const now = performance.now();
@@ -433,7 +435,15 @@ function scheduleUiSound(context, kind) {
     stopUiSounds();
     uiSoundPriority = settings[0];
     uiSoundUntil = now + settings[1];
-    if (kind === 'word-drag') {
+    if (kind === 'shot-hit') {
+        playUiTone(context, 180, 0, 0.18, 0.10, 'triangle', 85);
+        playUiTone(context, 660, 0.06, 0.12, 0.055, 'sine', 440);
+    } else if (kind === 'shot-miss') {
+        playUiTone(context, 520, 0, 0.20, 0.065, 'sine', 170);
+    } else if (kind === 'ship-sunk') {
+        playUiTone(context, 220, 0, 0.22, 0.08, 'triangle', 110);
+        playUiTone(context, 440, 0.15, 0.25, 0.06, 'sine', 660);
+    } else if (kind === 'word-drag') {
         playUiTone(context, 740, 0, 0.035, 0.035, 'sine', 820);
     } else if (kind === 'tap') {
         playUiTone(context, 660, 0, 0.075, 0.12, 'sine', 780);
@@ -488,7 +498,7 @@ function updateAppPresence() {
 function refreshActiveMultiplayerSession() {
     if (!localPlayer || !auth.currentUser || document.hidden) return;
     const now = Date.now();
-    if (activeAppView === 'word-search' && typeof refreshWordSearchPresence === 'function') {
+    if (['word-search', 'word-search-lobby', 'word-search-menu'].includes(activeAppView) && typeof refreshWordSearchPresence === 'function') {
         refreshWordSearchPresence(now);
     } else if (activeAppView === 'battleship') {
         database.ref('games/battleship/current').transaction(current => {
@@ -2213,7 +2223,18 @@ function cancelNotificationSwipe() {
 function handleNotificationAction(notificationId, actionName, value) {
     database.ref(`notifications/${notificationId}/respondedBy/${localPlayer}`).set(true).then(() => {
         if (actionName === 'messages') switchTab('messages');
-        if (actionName === 'game') launchGame(value);
+        if (actionName === 'game') {
+            if (value === 'tic-tac-toe') {
+                loadTicTacToeSettings();
+                updateTicTacToeSetting('mode', 'versus');
+                launchTicTacToe(true, true);
+            } else if (value === 'rps') {
+                loadRpsSettings();
+                updateRpsSetting('mode', 'versus');
+                launchRps(true);
+            } else if (value === 'connect-four') launchConnectFour(true);
+            else launchGame(value);
+        }
         if (actionName === 'wordsearch-versus') joinWordSearchVersus(Number(value) || 7);
         if (actionName === 'sudoku-versus') joinSudokuVersus(value || 'easy');
     });
